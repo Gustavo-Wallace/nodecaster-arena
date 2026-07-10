@@ -107,6 +107,8 @@ func _process(delta: float) -> void:
 	if not _run_finished:
 		run_time_seconds += delta
 		_update_unstable_field(delta)
+		if is_instance_valid(hud):
+			hud.call("set_run_time", run_time_seconds)
 
 	_update_camera_shake(delta)
 
@@ -577,6 +579,7 @@ func _complete_wave() -> void:
 		return
 
 	_reward_open = true
+	_clear_projectiles()
 
 	if is_instance_valid(_auto_fire_timer):
 		_auto_fire_timer.stop()
@@ -602,15 +605,45 @@ func _show_upgrade_reward() -> void:
 
 
 func _pick_upgrade_options(count: int) -> Array[Dictionary]:
-	var pool := _available_upgrades.duplicate()
+	var pool: Array[Dictionary] = _available_upgrades.duplicate()
 	var picked: Array[Dictionary] = []
+
+	_pick_priority_meta_upgrades(pool, picked, count)
 
 	while picked.size() < count and not pool.is_empty():
 		var index := _rng.randi_range(0, pool.size() - 1)
-		picked.append(pool[index])
+		var upgrade: Dictionary = pool[index].duplicate(true)
+		_prepare_upgrade_option(upgrade)
+		picked.append(upgrade)
 		pool.remove_at(index)
 
 	return picked
+
+
+func _pick_priority_meta_upgrades(pool: Array[Dictionary], picked: Array[Dictionary], count: int) -> void:
+	var priority_indices: Array[int] = []
+
+	for index in range(pool.size()):
+		var candidate: Dictionary = pool[index]
+		var upgrade_id := str(candidate.get("id", ""))
+		var unlock_id := str(candidate.get("unlock_id", ""))
+		if unlock_id.is_empty() or int(upgrade_stacks.get(upgrade_id, 0)) > 0:
+			continue
+
+		var upgrade: Dictionary = candidate.duplicate(true)
+		_prepare_upgrade_option(upgrade)
+		picked.append(upgrade)
+		priority_indices.append(index)
+		if picked.size() >= count:
+			break
+
+	for index in range(priority_indices.size() - 1, -1, -1):
+		pool.remove_at(priority_indices[index])
+
+
+func _prepare_upgrade_option(upgrade: Dictionary) -> void:
+	var upgrade_id := str(upgrade.get("id", ""))
+	upgrade["current_stack"] = int(upgrade_stacks.get(upgrade_id, 0))
 
 
 func _on_upgrade_selected(upgrade: Dictionary) -> void:
@@ -848,10 +881,14 @@ func _filter_unlocked_upgrades(upgrades: Array[Dictionary]) -> Array[Dictionary]
 	var filtered: Array[Dictionary] = []
 
 	for upgrade in upgrades:
+		var upgrade_id := str(upgrade.get("id", ""))
 		var unlock_id := str(upgrade.get("unlock_id", ""))
 		if unlock_id.is_empty():
 			filtered.append(upgrade)
-		elif save_manager != null and bool(save_manager.call("is_unlocked", unlock_id)):
+		elif save_manager != null and (
+			bool(save_manager.call("is_unlocked", unlock_id))
+			or bool(save_manager.call("is_upgrade_unlocked", upgrade_id))
+		):
 			filtered.append(upgrade)
 
 	return filtered
@@ -1225,7 +1262,14 @@ func _clear_active_threats() -> void:
 			enemy.queue_free()
 	enemies.clear()
 
+	_clear_projectiles()
+
+
+func _clear_projectiles() -> void:
 	for projectile in get_tree().get_nodes_in_group("enemy_projectiles"):
+		if is_instance_valid(projectile):
+			projectile.queue_free()
+	for projectile in get_tree().get_nodes_in_group("player_projectiles"):
 		if is_instance_valid(projectile):
 			projectile.queue_free()
 

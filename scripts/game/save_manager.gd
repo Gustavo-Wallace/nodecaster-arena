@@ -139,6 +139,7 @@ func unlock(unlock_id: String) -> bool:
 			_add_unlocked_id("unlocked_characters", str(unlock_data.get("target_id", "")))
 		"upgrade":
 			_add_unlocked_id("unlocked_upgrades", str(unlock_data.get("target_id", "")))
+			_add_unlocked_id("unlocked_upgrades", unlock_id)
 
 	save_progress()
 	return true
@@ -146,24 +147,44 @@ func unlock(unlock_id: String) -> bool:
 
 func is_unlocked(unlock_id: String) -> bool:
 	if not unlock_definitions.has(unlock_id):
-		return false
+		return is_upgrade_unlocked(unlock_id) or is_character_unlocked(unlock_id)
 
 	var unlock_data: Dictionary = unlock_definitions[unlock_id]
 	match str(unlock_data.get("kind", "")):
 		"character":
-			return is_character_unlocked(str(unlock_data.get("target_id", "")))
+			return is_character_unlocked(str(unlock_data.get("target_id", ""))) or is_character_unlocked(unlock_id)
 		"upgrade":
-			return is_upgrade_unlocked(str(unlock_data.get("target_id", "")))
+			return is_upgrade_unlocked(str(unlock_data.get("target_id", ""))) or is_upgrade_unlocked(unlock_id)
 
 	return false
 
 
 func is_character_unlocked(character_id: String) -> bool:
-	return _string_array_has(progress.get("unlocked_characters", []), character_id)
+	if _string_array_has(progress.get("unlocked_characters", []), character_id):
+		return true
+
+	for unlock_id in unlock_definitions.keys():
+		var unlock_data: Dictionary = unlock_definitions[unlock_id]
+		if str(unlock_data.get("kind", "")) != "character":
+			continue
+		if str(unlock_data.get("target_id", "")) == character_id:
+			return _string_array_has(progress.get("unlocked_characters", []), str(unlock_id))
+
+	return false
 
 
 func is_upgrade_unlocked(upgrade_id: String) -> bool:
-	return _string_array_has(progress.get("unlocked_upgrades", []), upgrade_id)
+	if _string_array_has(progress.get("unlocked_upgrades", []), upgrade_id):
+		return true
+
+	for unlock_id in unlock_definitions.keys():
+		var unlock_data: Dictionary = unlock_definitions[unlock_id]
+		if str(unlock_data.get("kind", "")) != "upgrade":
+			continue
+		if str(unlock_data.get("target_id", "")) == upgrade_id:
+			return _string_array_has(progress.get("unlocked_upgrades", []), str(unlock_id))
+
+	return false
 
 
 func get_unlock_definitions() -> Array[Dictionary]:
@@ -220,7 +241,7 @@ func _merge_unique_string_arrays(required_values: Array, loaded_values) -> Array
 		if not merged.has(text):
 			merged.append(text)
 
-	if loaded_values is Array:
+	if loaded_values is Array or loaded_values is PackedStringArray:
 		for value in loaded_values:
 			var loaded_text := str(value)
 			if not loaded_text.is_empty() and not merged.has(loaded_text):
@@ -230,7 +251,7 @@ func _merge_unique_string_arrays(required_values: Array, loaded_values) -> Array
 
 
 func _string_array_has(values, needle: String) -> bool:
-	if not (values is Array):
+	if not (values is Array or values is PackedStringArray):
 		return false
 
 	for value in values:

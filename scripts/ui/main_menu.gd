@@ -10,6 +10,8 @@ func _ready() -> void:
 	play_button.pressed.connect(_on_play_pressed)
 	progress_button.pressed.connect(_on_progress_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
+	for button in [play_button, progress_button, quit_button]:
+		_setup_button_feedback(button)
 	_update_meta_label()
 
 
@@ -48,3 +50,15 @@ func _update_meta_label() -> void:
 		int(summary.get("best_wave", 0)),
 		int(summary.get("victories", 0)),
 	]
+
+
+func _setup_button_feedback(button: Button) -> void:
+	button.focus_mode = Control.FOCUS_NONE
+	button.mouse_entered.connect(_on_button_hovered.bind(button, true))
+	button.mouse_exited.connect(_on_button_hovered.bind(button, false))
+
+
+func _on_button_hovered(button: Button, hovered: bool) -> void:
+	button.pivot_offset = button.size * 0.5
+	var tween := create_tween()
+	tween.tween_property(button, "scale", Vector2.ONE * (1.05 if hovered else 1.0), 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)

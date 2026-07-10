@@ -11,6 +11,8 @@ signal main_menu_requested
 @onready var restart_button: Button = $Panel/RestartButton
 @onready var menu_button: Button = $Panel/MenuButton
 
+var _open_tween: Tween
+
 
 func _ready() -> void:
 	hide()
@@ -42,7 +44,7 @@ func show_result(victory: bool, stats: Dictionary, max_wave: int) -> void:
 	var score_record := "Sim" if bool(stats.get("new_best_score", false)) else "Nao"
 	var wave_record := "Sim" if bool(stats.get("new_best_wave", false)) else "Nao"
 
-	stats_label.text = "Forma: %s\nOnda: %d/%d\nPontuacao: %d\nTempo: %s\nEcos: +%d / Total %d\nRecorde pontos: %s\nRecorde onda: %s\nInimigos derrotados: %d\nUpgrades escolhidos: %d" % [
+	stats_label.text = "Forma: %s\nOnda: %d/%d\nPontuacao: %d\nTempo: %s\n\nEcos: +%d / Total %d\nRecorde pontos: %s\nRecorde onda: %s\n\nInimigos: %d\nMutacoes: %d" % [
 		character_name,
 		wave_reached,
 		max_wave,
@@ -59,6 +61,7 @@ func show_result(victory: bool, stats: Dictionary, max_wave: int) -> void:
 	kills_label.text = "%s\n%s" % [_format_kill_breakdown(stats), _format_modifier_breakdown(stats)]
 	build_label.text = "Build: %s\nSinergias: %s" % [_format_build(stats), _format_synergies(stats)]
 	show()
+	_play_open_animation()
 
 
 func _on_restart_pressed() -> void:
@@ -67,6 +70,19 @@ func _on_restart_pressed() -> void:
 
 func _on_menu_pressed() -> void:
 	main_menu_requested.emit()
+
+
+func _play_open_animation() -> void:
+	if is_instance_valid(_open_tween):
+		_open_tween.kill()
+
+	modulate = Color(1.0, 1.0, 1.0, 0.0)
+	scale = Vector2.ONE * 0.96
+	pivot_offset = size * 0.5
+	_open_tween = create_tween()
+	_open_tween.set_parallel(true)
+	_open_tween.tween_property(self, "modulate", Color.WHITE, 0.2)
+	_open_tween.tween_property(self, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func _format_time(seconds: float) -> String:
