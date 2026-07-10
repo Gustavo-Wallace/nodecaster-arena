@@ -50,6 +50,23 @@ func take_damage(amount: int) -> void:
 		_die()
 
 
+func heal(amount: int) -> void:
+	if _is_dead or amount <= 0:
+		return
+
+	current_health = mini(current_health + amount, max_health)
+	health_changed.emit(current_health, max_health)
+
+
+func increase_max_health(amount: int, heal_amount: int) -> void:
+	if _is_dead or amount <= 0:
+		return
+
+	max_health += amount
+	current_health = mini(current_health + heal_amount, max_health)
+	health_changed.emit(current_health, max_health)
+
+
 func _read_movement_input() -> Vector2:
 	var input_vector := Vector2.ZERO
 

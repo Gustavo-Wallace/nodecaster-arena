@@ -6,10 +6,18 @@ const TRIANGLE_DASHER_SCENE := preload("res://scenes/enemies/triangle_dasher.tsc
 const SQUARE_TANK_SCENE := preload("res://scenes/enemies/square_tank.tscn")
 const BASIC_PROJECTILE_SCENE := preload("res://scenes/projectiles/basic_projectile.tscn")
 const GAME_HUD_SCENE := preload("res://scenes/ui/game_hud.tscn")
+const UPGRADE_PANEL_SCENE := preload("res://scenes/ui/upgrade_panel.tscn")
 
 @export var arena_position: Vector2 = Vector2(96.0, 72.0)
 @export var arena_size: Vector2 = Vector2(1088.0, 576.0)
 @export var auto_fire_interval: float = 0.45
+@export var min_auto_fire_interval: float = 0.16
+@export var projectile_damage: int = 12
+@export var projectile_speed: float = 520.0
+@export var projectile_count: int = 1
+@export var max_projectile_count: int = 5
+@export var projectile_spread_degrees: float = 12.0
+@export var projectile_pierce: int = 0
 @export var base_enemies_per_wave: int = 1
 @export var enemies_added_per_wave: int = 2
 @export var wave_interval: float = 2.0
@@ -21,6 +29,7 @@ const GAME_HUD_SCENE := preload("res://scenes/ui/game_hud.tscn")
 
 var player: Node2D
 var hud: Control
+var upgrade_panel: Control
 var enemies: Array[Node2D] = []
 var arena_rect: Rect2
 var current_wave: int = 0
@@ -28,11 +37,14 @@ var score: int = 0
 var _auto_fire_timer: Timer
 var _is_restarting: bool = false
 var _wave_in_progress: bool = false
+var _reward_open: bool = false
 var _rng := RandomNumberGenerator.new()
+var _available_upgrades: Array[Dictionary] = []
 
 
 func _ready() -> void:
 	_rng.randomize()
+	_available_upgrades = _create_upgrade_data()
 	arena_rect = Rect2(arena_position, arena_size)
 
 	_spawn_player()
@@ -67,6 +79,10 @@ func _spawn_hud() -> void:
 	hud_layer.add_child(hud)
 	hud.call("bind_player", player)
 
+	upgrade_panel = UPGRADE_PANEL_SCENE.instantiate() as Control
+	hud_layer.add_child(upgrade_panel)
+	upgrade_panel.connect("upgrade_selected", Callable(self, "_on_upgrade_selected"))
+
 
 func _start_wave(wave_number: int) -> void:
 	if _is_restarting:
@@ -74,7 +90,12 @@ func _start_wave(wave_number: int) -> void:
 
 	current_wave = wave_number
 	_wave_in_progress = true
+	_reward_open = false
 	enemies.clear()
+
+	if is_instance_valid(_auto_fire_timer):
+		_auto_fire_timer.wait_time = auto_fire_interval
+		_auto_fire_timer.start()
 
 	var enemy_scenes := _build_enemy_scenes_for_wave(current_wave)
 	for enemy_scene in enemy_scenes:
@@ -195,20 +216,37 @@ func _start_auto_fire() -> void:
 
 
 func _fire_at_nearest_enemy() -> void:
-	if _is_restarting or not is_instance_valid(player):
+	if _is_restarting or _reward_open or not is_instance_valid(player):
 		return
 
 	var target := _get_nearest_enemy()
 	if target == null:
 		return
 
-	var fire_direction := player.global_position.direction_to(target.global_position)
-	if fire_direction == Vector2.ZERO:
-		fire_direction = Vector2.RIGHT
+	var base_direction := player.global_position.direction_to(target.global_position)
+	if base_direction == Vector2.ZERO:
+		base_direction = Vector2.RIGHT
 
+	var count := maxi(projectile_count, 1)
+	var total_spread := deg_to_rad(projectile_spread_degrees) * float(count - 1)
+	var start_angle := -total_spread * 0.5
+
+	for index in range(count):
+		var angle_offset := 0.0
+		if count > 1:
+			angle_offset = start_angle + deg_to_rad(projectile_spread_degrees) * float(index)
+
+		var direction := base_direction.rotated(angle_offset)
+		_spawn_projectile(player.global_position + direction * 30.0, direction)
+
+
+func _spawn_projectile(spawn_position: Vector2, direction: Vector2) -> void:
 	var projectile := BASIC_PROJECTILE_SCENE.instantiate() as Area2D
 	add_child(projectile)
-	projectile.call("setup", player.global_position + fire_direction * 30.0, target.global_position)
+	projectile.set("damage", projectile_damage)
+	projectile.set("speed", projectile_speed)
+	projectile.set("pierce_left", projectile_pierce)
+	projectile.call("setup", spawn_position, spawn_position + direction * 100.0)
 
 
 func _get_nearest_enemy() -> Node2D:
@@ -246,12 +284,110 @@ func _get_score_value_for_enemy(enemy: Node) -> int:
 
 func _complete_wave() -> void:
 	_wave_in_progress = false
-	hud.call("set_wave_message", "Onda concluida - proxima onda...")
-	get_tree().create_timer(wave_interval).timeout.connect(_start_next_wave)
+	_reward_open = true
+
+	if is_instance_valid(_auto_fire_timer):
+		_auto_fire_timer.stop()
+
+	hud.call("set_wave_message", "Onda concluida")
+	_show_upgrade_reward()
 
 
 func _start_next_wave() -> void:
 	_start_wave(current_wave + 1)
+
+
+func _show_upgrade_reward() -> void:
+	if not is_instance_valid(upgrade_panel):
+		_start_next_wave()
+		return
+
+	upgrade_panel.call("show_upgrades", _pick_upgrade_options(3))
+
+
+func _pick_upgrade_options(count: int) -> Array[Dictionary]:
+	var pool := _available_upgrades.duplicate()
+	var picked: Array[Dictionary] = []
+
+	while picked.size() < count and not pool.is_empty():
+		var index := _rng.randi_range(0, pool.size() - 1)
+		picked.append(pool[index])
+		pool.remove_at(index)
+
+	return picked
+
+
+func _on_upgrade_selected(upgrade: Dictionary) -> void:
+	_apply_upgrade(upgrade)
+	_reward_open = false
+	hud.call("set_wave_message", "Proxima onda...")
+	get_tree().create_timer(wave_interval).timeout.connect(_start_next_wave)
+
+
+func _apply_upgrade(upgrade: Dictionary) -> void:
+	var upgrade_id := str(upgrade.get("id", ""))
+
+	match upgrade_id:
+		"arcane_damage":
+			projectile_damage += 4
+		"unstable_cadence":
+			auto_fire_interval = maxf(auto_fire_interval * 0.88, min_auto_fire_interval)
+			if is_instance_valid(_auto_fire_timer):
+				_auto_fire_timer.wait_time = auto_fire_interval
+		"light_core":
+			if is_instance_valid(player):
+				var current_speed = player.get("speed")
+				if current_speed != null:
+					player.set("speed", float(current_speed) + 35.0)
+		"energy_shell":
+			if is_instance_valid(player) and player.has_method("increase_max_health"):
+				player.call("increase_max_health", 20, 12)
+		"swift_projectile":
+			projectile_speed += 80.0
+		"initial_fragmentation":
+			projectile_count = mini(projectile_count + 1, max_projectile_count)
+		"piercing":
+			projectile_pierce += 1
+
+
+func _create_upgrade_data() -> Array[Dictionary]:
+	return [
+		{
+			"id": "arcane_damage",
+			"name": "Dano Arcano",
+			"description": "+4 de dano nos projeteis.",
+		},
+		{
+			"id": "unstable_cadence",
+			"name": "Cadencia Instavel",
+			"description": "Disparos automaticos 12% mais rapidos.",
+		},
+		{
+			"id": "light_core",
+			"name": "Nucleo Leve",
+			"description": "+35 de velocidade de movimento.",
+		},
+		{
+			"id": "energy_shell",
+			"name": "Casca Energetica",
+			"description": "+20 de vida maxima e cura 12.",
+		},
+		{
+			"id": "swift_projectile",
+			"name": "Projetil Veloz",
+			"description": "+80 de velocidade dos projeteis.",
+		},
+		{
+			"id": "initial_fragmentation",
+			"name": "Fragmentacao Inicial",
+			"description": "+1 projetil por disparo, em leque.",
+		},
+		{
+			"id": "piercing",
+			"name": "Perfuracao",
+			"description": "Projeteis atravessam +1 inimigo.",
+		},
+	]
 
 
 func _update_hud() -> void:
@@ -275,8 +411,11 @@ func _on_player_died() -> void:
 
 	_is_restarting = true
 	_wave_in_progress = false
+	_reward_open = false
 	if is_instance_valid(_auto_fire_timer):
 		_auto_fire_timer.stop()
+	if is_instance_valid(upgrade_panel):
+		upgrade_panel.hide()
 	if is_instance_valid(hud):
 		hud.call("set_wave_message", "Reiniciando...")
 

@@ -2,6 +2,7 @@ extends Area2D
 
 @export var speed: float = 520.0
 @export var damage: int = 12
+@export var pierce_left: int = 0
 @export var lifetime: float = 1.6
 @export var radius: float = 6.0
 @export var fill_color: Color = Color(1.0, 0.92, 0.28)
@@ -46,7 +47,10 @@ func _on_body_entered(body: Node) -> void:
 	if body.has_method("take_damage"):
 		body.call("take_damage", damage)
 
-	queue_free()
+	if pierce_left <= 0:
+		queue_free()
+	else:
+		pierce_left -= 1
 
 
 func _update_collision_radius() -> void:
