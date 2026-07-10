@@ -7,6 +7,7 @@ const SQUARE_TANK_SCENE := preload("res://scenes/enemies/square_tank.tscn")
 const BASIC_PROJECTILE_SCENE := preload("res://scenes/projectiles/basic_projectile.tscn")
 const GAME_HUD_SCENE := preload("res://scenes/ui/game_hud.tscn")
 const UPGRADE_PANEL_SCENE := preload("res://scenes/ui/upgrade_panel.tscn")
+const SPELL_CHAIN_PANEL_SCENE := preload("res://scenes/ui/spell_chain_panel.tscn")
 
 @export var arena_position: Vector2 = Vector2(96.0, 72.0)
 @export var arena_size: Vector2 = Vector2(1088.0, 576.0)
@@ -30,10 +31,12 @@ const UPGRADE_PANEL_SCENE := preload("res://scenes/ui/upgrade_panel.tscn")
 var player: Node2D
 var hud: Control
 var upgrade_panel: Control
+var spell_chain_panel: Control
 var enemies: Array[Node2D] = []
 var arena_rect: Rect2
 var current_wave: int = 0
 var score: int = 0
+var spell_chain_nodes: Array[Dictionary] = []
 var _auto_fire_timer: Timer
 var _is_restarting: bool = false
 var _wave_in_progress: bool = false
@@ -45,6 +48,7 @@ var _available_upgrades: Array[Dictionary] = []
 func _ready() -> void:
 	_rng.randomize()
 	_available_upgrades = _create_upgrade_data()
+	spell_chain_nodes = [_create_base_spell_node()]
 	arena_rect = Rect2(arena_position, arena_size)
 
 	_spawn_player()
@@ -78,6 +82,10 @@ func _spawn_hud() -> void:
 	hud = GAME_HUD_SCENE.instantiate() as Control
 	hud_layer.add_child(hud)
 	hud.call("bind_player", player)
+
+	spell_chain_panel = SPELL_CHAIN_PANEL_SCENE.instantiate() as Control
+	hud_layer.add_child(spell_chain_panel)
+	spell_chain_panel.call("set_chain_nodes", spell_chain_nodes)
 
 	upgrade_panel = UPGRADE_PANEL_SCENE.instantiate() as Control
 	hud_layer.add_child(upgrade_panel)
@@ -319,6 +327,7 @@ func _pick_upgrade_options(count: int) -> Array[Dictionary]:
 
 func _on_upgrade_selected(upgrade: Dictionary) -> void:
 	_apply_upgrade(upgrade)
+	_add_spell_node_from_upgrade(upgrade)
 	_reward_open = false
 	hud.call("set_wave_message", "Proxima onda...")
 	get_tree().create_timer(wave_interval).timeout.connect(_start_next_wave)
@@ -326,28 +335,54 @@ func _on_upgrade_selected(upgrade: Dictionary) -> void:
 
 func _apply_upgrade(upgrade: Dictionary) -> void:
 	var upgrade_id := str(upgrade.get("id", ""))
+	var values = upgrade.get("values", {})
 
 	match upgrade_id:
 		"arcane_damage":
-			projectile_damage += 4
+			projectile_damage += int(values.get("damage_bonus", 4))
 		"unstable_cadence":
-			auto_fire_interval = maxf(auto_fire_interval * 0.88, min_auto_fire_interval)
+			auto_fire_interval = maxf(auto_fire_interval * float(values.get("interval_multiplier", 0.88)), min_auto_fire_interval)
 			if is_instance_valid(_auto_fire_timer):
 				_auto_fire_timer.wait_time = auto_fire_interval
 		"light_core":
 			if is_instance_valid(player):
 				var current_speed = player.get("speed")
 				if current_speed != null:
-					player.set("speed", float(current_speed) + 35.0)
+					player.set("speed", float(current_speed) + float(values.get("speed_bonus", 35.0)))
 		"energy_shell":
 			if is_instance_valid(player) and player.has_method("increase_max_health"):
-				player.call("increase_max_health", 20, 12)
+				player.call("increase_max_health", int(values.get("max_health_bonus", 20)), int(values.get("heal_amount", 12)))
 		"swift_projectile":
-			projectile_speed += 80.0
+			projectile_speed += float(values.get("projectile_speed_bonus", 80.0))
 		"initial_fragmentation":
-			projectile_count = mini(projectile_count + 1, max_projectile_count)
+			projectile_count = mini(projectile_count + int(values.get("projectile_count_bonus", 1)), max_projectile_count)
 		"piercing":
-			projectile_pierce += 1
+			projectile_pierce += int(values.get("pierce_bonus", 1))
+
+
+func _add_spell_node_from_upgrade(upgrade: Dictionary) -> void:
+	var spell_node := {
+		"id": str(upgrade.get("id", "")),
+		"name": str(upgrade.get("name", "Upgrade")),
+		"category": str(upgrade.get("category", "projectile")),
+		"node_label": str(upgrade.get("node_label", upgrade.get("name", "Upgrade"))),
+		"effect_type": str(upgrade.get("effect_type", "")),
+	}
+
+	spell_chain_nodes.append(spell_node)
+
+	if is_instance_valid(spell_chain_panel):
+		spell_chain_panel.call("add_node", spell_node)
+
+
+func _create_base_spell_node() -> Dictionary:
+	return {
+		"id": "base_projectile",
+		"name": "Projetil",
+		"category": "base",
+		"node_label": "Projetil",
+		"effect_type": "base_projectile",
+	}
 
 
 func _create_upgrade_data() -> Array[Dictionary]:
@@ -356,36 +391,79 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"id": "arcane_damage",
 			"name": "Dano Arcano",
 			"description": "+4 de dano nos projeteis.",
+			"category": "power",
+			"effect_type": "projectile_damage",
+			"node_label": "Dano",
+			"values": {
+				"damage_bonus": 4,
+			},
 		},
 		{
 			"id": "unstable_cadence",
 			"name": "Cadencia Instavel",
 			"description": "Disparos automaticos 12% mais rapidos.",
+			"category": "rhythm",
+			"effect_type": "fire_interval",
+			"node_label": "Cadencia",
+			"values": {
+				"interval_multiplier": 0.88,
+			},
 		},
 		{
 			"id": "light_core",
 			"name": "Nucleo Leve",
 			"description": "+35 de velocidade de movimento.",
+			"category": "body",
+			"effect_type": "player_speed",
+			"node_label": "Nucleo",
+			"values": {
+				"speed_bonus": 35.0,
+			},
 		},
 		{
 			"id": "energy_shell",
 			"name": "Casca Energetica",
 			"description": "+20 de vida maxima e cura 12.",
+			"category": "body",
+			"effect_type": "player_health",
+			"node_label": "Casca",
+			"values": {
+				"max_health_bonus": 20,
+				"heal_amount": 12,
+			},
 		},
 		{
 			"id": "swift_projectile",
 			"name": "Projetil Veloz",
 			"description": "+80 de velocidade dos projeteis.",
+			"category": "projectile",
+			"effect_type": "projectile_speed",
+			"node_label": "Velocidade",
+			"values": {
+				"projectile_speed_bonus": 80.0,
+			},
 		},
 		{
 			"id": "initial_fragmentation",
 			"name": "Fragmentacao Inicial",
 			"description": "+1 projetil por disparo, em leque.",
+			"category": "projectile",
+			"effect_type": "projectile_count",
+			"node_label": "Fragmenta",
+			"values": {
+				"projectile_count_bonus": 1,
+			},
 		},
 		{
 			"id": "piercing",
 			"name": "Perfuracao",
 			"description": "Projeteis atravessam +1 inimigo.",
+			"category": "projectile",
+			"effect_type": "projectile_pierce",
+			"node_label": "Perfura",
+			"values": {
+				"pierce_bonus": 1,
+			},
 		},
 	]
 
