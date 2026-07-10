@@ -4,6 +4,9 @@ const PLAYER_SCENE := preload("res://scenes/player/player.tscn")
 const CIRCLE_CHASER_SCENE := preload("res://scenes/enemies/circle_chaser.tscn")
 const TRIANGLE_DASHER_SCENE := preload("res://scenes/enemies/triangle_dasher.tscn")
 const SQUARE_TANK_SCENE := preload("res://scenes/enemies/square_tank.tscn")
+const DIAMOND_SHOOTER_SCENE := preload("res://scenes/enemies/diamond_shooter.tscn")
+const STAR_BOMBER_SCENE := preload("res://scenes/enemies/star_bomber.tscn")
+const LINE_SNIPER_SCENE := preload("res://scenes/enemies/line_sniper.tscn")
 const BASIC_PROJECTILE_SCENE := preload("res://scenes/projectiles/basic_projectile.tscn")
 const GAME_HUD_SCENE := preload("res://scenes/ui/game_hud.tscn")
 const UPGRADE_PANEL_SCENE := preload("res://scenes/ui/upgrade_panel.tscn")
@@ -50,6 +53,7 @@ var enemies: Array[Node2D] = []
 var arena_rect: Rect2
 var current_wave: int = 0
 var current_wave_type: String = "normal"
+var current_wave_modifier: Dictionary = {}
 var score: int = 0
 var spell_chain_nodes: Array[Dictionary] = []
 var run_time_seconds: float = 0.0
@@ -57,6 +61,7 @@ var run_stats: Dictionary = {}
 var selected_character_data: Dictionary = {}
 var upgrade_stacks: Dictionary = {}
 var active_synergies: Array[String] = []
+var wave_modifiers_seen: Array[String] = []
 var camera: Camera2D
 var _auto_fire_timer: Timer
 var _is_restarting: bool = false
@@ -167,6 +172,10 @@ func _start_wave(wave_number: int) -> void:
 
 	current_wave = wave_number
 	current_wave_type = _get_wave_type(current_wave)
+	current_wave_modifier = _choose_wave_modifier(current_wave, current_wave_type)
+	if not current_wave_modifier.is_empty():
+		var modifier_name := str(current_wave_modifier.get("name", "Modificador"))
+		wave_modifiers_seen.append(modifier_name)
 	run_stats["max_wave_reached"] = maxi(int(run_stats.get("max_wave_reached", 0)), current_wave)
 	_wave_in_progress = true
 	_reward_open = false
@@ -179,7 +188,7 @@ func _start_wave(wave_number: int) -> void:
 	_spawn_wave_enemies()
 
 	_update_hud()
-	hud.call("set_wave_message", _get_wave_title(current_wave_type))
+	hud.call("set_wave_message", _get_wave_message())
 
 
 func _get_wave_type(wave_number: int) -> String:
@@ -216,6 +225,9 @@ func _create_run_stats() -> Dictionary:
 			"circle_chaser": 0,
 			"triangle_dasher": 0,
 			"square_tank": 0,
+			"diamond_shooter": 0,
+			"star_bomber": 0,
+			"line_sniper": 0,
 			"pentagon_miniboss": 0,
 			"hexagon_boss": 0,
 		},
@@ -275,30 +287,85 @@ func _get_enemy_count_for_wave(wave_number: int) -> int:
 
 
 func _build_enemy_scenes_for_wave(wave_number: int) -> Array[PackedScene]:
-	var enemy_count := _get_enemy_count_for_wave(wave_number)
-	var triangle_count := 0
-	var square_count := 0
-
-	if wave_number >= 2:
-		triangle_count = maxi(1, int(floor(float(enemy_count) * 0.25)))
-	if wave_number >= 3:
-		square_count = maxi(1, int(floor(float(enemy_count) * 0.18)))
-
-	if triangle_count + square_count > enemy_count:
-		triangle_count = maxi(enemy_count - square_count, 0)
-
-	var circle_count := maxi(enemy_count - triangle_count - square_count, 0)
+	var spawn_config := _get_spawn_config_for_wave(wave_number)
+	var enemy_count := int(spawn_config.get("enemy_count", _get_enemy_count_for_wave(wave_number)))
+	var enemy_pool := _get_enemy_pool_for_wave(wave_number, int(spawn_config.get("special_weight_bonus", 0)))
 	var enemy_scenes: Array[PackedScene] = []
 
-	for _index in range(circle_count):
-		enemy_scenes.append(CIRCLE_CHASER_SCENE)
-	for _index in range(triangle_count):
-		enemy_scenes.append(TRIANGLE_DASHER_SCENE)
-	for _index in range(square_count):
-		enemy_scenes.append(SQUARE_TANK_SCENE)
+	for _index in range(enemy_count):
+		enemy_scenes.append(_choose_enemy_scene_from_pool(enemy_pool))
 
 	_shuffle_enemy_scenes(enemy_scenes)
 	return enemy_scenes
+
+
+func _get_spawn_config_for_wave(wave_number: int) -> Dictionary:
+	var enemy_count := _get_enemy_count_for_wave(wave_number)
+	var config := {
+		"enemy_count": enemy_count,
+		"health_multiplier": 1.0,
+		"speed_multiplier": 1.0,
+		"score_multiplier": 1.0,
+		"special_weight_bonus": 0,
+	}
+
+	if current_wave_modifier.is_empty():
+		return config
+
+	config["enemy_count"] = maxi(1, int(round(float(enemy_count) * float(current_wave_modifier.get("count_multiplier", 1.0)))))
+	config["health_multiplier"] = float(current_wave_modifier.get("health_multiplier", 1.0))
+	config["speed_multiplier"] = float(current_wave_modifier.get("speed_multiplier", 1.0))
+	config["score_multiplier"] = float(current_wave_modifier.get("score_multiplier", 1.0))
+	config["special_weight_bonus"] = int(current_wave_modifier.get("special_weight_bonus", 0))
+	return config
+
+
+func _get_enemy_pool_for_wave(wave_number: int, special_weight_bonus: int = 0) -> Array[Dictionary]:
+	var pool: Array[Dictionary] = [
+		{"scene": CIRCLE_CHASER_SCENE, "weight": 100, "special": false},
+	]
+
+	if wave_number >= 2:
+		pool = [
+			{"scene": CIRCLE_CHASER_SCENE, "weight": 74, "special": false},
+			{"scene": TRIANGLE_DASHER_SCENE, "weight": 26, "special": false},
+		]
+	if wave_number >= 3:
+		pool = [
+			{"scene": CIRCLE_CHASER_SCENE, "weight": 52, "special": false},
+			{"scene": TRIANGLE_DASHER_SCENE, "weight": 25, "special": false},
+			{"scene": SQUARE_TANK_SCENE, "weight": 23, "special": false},
+		]
+	if wave_number >= 4:
+		pool = [
+			{"scene": CIRCLE_CHASER_SCENE, "weight": 44, "special": false},
+			{"scene": TRIANGLE_DASHER_SCENE, "weight": 22, "special": false},
+			{"scene": SQUARE_TANK_SCENE, "weight": 20, "special": false},
+			{"scene": DIAMOND_SHOOTER_SCENE, "weight": 14 + special_weight_bonus, "special": true},
+		]
+	if wave_number >= 6:
+		pool.append({"scene": STAR_BOMBER_SCENE, "weight": 12 + special_weight_bonus, "special": true})
+	if wave_number >= 8:
+		pool.append({"scene": LINE_SNIPER_SCENE, "weight": 9 + special_weight_bonus, "special": true})
+
+	return pool
+
+
+func _choose_enemy_scene_from_pool(enemy_pool: Array[Dictionary]) -> PackedScene:
+	var total_weight := 0
+	for entry in enemy_pool:
+		total_weight += int(entry.get("weight", 0))
+
+	var roll := _rng.randi_range(1, maxi(total_weight, 1))
+	var cursor := 0
+	for entry in enemy_pool:
+		cursor += int(entry.get("weight", 0))
+		if roll <= cursor:
+			var chosen_scene := entry.get("scene", CIRCLE_CHASER_SCENE) as PackedScene
+			if chosen_scene != null:
+				return chosen_scene
+
+	return CIRCLE_CHASER_SCENE
 
 
 func _shuffle_enemy_scenes(enemy_scenes: Array[PackedScene]) -> void:
@@ -322,6 +389,10 @@ func _spawn_enemy(enemy_scene: PackedScene, spawn_position: Vector2) -> void:
 	enemy.connect("damage_taken", Callable(self, "_on_enemy_damage_taken"))
 	if enemy.has_signal("summon_requested"):
 		enemy.connect("summon_requested", Callable(self, "_on_boss_summon_requested"))
+	if enemy.has_signal("exploded"):
+		enemy.connect("exploded", Callable(self, "_on_star_bomber_exploded"))
+	if enemy.has_signal("laser_fired"):
+		enemy.connect("laser_fired", Callable(self, "_on_line_sniper_laser_fired"))
 	enemies.append(enemy)
 
 
@@ -334,9 +405,17 @@ func _apply_wave_scaling_to_enemy(enemy: Node) -> void:
 	var base_speed = enemy.get("speed")
 
 	if base_health != null:
-		enemy.set("max_health", int(base_health) + wave_bonus * enemy_health_per_wave)
+		var scaled_health := int(base_health) + wave_bonus * enemy_health_per_wave
+		scaled_health = maxi(1, int(round(float(scaled_health) * float(current_wave_modifier.get("health_multiplier", 1.0)))))
+		enemy.set("max_health", scaled_health)
 	if base_speed != null:
-		enemy.set("speed", float(base_speed) + float(wave_bonus) * enemy_speed_per_wave)
+		var scaled_speed := float(base_speed) + float(wave_bonus) * enemy_speed_per_wave
+		scaled_speed *= float(current_wave_modifier.get("speed_multiplier", 1.0))
+		enemy.set("speed", scaled_speed)
+
+	var base_score = enemy.get("score_value")
+	if base_score != null:
+		enemy.set("score_value", int(round(float(base_score) * float(current_wave_modifier.get("score_multiplier", 1.0)))))
 
 
 func _get_spawn_position_near_arena_edge() -> Vector2:
@@ -860,7 +939,7 @@ func _has_upgrade(upgrade_id: String) -> bool:
 
 func _update_hud() -> void:
 	if is_instance_valid(hud):
-		hud.call("set_wave_info", current_wave, _get_alive_enemy_count(), score, max_run_wave, _get_wave_title(current_wave_type))
+		hud.call("set_wave_info", current_wave, _get_alive_enemy_count(), score, max_run_wave, _get_wave_hud_title())
 
 
 func _record_enemy_defeated(enemy: Node) -> void:
@@ -900,6 +979,60 @@ func _get_wave_title(wave_type: String) -> String:
 			return ""
 
 
+func _get_wave_hud_title() -> String:
+	var title := _get_wave_title(current_wave_type)
+	if title.is_empty():
+		title = "Normal"
+	if current_wave_modifier.is_empty():
+		return title
+
+	var modifier_name := str(current_wave_modifier.get("name", "Modificador"))
+	return "%s - %s" % [title, modifier_name]
+
+
+func _get_wave_message() -> String:
+	if not current_wave_modifier.is_empty():
+		return "Modificador: %s" % str(current_wave_modifier.get("name", "Modificador"))
+
+	return _get_wave_title(current_wave_type)
+
+
+func _choose_wave_modifier(wave_number: int, wave_type: String) -> Dictionary:
+	if wave_type != "normal" or wave_number < 3:
+		return {}
+	if _rng.randf() > 0.4:
+		return {}
+
+	var modifiers: Array[Dictionary] = [
+		{
+			"id": "swarm",
+			"name": "Enxame",
+			"count_multiplier": 1.35,
+			"health_multiplier": 0.82,
+		},
+		{
+			"id": "reinforced_shapes",
+			"name": "Formas Reforcadas",
+			"count_multiplier": 0.78,
+			"health_multiplier": 1.38,
+		},
+		{
+			"id": "unstable_field",
+			"name": "Campo Instavel",
+			"speed_multiplier": 1.12,
+		},
+		{
+			"id": "arcane_chaos",
+			"name": "Caos Arcano",
+			"count_multiplier": 1.1,
+			"score_multiplier": 1.2,
+			"special_weight_bonus": 8,
+		},
+	]
+
+	return modifiers[_rng.randi_range(0, modifiers.size() - 1)].duplicate(true)
+
+
 func _on_enemy_damage_taken(_enemy: Node, amount: int, world_position: Vector2) -> void:
 	_spawn_floating_text("-%d" % amount, world_position + Vector2(0.0, -24.0), Color(1.0, 0.78, 0.32), 0.62)
 	_spawn_burst(world_position, Color(1.0, 0.72, 0.28), 6)
@@ -908,6 +1041,52 @@ func _on_enemy_damage_taken(_enemy: Node, amount: int, world_position: Vector2) 
 func _on_player_damage_taken(amount: int, world_position: Vector2) -> void:
 	_spawn_floating_text("-%d" % amount, world_position + Vector2(0.0, -30.0), Color(1.0, 0.34, 0.34), 0.72)
 	_start_camera_shake(0.18, 8.0)
+
+
+func _on_star_bomber_exploded(enemy: Node, world_position: Vector2, radius: float, damage: int) -> void:
+	_spawn_burst(world_position, Color(1.0, 0.24, 0.12), 24)
+	_spawn_floating_text("EXPLOSAO", world_position + Vector2(0.0, -28.0), Color(1.0, 0.48, 0.24), 0.7)
+	_start_camera_shake(0.16, 6.0)
+
+	if is_instance_valid(player) and player.global_position.distance_to(world_position) <= radius:
+		if player.has_method("take_damage"):
+			player.call("take_damage", damage)
+
+	for other_enemy in enemies.duplicate():
+		if not is_instance_valid(other_enemy) or other_enemy == enemy:
+			continue
+		if other_enemy.global_position.distance_to(world_position) > radius:
+			continue
+		if other_enemy.has_method("take_damage"):
+			other_enemy.call("take_damage", int(round(float(damage) * 0.65)))
+
+
+func _on_line_sniper_laser_fired(_enemy: Node, origin: Vector2, direction: Vector2, laser_range: float, width: float, damage: int) -> void:
+	var normalized_direction := direction.normalized()
+	if normalized_direction == Vector2.ZERO:
+		normalized_direction = Vector2.RIGHT
+
+	var end_position := origin + normalized_direction * laser_range
+	_spawn_burst(origin, Color(1.0, 0.2, 0.24), 8)
+	_spawn_floating_text("LASER", origin + normalized_direction * 38.0 + Vector2(0.0, -20.0), Color(1.0, 0.36, 0.36), 0.5)
+
+	if not is_instance_valid(player):
+		return
+
+	var distance := _distance_point_to_segment(player.global_position, origin, end_position)
+	if distance <= width and player.has_method("take_damage"):
+		player.call("take_damage", damage)
+
+
+func _distance_point_to_segment(point: Vector2, segment_start: Vector2, segment_end: Vector2) -> float:
+	var segment := segment_end - segment_start
+	var segment_length_squared := segment.length_squared()
+	if segment_length_squared <= 0.001:
+		return point.distance_to(segment_start)
+
+	var t := clampf((point - segment_start).dot(segment) / segment_length_squared, 0.0, 1.0)
+	var closest := segment_start + segment * t
+	return point.distance_to(closest)
 
 
 func _spawn_floating_text(text: String, world_position: Vector2, color: Color, duration: float = 0.72) -> void:
@@ -1016,6 +1195,8 @@ func _finalize_run_stats() -> void:
 	run_stats["build_nodes"] = _get_spell_chain_labels()
 	run_stats["victory"] = bool(run_stats.get("boss_defeated", false))
 	run_stats["active_synergies"] = active_synergies.duplicate()
+	run_stats["wave_modifiers"] = wave_modifiers_seen.duplicate()
+	run_stats["modifier_wave_count"] = wave_modifiers_seen.size()
 
 
 func _apply_meta_progress(victory: bool) -> void:

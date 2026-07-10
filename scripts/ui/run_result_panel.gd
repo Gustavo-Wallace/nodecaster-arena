@@ -56,7 +56,7 @@ func show_result(victory: bool, stats: Dictionary, max_wave: int) -> void:
 		upgrades_chosen,
 	]
 
-	kills_label.text = _format_kill_breakdown(stats)
+	kills_label.text = "%s\n%s" % [_format_kill_breakdown(stats), _format_modifier_breakdown(stats)]
 	build_label.text = "Build: %s\nSinergias: %s" % [_format_build(stats), _format_synergies(stats)]
 	show()
 
@@ -81,13 +81,37 @@ func _format_kill_breakdown(stats: Dictionary) -> String:
 	var miniboss_text := "Derrotado" if bool(stats.get("miniboss_defeated", false)) else "Nao derrotado"
 	var boss_text := "Derrotado" if bool(stats.get("boss_defeated", false)) else "Nao derrotado"
 
-	return "Circulos: %d  Triangulos: %d  Quadrados: %d\nMini-Boss: %s  Boss: %s" % [
+	return "Circulos: %d  Triangulos: %d  Quadrados: %d\nLosangos: %d  Bombers: %d  Snipers: %d\nMini-Boss: %s  Boss: %s" % [
 		int(kills.get("circle_chaser", 0)),
 		int(kills.get("triangle_dasher", 0)),
 		int(kills.get("square_tank", 0)),
+		int(kills.get("diamond_shooter", 0)),
+		int(kills.get("star_bomber", 0)),
+		int(kills.get("line_sniper", 0)),
 		miniboss_text,
 		boss_text,
 	]
+
+
+func _format_modifier_breakdown(stats: Dictionary) -> String:
+	var modifiers = stats.get("wave_modifiers", [])
+	var modifier_count := int(stats.get("modifier_wave_count", 0))
+	if not (modifiers is Array) or modifiers.is_empty():
+		return "Modificadores: nenhum"
+
+	var unique_labels: Array[String] = []
+	for modifier in modifiers:
+		var label := str(modifier)
+		if not unique_labels.has(label):
+			unique_labels.append(label)
+
+	var text := ""
+	for index in range(unique_labels.size()):
+		if index > 0:
+			text += ", "
+		text += unique_labels[index]
+
+	return "Modificadores: %d onda(s)\n%s" % [modifier_count, text]
 
 
 func _format_build(stats: Dictionary) -> String:

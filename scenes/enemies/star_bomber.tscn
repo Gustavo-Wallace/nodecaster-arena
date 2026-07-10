@@ -1,0 +1,22 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/star_bomber.gd" id="1_ug3he"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_star"]
+radius = 17.0
+
+[node name="StarBomber" type="CharacterBody2D"]
+collision_layer = 2
+collision_mask = 1
+script = ExtResource("1_ug3he")
+speed = 170.0
+max_health = 34
+enemy_id = "star_bomber"
+enemy_display_name = "Star Bomber"
+score_value = 20
+contact_damage = 8
+radius = 17.0
+contact_distance = 38.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_star")
