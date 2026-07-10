@@ -7,6 +7,7 @@ signal died
 @export var speed: float = 320.0
 @export var max_health: int = 100
 @export var radius: float = 18.0
+@export var visual_shape: String = "circle"
 @export var fill_color: Color = Color(0.18, 0.78, 1.0)
 @export var outline_color: Color = Color(0.82, 0.98, 1.0)
 
@@ -39,6 +40,17 @@ func _physics_process(_delta: float) -> void:
 func set_arena_rect(new_arena_rect: Rect2) -> void:
 	arena_rect = new_arena_rect
 	_clamp_to_arena()
+
+
+func apply_character_data(character_data: Dictionary) -> void:
+	speed = float(character_data.get("move_speed", speed))
+	max_health = int(character_data.get("max_health", max_health))
+	current_health = max_health
+	visual_shape = str(character_data.get("visual_shape", visual_shape))
+	fill_color = character_data.get("fill_color", fill_color)
+	outline_color = character_data.get("outline_color", outline_color)
+	health_changed.emit(current_health, max_health)
+	queue_redraw()
 
 
 func take_damage(amount: int) -> void:
@@ -120,6 +132,22 @@ func _update_collision_radius() -> void:
 
 
 func _draw() -> void:
-	draw_circle(Vector2.ZERO, radius, fill_color)
-	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48, outline_color, 2.5, true)
-	draw_circle(Vector2.ZERO, radius * 0.34, Color(1.0, 1.0, 1.0, 0.9))
+	match visual_shape:
+		"triangle":
+			var points := PackedVector2Array([
+				Vector2(0.0, -radius),
+				Vector2(radius * 0.92, radius * 0.78),
+				Vector2(-radius * 0.92, radius * 0.78),
+			])
+			draw_colored_polygon(points, fill_color)
+			draw_polyline(PackedVector2Array([points[0], points[1], points[2], points[0]]), outline_color, 2.5)
+		"square":
+			var side := radius * 1.62
+			var rect := Rect2(Vector2(-side * 0.5, -side * 0.5), Vector2(side, side))
+			draw_rect(rect, fill_color, true)
+			draw_rect(rect, outline_color, false, 2.5)
+		_:
+			draw_circle(Vector2.ZERO, radius, fill_color)
+			draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48, outline_color, 2.5, true)
+
+	draw_circle(Vector2.ZERO, radius * 0.28, Color(1.0, 1.0, 1.0, 0.9))

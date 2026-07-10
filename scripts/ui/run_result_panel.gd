@@ -1,6 +1,7 @@
 extends Control
 
 signal restart_requested
+signal main_menu_requested
 
 @onready var title_label: Label = $Panel/TitleLabel
 @onready var subtitle_label: Label = $Panel/SubtitleLabel
@@ -8,6 +9,7 @@ signal restart_requested
 @onready var kills_label: Label = $Panel/KillsLabel
 @onready var build_label: Label = $Panel/BuildLabel
 @onready var restart_button: Button = $Panel/RestartButton
+@onready var menu_button: Button = $Panel/MenuButton
 
 
 func _ready() -> void:
@@ -21,6 +23,7 @@ func _ready() -> void:
 
 	build_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	restart_button.pressed.connect(_on_restart_pressed)
+	menu_button.pressed.connect(_on_menu_pressed)
 
 
 func show_result(victory: bool, stats: Dictionary, max_wave: int) -> void:
@@ -33,8 +36,10 @@ func show_result(victory: bool, stats: Dictionary, max_wave: int) -> void:
 	var run_time := float(stats.get("run_time_seconds", 0.0))
 	var total_enemies := int(stats.get("total_enemies_defeated", 0))
 	var upgrades_chosen := int(stats.get("upgrades_chosen", 0))
+	var character_name := str(stats.get("character_name", "Circulo"))
 
-	stats_label.text = "Onda: %d/%d\nPontuacao: %d\nTempo: %s\nInimigos derrotados: %d\nUpgrades escolhidos: %d" % [
+	stats_label.text = "Forma: %s\nOnda: %d/%d\nPontuacao: %d\nTempo: %s\nInimigos derrotados: %d\nUpgrades escolhidos: %d" % [
+		character_name,
 		wave_reached,
 		max_wave,
 		final_score,
@@ -50,6 +55,10 @@ func show_result(victory: bool, stats: Dictionary, max_wave: int) -> void:
 
 func _on_restart_pressed() -> void:
 	restart_requested.emit()
+
+
+func _on_menu_pressed() -> void:
+	main_menu_requested.emit()
 
 
 func _format_time(seconds: float) -> String:

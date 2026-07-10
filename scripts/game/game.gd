@@ -49,6 +49,7 @@ var score: int = 0
 var spell_chain_nodes: Array[Dictionary] = []
 var run_time_seconds: float = 0.0
 var run_stats: Dictionary = {}
+var selected_character_data: Dictionary = {}
 var camera: Camera2D
 var _auto_fire_timer: Timer
 var _is_restarting: bool = false
@@ -65,6 +66,8 @@ var _wave_enemy_counts: Dictionary = {}
 
 func _ready() -> void:
 	_rng.randomize()
+	selected_character_data = _get_selected_character_data()
+	_apply_selected_character_to_run()
 	_available_upgrades = _create_upgrade_data()
 	_wave_enemy_counts = _create_wave_enemy_counts()
 	run_stats = _create_run_stats()
@@ -106,6 +109,7 @@ func _draw() -> void:
 func _spawn_player() -> void:
 	player = PLAYER_SCENE.instantiate() as Node2D
 	add_child(player)
+	player.call("apply_character_data", selected_character_data)
 	player.global_position = arena_rect.get_center()
 	player.call("set_arena_rect", arena_rect)
 	player.connect("died", Callable(self, "_on_player_died"))
@@ -132,6 +136,7 @@ func _spawn_hud() -> void:
 	result_panel = RUN_RESULT_PANEL_SCENE.instantiate() as Control
 	hud_layer.add_child(result_panel)
 	result_panel.connect("restart_requested", Callable(self, "_restart_scene"))
+	result_panel.connect("main_menu_requested", Callable(self, "_go_to_main_menu"))
 
 
 func _start_wave(wave_number: int) -> void:
@@ -183,6 +188,8 @@ func _create_wave_enemy_counts() -> Dictionary:
 
 func _create_run_stats() -> Dictionary:
 	return {
+		"character_id": str(selected_character_data.get("id", "circle")),
+		"character_name": str(selected_character_data.get("display_name", "Circulo")),
 		"run_time_seconds": 0.0,
 		"max_wave_reached": 0,
 		"final_score": 0,
@@ -199,6 +206,33 @@ func _create_run_stats() -> Dictionary:
 		"upgrades_chosen": 0,
 		"build_nodes": [],
 	}
+
+
+func _get_selected_character_data() -> Dictionary:
+	var run_config := get_node_or_null("/root/RunConfig")
+	if run_config == null:
+		return {
+			"id": "circle",
+			"display_name": "Circulo",
+			"max_health": 100,
+			"move_speed": 320.0,
+			"projectile_damage": 12,
+			"projectile_speed": 520.0,
+			"fire_interval": 0.45,
+			"projectile_count": 1,
+			"visual_shape": "circle",
+			"fill_color": Color(0.18, 0.78, 1.0),
+			"outline_color": Color(0.82, 0.98, 1.0),
+		}
+
+	return run_config.call("get_selected_character_data")
+
+
+func _apply_selected_character_to_run() -> void:
+	projectile_damage = int(selected_character_data.get("projectile_damage", projectile_damage))
+	projectile_speed = float(selected_character_data.get("projectile_speed", projectile_speed))
+	projectile_count = int(selected_character_data.get("projectile_count", projectile_count))
+	auto_fire_interval = float(selected_character_data.get("fire_interval", auto_fire_interval))
 
 
 func _spawn_wave_enemies() -> void:
@@ -781,3 +815,8 @@ func _clear_active_threats() -> void:
 func _restart_scene() -> void:
 	_is_restarting = true
 	get_tree().reload_current_scene()
+
+
+func _go_to_main_menu() -> void:
+	_is_restarting = true
+	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")

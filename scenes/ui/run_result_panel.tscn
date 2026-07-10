@@ -56,17 +56,17 @@ horizontal_alignment = 1
 [node name="StatsLabel" type="Label" parent="Panel"]
 layout_mode = 0
 offset_left = 46.0
-offset_top = 124.0
+offset_top = 118.0
 offset_right = 334.0
-offset_bottom = 244.0
+offset_bottom = 258.0
 text = "Pontuacao"
 
 [node name="KillsLabel" type="Label" parent="Panel"]
 layout_mode = 0
 offset_left = 366.0
-offset_top = 124.0
+offset_top = 118.0
 offset_right = 674.0
-offset_bottom = 244.0
+offset_bottom = 258.0
 text = "Inimigos"
 
 [node name="BuildLabel" type="Label" parent="Panel"]
@@ -79,8 +79,16 @@ text = "Build"
 
 [node name="RestartButton" type="Button" parent="Panel"]
 layout_mode = 0
-offset_left = 270.0
+offset_left = 170.0
 offset_top = 410.0
-offset_right = 450.0
+offset_right = 340.0
 offset_bottom = 454.0
-text = "Reiniciar"
+text = "Reiniciar Run"
+
+[node name="MenuButton" type="Button" parent="Panel"]
+layout_mode = 0
+offset_left = 380.0
+offset_top = 410.0
+offset_right = 550.0
+offset_bottom = 454.0
+text = "Menu Principal"
