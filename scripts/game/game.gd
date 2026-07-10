@@ -187,6 +187,11 @@ func _start_wave(wave_number: int) -> void:
 		_auto_fire_timer.wait_time = auto_fire_interval
 		_auto_fire_timer.start()
 
+	if current_wave_type == "boss" or current_wave_type == "mini_boss":
+		_play_audio("play_boss_spawn")
+	else:
+		_play_audio("play_wave_start")
+
 	_spawn_wave_enemies()
 
 	_update_hud()
@@ -491,6 +496,7 @@ func _fire_at_nearest_enemy() -> void:
 		var direction := base_direction.rotated(angle_offset)
 		_spawn_projectile(player.global_position + direction * 30.0, direction)
 
+	_play_audio("play_shoot")
 	_shot_sequence += 1
 	if _cutting_echo_interval > 0 and _shot_sequence % _cutting_echo_interval == 0:
 		_spawn_projectile(
@@ -550,6 +556,7 @@ func _on_enemy_died(enemy: Node) -> void:
 		death_position = enemy_node.global_position
 
 	_spawn_burst(death_position, Color(1.0, 0.45, 0.26), 14)
+	_play_audio("play_enemy_death")
 	enemies.erase(enemy)
 	_record_enemy_defeated(enemy)
 	score += _get_score_value_for_enemy(enemy)
@@ -589,6 +596,7 @@ func _complete_wave() -> void:
 	else:
 		hud.call("set_wave_message", "Onda concluida")
 
+	_play_audio("play_wave_complete")
 	_show_upgrade_reward()
 
 
@@ -898,6 +906,7 @@ func _on_projectile_explosion_requested(world_position: Vector2, radius: float, 
 	if radius <= 0.0 or damage <= 0:
 		return
 
+	_play_audio("play_explosion")
 	for enemy in enemies.duplicate():
 		if not is_instance_valid(enemy):
 			continue
@@ -1071,16 +1080,19 @@ func _choose_wave_modifier(wave_number: int, wave_type: String) -> Dictionary:
 
 
 func _on_enemy_damage_taken(_enemy: Node, amount: int, world_position: Vector2) -> void:
+	_play_audio("play_enemy_hit")
 	_spawn_floating_text("-%d" % amount, world_position + Vector2(0.0, -24.0), Color(1.0, 0.78, 0.32), 0.62)
 	_spawn_burst(world_position, Color(1.0, 0.72, 0.28), 6)
 
 
 func _on_player_damage_taken(amount: int, world_position: Vector2) -> void:
+	_play_audio("play_player_hit")
 	_spawn_floating_text("-%d" % amount, world_position + Vector2(0.0, -30.0), Color(1.0, 0.34, 0.34), 0.72)
 	_start_camera_shake(0.18, 8.0)
 
 
 func _on_star_bomber_exploded(enemy: Node, world_position: Vector2, radius: float, damage: int) -> void:
+	_play_audio("play_explosion")
 	_spawn_burst(world_position, Color(1.0, 0.24, 0.12), 24)
 	_spawn_floating_text("EXPLOSAO", world_position + Vector2(0.0, -28.0), Color(1.0, 0.48, 0.24), 0.7)
 	_start_camera_shake(0.16, 6.0)
@@ -1099,6 +1111,7 @@ func _on_star_bomber_exploded(enemy: Node, world_position: Vector2, radius: floa
 
 
 func _on_line_sniper_laser_fired(_enemy: Node, origin: Vector2, direction: Vector2, laser_range: float, width: float, damage: int) -> void:
+	_play_audio("play_laser")
 	var normalized_direction := direction.normalized()
 	if normalized_direction == Vector2.ZERO:
 		normalized_direction = Vector2.RIGHT
@@ -1217,9 +1230,11 @@ func _finish_run(victory: bool) -> void:
 		hud.call("set_wave_message", "Run concluida" if victory else "Run encerrada")
 
 	if victory:
+		_play_audio("play_victory")
 		_spawn_burst(arena_rect.get_center(), Color(0.54, 1.0, 0.72), 28)
 		_start_camera_shake(0.28, 10.0)
 	else:
+		_play_audio("play_defeat")
 		_start_camera_shake(0.24, 9.0)
 
 	_clear_active_threats()
@@ -1272,6 +1287,12 @@ func _clear_projectiles() -> void:
 	for projectile in get_tree().get_nodes_in_group("player_projectiles"):
 		if is_instance_valid(projectile):
 			projectile.queue_free()
+
+
+func _play_audio(method_name: String) -> void:
+	var audio_manager := get_node_or_null("/root/AudioManager")
+	if audio_manager != null and audio_manager.has_method(method_name):
+		audio_manager.call(method_name)
 
 
 func _restart_scene() -> void:

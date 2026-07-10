@@ -124,6 +124,7 @@ func _on_option_pressed(index: int) -> void:
 	if index < 0 or index >= _upgrades.size():
 		return
 
+	_play_audio("play_upgrade_pick")
 	hide()
 	upgrade_selected.emit(_upgrades[index])
 
@@ -224,3 +225,9 @@ func _create_card_style(bg_color: Color, border_color: Color) -> StyleBoxFlat:
 	style.corner_radius_bottom_left = 6
 	style.corner_radius_bottom_right = 6
 	return style
+
+
+func _play_audio(method_name: String) -> void:
+	var audio_manager := get_node_or_null("/root/AudioManager")
+	if audio_manager != null and audio_manager.has_method(method_name):
+		audio_manager.call(method_name)

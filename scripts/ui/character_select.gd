@@ -147,6 +147,7 @@ func _create_character_card(character: Dictionary) -> PanelContainer:
 
 
 func _on_character_chosen(character_id: String) -> void:
+	_play_audio("play_button_click")
 	var run_config := get_node_or_null("/root/RunConfig")
 	if run_config != null:
 		run_config.call("select_character", character_id)
@@ -154,6 +155,7 @@ func _on_character_chosen(character_id: String) -> void:
 
 
 func _on_back_pressed() -> void:
+	_play_audio("play_button_click")
 	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
 
 
@@ -167,3 +169,9 @@ func _on_button_hovered(button: Button, hovered: bool) -> void:
 	button.pivot_offset = button.size * 0.5
 	var tween := create_tween()
 	tween.tween_property(button, "scale", Vector2.ONE * (1.04 if hovered else 1.0), 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+func _play_audio(method_name: String) -> void:
+	var audio_manager := get_node_or_null("/root/AudioManager")
+	if audio_manager != null and audio_manager.has_method(method_name):
+		audio_manager.call(method_name)

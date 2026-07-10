@@ -65,10 +65,12 @@ func show_result(victory: bool, stats: Dictionary, max_wave: int) -> void:
 
 
 func _on_restart_pressed() -> void:
+	_play_audio("play_button_click")
 	restart_requested.emit()
 
 
 func _on_menu_pressed() -> void:
+	_play_audio("play_button_click")
 	main_menu_requested.emit()
 
 
@@ -164,3 +166,9 @@ func _format_synergies(stats: Dictionary) -> String:
 		text += labels[index]
 
 	return text
+
+
+func _play_audio(method_name: String) -> void:
+	var audio_manager := get_node_or_null("/root/AudioManager")
+	if audio_manager != null and audio_manager.has_method(method_name):
+		audio_manager.call(method_name)

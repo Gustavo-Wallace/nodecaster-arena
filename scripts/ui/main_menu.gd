@@ -27,14 +27,17 @@ func _draw() -> void:
 
 
 func _on_play_pressed() -> void:
+	_play_audio("play_button_click")
 	get_tree().change_scene_to_file("res://scenes/ui/character_select.tscn")
 
 
 func _on_progress_pressed() -> void:
+	_play_audio("play_button_click")
 	get_tree().change_scene_to_file("res://scenes/ui/progress_screen.tscn")
 
 
 func _on_quit_pressed() -> void:
+	_play_audio("play_button_click")
 	get_tree().quit()
 
 
@@ -62,3 +65,9 @@ func _on_button_hovered(button: Button, hovered: bool) -> void:
 	button.pivot_offset = button.size * 0.5
 	var tween := create_tween()
 	tween.tween_property(button, "scale", Vector2.ONE * (1.05 if hovered else 1.0), 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+func _play_audio(method_name: String) -> void:
+	var audio_manager := get_node_or_null("/root/AudioManager")
+	if audio_manager != null and audio_manager.has_method(method_name):
+		audio_manager.call(method_name)

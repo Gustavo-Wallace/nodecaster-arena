@@ -88,9 +88,17 @@ func _create_unlock_row(unlock_data: Dictionary) -> PanelContainer:
 func _on_unlock_pressed(unlock_id: String) -> void:
 	var save_manager := get_node_or_null("/root/SaveManager")
 	if save_manager != null:
-		save_manager.call("unlock", unlock_id)
+		var unlocked := bool(save_manager.call("unlock", unlock_id))
+		_play_audio("play_unlock" if unlocked else "play_error")
 	_refresh()
 
 
 func _on_back_pressed() -> void:
+	_play_audio("play_button_click")
 	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")
+
+
+func _play_audio(method_name: String) -> void:
+	var audio_manager := get_node_or_null("/root/AudioManager")
+	if audio_manager != null and audio_manager.has_method(method_name):
+		audio_manager.call(method_name)
