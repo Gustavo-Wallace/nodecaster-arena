@@ -1,7 +1,9 @@
 extends Node2D
 
 const PLAYER_SCENE := preload("res://scenes/player/player.tscn")
-const BASIC_CHASER_SCENE := preload("res://scenes/enemies/basic_chaser.tscn")
+const CIRCLE_CHASER_SCENE := preload("res://scenes/enemies/circle_chaser.tscn")
+const TRIANGLE_DASHER_SCENE := preload("res://scenes/enemies/triangle_dasher.tscn")
+const SQUARE_TANK_SCENE := preload("res://scenes/enemies/square_tank.tscn")
 const BASIC_PROJECTILE_SCENE := preload("res://scenes/projectiles/basic_projectile.tscn")
 const GAME_HUD_SCENE := preload("res://scenes/ui/game_hud.tscn")
 
@@ -74,8 +76,9 @@ func _start_wave(wave_number: int) -> void:
 	_wave_in_progress = true
 	enemies.clear()
 
-	for _index in range(_get_enemy_count_for_wave(current_wave)):
-		_spawn_enemy(_get_spawn_position_near_arena_edge())
+	var enemy_scenes := _build_enemy_scenes_for_wave(current_wave)
+	for enemy_scene in enemy_scenes:
+		_spawn_enemy(enemy_scene, _get_spawn_position_near_arena_edge())
 
 	_update_hud()
 	hud.call("set_wave_message", "")
@@ -85,8 +88,46 @@ func _get_enemy_count_for_wave(wave_number: int) -> int:
 	return base_enemies_per_wave + wave_number * enemies_added_per_wave
 
 
-func _spawn_enemy(spawn_position: Vector2) -> void:
-	var enemy := BASIC_CHASER_SCENE.instantiate() as Node2D
+func _build_enemy_scenes_for_wave(wave_number: int) -> Array[PackedScene]:
+	var enemy_count := _get_enemy_count_for_wave(wave_number)
+	var triangle_count := 0
+	var square_count := 0
+
+	if wave_number >= 2:
+		triangle_count = maxi(1, int(floor(float(enemy_count) * 0.25)))
+	if wave_number >= 3:
+		square_count = maxi(1, int(floor(float(enemy_count) * 0.18)))
+
+	if triangle_count + square_count > enemy_count:
+		triangle_count = maxi(enemy_count - square_count, 0)
+
+	var circle_count := maxi(enemy_count - triangle_count - square_count, 0)
+	var enemy_scenes: Array[PackedScene] = []
+
+	for _index in range(circle_count):
+		enemy_scenes.append(CIRCLE_CHASER_SCENE)
+	for _index in range(triangle_count):
+		enemy_scenes.append(TRIANGLE_DASHER_SCENE)
+	for _index in range(square_count):
+		enemy_scenes.append(SQUARE_TANK_SCENE)
+
+	_shuffle_enemy_scenes(enemy_scenes)
+	return enemy_scenes
+
+
+func _shuffle_enemy_scenes(enemy_scenes: Array[PackedScene]) -> void:
+	if enemy_scenes.size() < 2:
+		return
+
+	for index in range(enemy_scenes.size() - 1, 0, -1):
+		var swap_index := _rng.randi_range(0, index)
+		var stored_scene := enemy_scenes[index]
+		enemy_scenes[index] = enemy_scenes[swap_index]
+		enemy_scenes[swap_index] = stored_scene
+
+
+func _spawn_enemy(enemy_scene: PackedScene, spawn_position: Vector2) -> void:
+	var enemy := enemy_scene.instantiate() as Node2D
 	_apply_wave_scaling_to_enemy(enemy)
 	add_child(enemy)
 	enemy.global_position = spawn_position

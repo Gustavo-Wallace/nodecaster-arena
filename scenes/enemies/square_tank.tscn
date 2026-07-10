@@ -1,0 +1,20 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/square_tank.gd" id="1_jnm6h"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_t4mk7"]
+radius = 22.0
+
+[node name="SquareTank" type="CharacterBody2D"]
+collision_layer = 2
+collision_mask = 1
+script = ExtResource("1_jnm6h")
+speed = 82.0
+max_health = 95
+score_value = 25
+contact_damage = 16
+radius = 22.0
+contact_distance = 48.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_t4mk7")
