@@ -13,6 +13,8 @@ const UPGRADE_PANEL_SCENE := preload("res://scenes/ui/upgrade_panel.tscn")
 const SPELL_CHAIN_PANEL_SCENE := preload("res://scenes/ui/spell_chain_panel.tscn")
 const FLOATING_TEXT_SCENE := preload("res://scenes/ui/floating_text.tscn")
 const BURST_EFFECT_SCENE := preload("res://scenes/effects/burst_effect.tscn")
+const GEOMETRIC_SHATTER_SCENE := preload("res://scenes/effects/geometric_shatter.tscn")
+const IMPACT_RING_SCENE := preload("res://scenes/effects/impact_ring.tscn")
 const PENTAGON_MINIBOSS_SCENE := preload("res://scenes/enemies/pentagon_miniboss.tscn")
 const HEXAGON_BOSS_SCENE := preload("res://scenes/enemies/hexagon_boss.tscn")
 const RUN_RESULT_PANEL_SCENE := preload("res://scenes/ui/run_result_panel.tscn")
@@ -525,8 +527,9 @@ func _spawn_projectile(spawn_position: Vector2, direction: Vector2, overrides: D
 	projectile.set("explosion_damage", int(round(float(actual_damage) * projectile_explosion_damage_multiplier)))
 	projectile.set("size_multiplier", float(overrides.get("size_multiplier", projectile_size_multiplier)))
 	projectile.set("visual_shape", str(overrides.get("visual_shape", "circle")))
-	projectile.set("fill_color", overrides.get("fill_color", Color(1.0, 0.92, 0.28)))
-	projectile.set("outline_color", overrides.get("outline_color", Color(1.0, 1.0, 0.82)))
+	var projectile_colors := _get_projectile_visual_colors(overrides)
+	projectile.set("fill_color", projectile_colors["fill_color"])
+	projectile.set("outline_color", projectile_colors["outline_color"])
 	projectile.connect("explosion_requested", Callable(self, "_on_projectile_explosion_requested"))
 	projectile.connect("bounce_requested", Callable(self, "_on_projectile_bounce_requested"))
 	add_child(projectile)
@@ -555,7 +558,7 @@ func _on_enemy_died(enemy: Node) -> void:
 		var enemy_node := enemy as Node2D
 		death_position = enemy_node.global_position
 
-	_spawn_burst(death_position, Color(1.0, 0.45, 0.26), 14)
+	_spawn_enemy_death_effect(enemy, death_position)
 	_play_audio("play_enemy_death")
 	enemies.erase(enemy)
 	_record_enemy_defeated(enemy)
@@ -563,7 +566,7 @@ func _on_enemy_died(enemy: Node) -> void:
 	_update_hud()
 
 	if current_wave_type == "boss" and _get_enemy_id(enemy) == "hexagon_boss":
-		_finish_run(true)
+		_finish_run(true, 1.15)
 		return
 
 	if _wave_in_progress and enemies.is_empty() and not _is_restarting and not _run_finished:
@@ -916,11 +919,13 @@ func _on_projectile_explosion_requested(world_position: Vector2, radius: float, 
 			enemy.call("take_damage", damage)
 
 	_spawn_burst(world_position, Color(0.92, 0.48, 1.0), 18)
+	_spawn_impact_ring(world_position, Color(1.0, 0.58, 0.22, 0.88), radius * 0.22, radius, 0.42, 3.6)
 	_spawn_floating_text("BOOM", world_position + Vector2(0.0, -18.0), Color(1.0, 0.78, 1.0), 0.55)
 
 
 func _on_projectile_bounce_requested(world_position: Vector2) -> void:
 	_spawn_burst(world_position, Color(0.58, 0.9, 1.0), 5)
+	_spawn_impact_ring(world_position, Color(0.58, 0.9, 1.0, 0.72), 5.0, 26.0, 0.22, 2.0)
 
 
 func _update_unstable_field(delta: float) -> void:
@@ -942,6 +947,7 @@ func _update_unstable_field(delta: float) -> void:
 			enemy.call("take_damage", _unstable_field_damage)
 
 	_spawn_burst(player.global_position, Color(0.36, 0.95, 1.0), 8)
+	_spawn_impact_ring(player.global_position, Color(0.36, 0.95, 1.0, 0.42), pulse_radius * 0.35, pulse_radius, 0.36, 2.0)
 
 
 func _ensure_unstable_field_aura() -> void:
@@ -1094,6 +1100,8 @@ func _on_player_damage_taken(amount: int, world_position: Vector2) -> void:
 func _on_star_bomber_exploded(enemy: Node, world_position: Vector2, radius: float, damage: int) -> void:
 	_play_audio("play_explosion")
 	_spawn_burst(world_position, Color(1.0, 0.24, 0.12), 24)
+	_spawn_shatter(world_position, Color(1.0, 0.42, 0.12), "star", 1.45, 16, 2)
+	_spawn_impact_ring(world_position, Color(1.0, 0.25, 0.12, 0.86), radius * 0.18, radius, 0.5, 4.0)
 	_spawn_floating_text("EXPLOSAO", world_position + Vector2(0.0, -28.0), Color(1.0, 0.48, 0.24), 0.7)
 	_start_camera_shake(0.16, 6.0)
 
@@ -1118,6 +1126,7 @@ func _on_line_sniper_laser_fired(_enemy: Node, origin: Vector2, direction: Vecto
 
 	var end_position := origin + normalized_direction * laser_range
 	_spawn_burst(origin, Color(1.0, 0.2, 0.24), 8)
+	_spawn_impact_ring(origin, Color(1.0, 0.22, 0.28, 0.6), 4.0, 34.0, 0.26, 2.5)
 	_spawn_floating_text("LASER", origin + normalized_direction * 38.0 + Vector2(0.0, -20.0), Color(1.0, 0.36, 0.36), 0.5)
 
 	if not is_instance_valid(player):
@@ -1149,6 +1158,107 @@ func _spawn_burst(world_position: Vector2, color: Color, particle_count: int = 1
 	var burst := BURST_EFFECT_SCENE.instantiate() as Node2D
 	add_child(burst)
 	burst.call("setup", world_position, color, particle_count)
+
+
+func _spawn_shatter(world_position: Vector2, color: Color, shape_type: String, intensity: float, fragment_count: int, ring_count: int = 1) -> void:
+	var shatter := GEOMETRIC_SHATTER_SCENE.instantiate() as Node2D
+	add_child(shatter)
+	shatter.call("setup", world_position, color, shape_type, intensity, fragment_count, ring_count)
+
+
+func _spawn_impact_ring(world_position: Vector2, color: Color, start_radius: float, end_radius: float, duration: float = 0.48, width: float = 3.0) -> void:
+	var ring := IMPACT_RING_SCENE.instantiate() as Node2D
+	add_child(ring)
+	ring.call("setup", world_position, color, start_radius, end_radius, duration, width)
+
+
+func _spawn_enemy_death_effect(enemy: Node, world_position: Vector2) -> void:
+	var profile := _get_enemy_shatter_profile(enemy)
+	var shatter_color: Color = profile.get("color", Color(1.0, 0.45, 0.26))
+	_spawn_shatter(
+		world_position,
+		shatter_color,
+		str(profile["shape_type"]),
+		float(profile["intensity"]),
+		int(profile["fragments"]),
+		int(profile["rings"])
+	)
+
+	var shake_strength := float(profile.get("shake_strength", 0.0))
+	if shake_strength > 0.0:
+		_start_camera_shake(float(profile.get("shake_duration", 0.14)), shake_strength)
+
+
+func _get_enemy_shatter_profile(enemy: Node) -> Dictionary:
+	var enemy_id := _get_enemy_id(enemy)
+	var fallback_color := _get_enemy_color(enemy)
+	var profiles: Dictionary = {
+		"circle_chaser": {"shape_type": "circle", "color": fallback_color, "intensity": 0.85, "fragments": 7, "rings": 1},
+		"triangle_dasher": {"shape_type": "triangle", "color": fallback_color, "intensity": 1.05, "fragments": 8, "rings": 1},
+		"square_tank": {"shape_type": "square", "color": fallback_color, "intensity": 1.18, "fragments": 12, "rings": 1, "shake_strength": 3.5, "shake_duration": 0.12},
+		"diamond_shooter": {"shape_type": "diamond", "color": fallback_color, "intensity": 1.12, "fragments": 10, "rings": 1, "shake_strength": 2.5, "shake_duration": 0.1},
+		"star_bomber": {"shape_type": "star", "color": fallback_color, "intensity": 1.35, "fragments": 14, "rings": 2, "shake_strength": 5.0, "shake_duration": 0.16},
+		"line_sniper": {"shape_type": "line", "color": fallback_color, "intensity": 1.05, "fragments": 10, "rings": 1, "shake_strength": 2.0, "shake_duration": 0.1},
+		"pentagon_miniboss": {"shape_type": "boss", "color": fallback_color, "intensity": 1.8, "fragments": 24, "rings": 2, "shake_strength": 8.0, "shake_duration": 0.24},
+		"hexagon_boss": {"shape_type": "boss", "color": fallback_color, "intensity": 2.45, "fragments": 52, "rings": 3, "shake_strength": 13.0, "shake_duration": 0.36},
+	}
+
+	var default_profile: Dictionary = {"shape_type": "circle", "color": fallback_color, "intensity": 0.9, "fragments": 7, "rings": 1}
+	var profile: Dictionary = profiles.get(enemy_id, default_profile)
+	return profile
+
+
+func _get_enemy_color(enemy: Node) -> Color:
+	var color_value = enemy.get("fill_color")
+	if color_value is Color:
+		return color_value
+
+	match _get_enemy_id(enemy):
+		"triangle_dasher":
+			return Color(0.92, 0.42, 1.0)
+		"square_tank":
+			return Color(0.36, 0.88, 0.54)
+		"diamond_shooter":
+			return Color(0.38, 0.82, 1.0)
+		"star_bomber":
+			return Color(1.0, 0.58, 0.16)
+		"line_sniper":
+			return Color(0.72, 0.8, 1.0)
+		"pentagon_miniboss":
+			return Color(0.92, 0.54, 0.18)
+		"hexagon_boss":
+			return Color(0.36, 0.62, 1.0)
+		_:
+			return Color(1.0, 0.28, 0.34)
+
+
+func _get_projectile_visual_colors(overrides: Dictionary) -> Dictionary:
+	if overrides.has("fill_color") or overrides.has("outline_color"):
+		return {
+			"fill_color": overrides.get("fill_color", Color(1.0, 0.92, 0.28)),
+			"outline_color": overrides.get("outline_color", Color(1.0, 1.0, 0.82)),
+		}
+
+	if projectile_explosion_radius > 0.0:
+		return {
+			"fill_color": Color(0.92, 0.48, 1.0),
+			"outline_color": Color(1.0, 0.78, 1.0),
+		}
+	if projectile_pierce > 0:
+		return {
+			"fill_color": Color(0.72, 0.94, 1.0),
+			"outline_color": Color(1.0, 1.0, 1.0),
+		}
+	if projectile_bounce > 0:
+		return {
+			"fill_color": Color(0.58, 0.9, 1.0),
+			"outline_color": Color(0.88, 1.0, 1.0),
+		}
+
+	return {
+		"fill_color": Color(1.0, 0.92, 0.28),
+		"outline_color": Color(1.0, 1.0, 0.82),
+	}
 
 
 func _on_boss_summon_requested(count: int, world_position: Vector2) -> void:
@@ -1210,10 +1320,14 @@ func _on_player_died() -> void:
 	if _is_restarting or _run_finished:
 		return
 
-	_finish_run(false)
+	_spawn_player_death_effect()
+	_finish_run(false, 1.0)
 
 
-func _finish_run(victory: bool) -> void:
+func _finish_run(victory: bool, result_delay: float = 0.0) -> void:
+	if _run_finished:
+		return
+
 	_run_finished = true
 	_wave_in_progress = false
 	_reward_open = false
@@ -1224,20 +1338,39 @@ func _finish_run(victory: bool) -> void:
 		_auto_fire_timer.stop()
 	if is_instance_valid(upgrade_panel):
 		upgrade_panel.hide()
-	if is_instance_valid(result_panel):
-		result_panel.call("show_result", victory, run_stats, max_run_wave)
 	if is_instance_valid(hud):
 		hud.call("set_wave_message", "Run concluida" if victory else "Run encerrada")
 
 	if victory:
 		_play_audio("play_victory")
-		_spawn_burst(arena_rect.get_center(), Color(0.54, 1.0, 0.72), 28)
-		_start_camera_shake(0.28, 10.0)
+		_spawn_impact_ring(arena_rect.get_center(), Color(0.54, 1.0, 0.72, 0.8), 38.0, 220.0, 0.82, 4.0)
+		_start_camera_shake(0.34, 12.0)
 	else:
 		_play_audio("play_defeat")
 		_start_camera_shake(0.24, 9.0)
 
 	_clear_active_threats()
+
+	if result_delay > 0.0:
+		await get_tree().create_timer(result_delay).timeout
+
+	if is_instance_valid(result_panel):
+		result_panel.call("show_result", victory, run_stats, max_run_wave)
+
+
+func _spawn_player_death_effect() -> void:
+	if not is_instance_valid(player):
+		return
+
+	var player_color := Color(0.18, 0.78, 1.0)
+	var player_color_value = player.get("fill_color")
+	if player_color_value is Color:
+		player_color = player_color_value
+
+	var shape_type := str(player.get("visual_shape"))
+	_spawn_shatter(player.global_position, player_color, shape_type, 1.9, 30, 2)
+	_spawn_impact_ring(player.global_position, Color(player_color.r, player_color.g, player_color.b, 0.82), 16.0, 132.0, 0.7, 4.0)
+	player.hide()
 
 
 func _finalize_run_stats() -> void:

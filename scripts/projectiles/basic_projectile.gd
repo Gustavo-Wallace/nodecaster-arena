@@ -45,6 +45,7 @@ func _physics_process(delta: float) -> void:
 	global_position += direction * speed * delta
 	_try_bounce()
 	_life_left -= delta
+	queue_redraw()
 
 	if _life_left <= 0.0:
 		queue_free()
@@ -103,6 +104,12 @@ func _update_collision_radius() -> void:
 
 func _draw() -> void:
 	var draw_radius := radius * size_multiplier
+	var trail_length := clampf(speed * 0.075, 28.0, 74.0) * maxf(size_multiplier, 0.85)
+	var trail_width := maxf(2.0, draw_radius * 0.62)
+	var trail_color := Color(fill_color.r, fill_color.g, fill_color.b, 0.34)
+	draw_line(Vector2(-trail_length, 0.0), Vector2(-draw_radius * 0.5, 0.0), trail_color, trail_width)
+	draw_line(Vector2(-trail_length * 0.62, 0.0), Vector2(-draw_radius * 0.2, 0.0), Color(outline_color.r, outline_color.g, outline_color.b, 0.22), maxf(1.0, trail_width * 0.42))
+
 	match visual_shape:
 		"diamond":
 			var points := PackedVector2Array([

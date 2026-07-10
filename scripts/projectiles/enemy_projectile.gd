@@ -36,6 +36,7 @@ func setup(spawn_position: Vector2, new_direction: Vector2, new_damage: int = 10
 func _physics_process(delta: float) -> void:
 	global_position += direction * speed * delta
 	_life_left -= delta
+	queue_redraw()
 
 	if _life_left <= 0.0 or _is_far_outside_view():
 		queue_free()
@@ -62,5 +63,8 @@ func _is_far_outside_view() -> bool:
 
 
 func _draw() -> void:
+	var trail_length := clampf(speed * 0.075, 24.0, 58.0)
+	draw_line(Vector2(-trail_length, 0.0), Vector2(-radius * 0.45, 0.0), Color(fill_color.r, fill_color.g, fill_color.b, 0.32), maxf(2.0, radius * 0.58))
+	draw_line(Vector2(-trail_length * 0.55, 0.0), Vector2(-radius * 0.2, 0.0), Color(outline_color.r, outline_color.g, outline_color.b, 0.2), 1.5)
 	draw_circle(Vector2.ZERO, radius, fill_color)
 	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 24, outline_color, 1.5, true)
