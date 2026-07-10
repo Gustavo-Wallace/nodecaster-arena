@@ -35,8 +35,15 @@ func _set_health_text(current_health: int, max_health: int) -> void:
 	health_label.text = "VIDA %d / %d" % [current_health, max_health]
 
 
-func set_wave_info(wave_number: int, enemies_remaining: int, score: int) -> void:
-	wave_label.text = "ONDA %d" % wave_number
+func set_wave_info(wave_number: int, enemies_remaining: int, score: int, max_wave: int = 0, wave_title: String = "") -> void:
+	if max_wave > 0:
+		wave_label.text = "ONDA %d/%d" % [wave_number, max_wave]
+	else:
+		wave_label.text = "ONDA %d" % wave_number
+
+	if not wave_title.is_empty():
+		wave_label.text += " - %s" % wave_title
+
 	enemies_label.text = "INIMIGOS %d" % enemies_remaining
 	score_label.text = "PONTOS %d" % score
 

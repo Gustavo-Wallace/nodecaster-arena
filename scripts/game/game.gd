@@ -10,6 +10,9 @@ const UPGRADE_PANEL_SCENE := preload("res://scenes/ui/upgrade_panel.tscn")
 const SPELL_CHAIN_PANEL_SCENE := preload("res://scenes/ui/spell_chain_panel.tscn")
 const FLOATING_TEXT_SCENE := preload("res://scenes/ui/floating_text.tscn")
 const BURST_EFFECT_SCENE := preload("res://scenes/effects/burst_effect.tscn")
+const PENTAGON_MINIBOSS_SCENE := preload("res://scenes/enemies/pentagon_miniboss.tscn")
+const HEXAGON_BOSS_SCENE := preload("res://scenes/enemies/hexagon_boss.tscn")
+const RUN_RESULT_PANEL_SCENE := preload("res://scenes/ui/run_result_panel.tscn")
 
 @export var arena_position: Vector2 = Vector2(96.0, 72.0)
 @export var arena_size: Vector2 = Vector2(1088.0, 576.0)
@@ -29,14 +32,19 @@ const BURST_EFFECT_SCENE := preload("res://scenes/effects/burst_effect.tscn")
 @export var fallback_enemy_score_value: int = 10
 @export var spawn_edge_padding: float = 28.0
 @export var min_spawn_distance_from_player: float = 180.0
+@export var max_run_wave: int = 10
+@export var miniboss_wave: int = 5
+@export var boss_wave: int = 10
 
 var player: Node2D
 var hud: Control
 var upgrade_panel: Control
 var spell_chain_panel: Control
+var result_panel: Control
 var enemies: Array[Node2D] = []
 var arena_rect: Rect2
 var current_wave: int = 0
+var current_wave_type: String = "normal"
 var score: int = 0
 var spell_chain_nodes: Array[Dictionary] = []
 var camera: Camera2D
@@ -44,6 +52,7 @@ var _auto_fire_timer: Timer
 var _is_restarting: bool = false
 var _wave_in_progress: bool = false
 var _reward_open: bool = false
+var _run_finished: bool = false
 var _camera_shake_time_left: float = 0.0
 var _camera_shake_duration: float = 0.0
 var _camera_shake_strength: float = 0.0
@@ -67,6 +76,15 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_update_camera_shake(delta)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not _run_finished:
+		return
+
+	var key_event := event as InputEventKey
+	if key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_R:
+		_restart_scene()
 
 
 func _draw() -> void:
@@ -103,12 +121,21 @@ func _spawn_hud() -> void:
 	hud_layer.add_child(upgrade_panel)
 	upgrade_panel.connect("upgrade_selected", Callable(self, "_on_upgrade_selected"))
 
+	result_panel = RUN_RESULT_PANEL_SCENE.instantiate() as Control
+	hud_layer.add_child(result_panel)
+	result_panel.connect("restart_requested", Callable(self, "_restart_scene"))
+
 
 func _start_wave(wave_number: int) -> void:
-	if _is_restarting:
+	if _is_restarting or _run_finished:
+		return
+
+	if wave_number > max_run_wave:
+		_finish_run(true)
 		return
 
 	current_wave = wave_number
+	current_wave_type = _get_wave_type(current_wave)
 	_wave_in_progress = true
 	_reward_open = false
 	enemies.clear()
@@ -117,12 +144,33 @@ func _start_wave(wave_number: int) -> void:
 		_auto_fire_timer.wait_time = auto_fire_interval
 		_auto_fire_timer.start()
 
-	var enemy_scenes := _build_enemy_scenes_for_wave(current_wave)
-	for enemy_scene in enemy_scenes:
-		_spawn_enemy(enemy_scene, _get_spawn_position_near_arena_edge())
+	_spawn_wave_enemies()
 
 	_update_hud()
-	hud.call("set_wave_message", "")
+	hud.call("set_wave_message", _get_wave_title(current_wave_type))
+
+
+func _get_wave_type(wave_number: int) -> String:
+	if wave_number == boss_wave:
+		return "boss"
+	if wave_number == miniboss_wave:
+		return "mini_boss"
+
+	return "normal"
+
+
+func _spawn_wave_enemies() -> void:
+	match current_wave_type:
+		"mini_boss":
+			_spawn_enemy(PENTAGON_MINIBOSS_SCENE, arena_rect.get_center() + Vector2(0.0, -120.0))
+			for _index in range(2):
+				_spawn_enemy(CIRCLE_CHASER_SCENE, _get_spawn_position_near_arena_edge())
+		"boss":
+			_spawn_enemy(HEXAGON_BOSS_SCENE, arena_rect.get_center() + Vector2(0.0, -110.0))
+		_:
+			var enemy_scenes := _build_enemy_scenes_for_wave(current_wave)
+			for enemy_scene in enemy_scenes:
+				_spawn_enemy(enemy_scene, _get_spawn_position_near_arena_edge())
 
 
 func _get_enemy_count_for_wave(wave_number: int) -> int:
@@ -175,10 +223,15 @@ func _spawn_enemy(enemy_scene: PackedScene, spawn_position: Vector2) -> void:
 	enemy.call("setup", player)
 	enemy.connect("died", Callable(self, "_on_enemy_died"))
 	enemy.connect("damage_taken", Callable(self, "_on_enemy_damage_taken"))
+	if enemy.has_signal("summon_requested"):
+		enemy.connect("summon_requested", Callable(self, "_on_boss_summon_requested"))
 	enemies.append(enemy)
 
 
 func _apply_wave_scaling_to_enemy(enemy: Node) -> void:
+	if current_wave_type != "normal":
+		return
+
 	var wave_bonus := maxi(current_wave - 1, 0)
 	var base_health = enemy.get("max_health")
 	var base_speed = enemy.get("speed")
@@ -237,7 +290,7 @@ func _start_auto_fire() -> void:
 
 
 func _fire_at_nearest_enemy() -> void:
-	if _is_restarting or _reward_open or not is_instance_valid(player):
+	if _is_restarting or _run_finished or _reward_open or not is_instance_valid(player):
 		return
 
 	var target := _get_nearest_enemy()
@@ -297,7 +350,7 @@ func _on_enemy_died(enemy: Node) -> void:
 	score += _get_score_value_for_enemy(enemy)
 	_update_hud()
 
-	if _wave_in_progress and enemies.is_empty() and not _is_restarting:
+	if _wave_in_progress and enemies.is_empty() and not _is_restarting and not _run_finished:
 		_complete_wave()
 
 
@@ -311,12 +364,21 @@ func _get_score_value_for_enemy(enemy: Node) -> int:
 
 func _complete_wave() -> void:
 	_wave_in_progress = false
+
+	if current_wave_type == "boss":
+		_finish_run(true)
+		return
+
 	_reward_open = true
 
 	if is_instance_valid(_auto_fire_timer):
 		_auto_fire_timer.stop()
 
-	hud.call("set_wave_message", "Onda concluida")
+	if current_wave_type == "mini_boss":
+		hud.call("set_wave_message", "Mini-Boss derrotado")
+	else:
+		hud.call("set_wave_message", "Onda concluida")
+
 	_show_upgrade_reward()
 
 
@@ -490,7 +552,17 @@ func _create_upgrade_data() -> Array[Dictionary]:
 
 func _update_hud() -> void:
 	if is_instance_valid(hud):
-		hud.call("set_wave_info", current_wave, _get_alive_enemy_count(), score)
+		hud.call("set_wave_info", current_wave, _get_alive_enemy_count(), score, max_run_wave, _get_wave_title(current_wave_type))
+
+
+func _get_wave_title(wave_type: String) -> String:
+	match wave_type:
+		"mini_boss":
+			return "Mini-Boss"
+		"boss":
+			return "Boss Final"
+		_:
+			return ""
 
 
 func _on_enemy_damage_taken(_enemy: Node, amount: int, world_position: Vector2) -> void:
@@ -513,6 +585,20 @@ func _spawn_burst(world_position: Vector2, color: Color, particle_count: int = 1
 	var burst := BURST_EFFECT_SCENE.instantiate() as Node2D
 	add_child(burst)
 	burst.call("setup", world_position, color, particle_count)
+
+
+func _on_boss_summon_requested(count: int, world_position: Vector2) -> void:
+	if _run_finished:
+		return
+
+	for index in range(count):
+		var angle := TAU * float(index) / float(maxi(count, 1))
+		var spawn_position := world_position + Vector2.RIGHT.rotated(angle) * 96.0
+		spawn_position.x = clampf(spawn_position.x, arena_rect.position.x + spawn_edge_padding, arena_rect.end.x - spawn_edge_padding)
+		spawn_position.y = clampf(spawn_position.y, arena_rect.position.y + spawn_edge_padding, arena_rect.end.y - spawn_edge_padding)
+		_spawn_enemy(CIRCLE_CHASER_SCENE, spawn_position)
+
+	_update_hud()
 
 
 func _setup_camera() -> void:
@@ -557,21 +643,46 @@ func _get_alive_enemy_count() -> int:
 
 
 func _on_player_died() -> void:
-	if _is_restarting:
+	if _is_restarting or _run_finished:
 		return
 
-	_is_restarting = true
+	_finish_run(false)
+
+
+func _finish_run(victory: bool) -> void:
+	_run_finished = true
 	_wave_in_progress = false
 	_reward_open = false
+
 	if is_instance_valid(_auto_fire_timer):
 		_auto_fire_timer.stop()
 	if is_instance_valid(upgrade_panel):
 		upgrade_panel.hide()
+	if is_instance_valid(result_panel):
+		result_panel.call("show_result", victory, current_wave, max_run_wave, score)
 	if is_instance_valid(hud):
-		hud.call("set_wave_message", "Reiniciando...")
+		hud.call("set_wave_message", "Run concluida" if victory else "Run encerrada")
 
-	get_tree().create_timer(0.6).timeout.connect(_restart_scene)
+	if victory:
+		_spawn_burst(arena_rect.get_center(), Color(0.54, 1.0, 0.72), 28)
+		_start_camera_shake(0.28, 10.0)
+	else:
+		_start_camera_shake(0.24, 9.0)
+
+	_clear_active_threats()
+
+
+func _clear_active_threats() -> void:
+	for enemy in enemies:
+		if is_instance_valid(enemy):
+			enemy.queue_free()
+	enemies.clear()
+
+	for projectile in get_tree().get_nodes_in_group("enemy_projectiles"):
+		if is_instance_valid(projectile):
+			projectile.queue_free()
 
 
 func _restart_scene() -> void:
+	_is_restarting = true
 	get_tree().reload_current_scene()
