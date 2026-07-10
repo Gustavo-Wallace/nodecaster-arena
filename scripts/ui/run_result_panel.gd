@@ -57,7 +57,7 @@ func show_result(victory: bool, stats: Dictionary, max_wave: int) -> void:
 	]
 
 	kills_label.text = _format_kill_breakdown(stats)
-	build_label.text = "Build: %s" % _format_build(stats)
+	build_label.text = "Build: %s\nSinergias: %s" % [_format_build(stats), _format_synergies(stats)]
 	show()
 
 
@@ -106,3 +106,21 @@ func _format_build(stats: Dictionary) -> String:
 		build_text += labels[index]
 
 	return build_text
+
+
+func _format_synergies(stats: Dictionary) -> String:
+	var synergies = stats.get("active_synergies", [])
+	if not (synergies is Array) or synergies.is_empty():
+		return "Nenhuma"
+
+	var labels: Array[String] = []
+	for synergy in synergies:
+		labels.append(str(synergy))
+
+	var text := ""
+	for index in range(labels.size()):
+		if index > 0:
+			text += ", "
+		text += labels[index]
+
+	return text

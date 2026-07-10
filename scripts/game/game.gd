@@ -13,6 +13,7 @@ const BURST_EFFECT_SCENE := preload("res://scenes/effects/burst_effect.tscn")
 const PENTAGON_MINIBOSS_SCENE := preload("res://scenes/enemies/pentagon_miniboss.tscn")
 const HEXAGON_BOSS_SCENE := preload("res://scenes/enemies/hexagon_boss.tscn")
 const RUN_RESULT_PANEL_SCENE := preload("res://scenes/ui/run_result_panel.tscn")
+const UNSTABLE_FIELD_AURA_SCRIPT := preload("res://scripts/effects/unstable_field_aura.gd")
 
 @export var arena_position: Vector2 = Vector2(96.0, 72.0)
 @export var arena_size: Vector2 = Vector2(1088.0, 576.0)
@@ -24,6 +25,10 @@ const RUN_RESULT_PANEL_SCENE := preload("res://scenes/ui/run_result_panel.tscn")
 @export var max_projectile_count: int = 5
 @export var projectile_spread_degrees: float = 12.0
 @export var projectile_pierce: int = 0
+@export var projectile_bounce: int = 0
+@export var projectile_size_multiplier: float = 1.0
+@export var projectile_explosion_radius: float = 0.0
+@export var projectile_explosion_damage_multiplier: float = 0.0
 @export var base_enemies_per_wave: int = 1
 @export var enemies_added_per_wave: int = 2
 @export var wave_interval: float = 2.0
@@ -50,6 +55,8 @@ var spell_chain_nodes: Array[Dictionary] = []
 var run_time_seconds: float = 0.0
 var run_stats: Dictionary = {}
 var selected_character_data: Dictionary = {}
+var upgrade_stacks: Dictionary = {}
+var active_synergies: Array[String] = []
 var camera: Camera2D
 var _auto_fire_timer: Timer
 var _is_restarting: bool = false
@@ -62,6 +69,15 @@ var _camera_shake_strength: float = 0.0
 var _rng := RandomNumberGenerator.new()
 var _available_upgrades: Array[Dictionary] = []
 var _wave_enemy_counts: Dictionary = {}
+var _shot_sequence: int = 0
+var _cutting_echo_interval: int = 0
+var _cutting_echo_damage_multiplier: float = 1.5
+var _unstable_field_enabled := false
+var _unstable_field_radius: float = 0.0
+var _unstable_field_damage: int = 0
+var _unstable_field_interval: float = 0.5
+var _unstable_field_time_left: float = 0.0
+var _unstable_field_aura: Node2D
 
 
 func _ready() -> void:
@@ -85,6 +101,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not _run_finished:
 		run_time_seconds += delta
+		_update_unstable_field(delta)
 
 	_update_camera_shake(delta)
 
@@ -128,6 +145,7 @@ func _spawn_hud() -> void:
 	spell_chain_panel = SPELL_CHAIN_PANEL_SCENE.instantiate() as Control
 	hud_layer.add_child(spell_chain_panel)
 	spell_chain_panel.call("set_chain_nodes", spell_chain_nodes)
+	spell_chain_panel.call("set_synergies", active_synergies)
 
 	upgrade_panel = UPGRADE_PANEL_SCENE.instantiate() as Control
 	hud_layer.add_child(upgrade_panel)
@@ -392,13 +410,39 @@ func _fire_at_nearest_enemy() -> void:
 		var direction := base_direction.rotated(angle_offset)
 		_spawn_projectile(player.global_position + direction * 30.0, direction)
 
+	_shot_sequence += 1
+	if _cutting_echo_interval > 0 and _shot_sequence % _cutting_echo_interval == 0:
+		_spawn_projectile(
+			player.global_position + base_direction * 34.0,
+			base_direction,
+			{
+				"damage": int(round(float(projectile_damage) * _cutting_echo_damage_multiplier)),
+				"speed": projectile_speed * 1.08,
+				"size_multiplier": projectile_size_multiplier * 0.92,
+				"visual_shape": "diamond",
+				"fill_color": Color(0.72, 1.0, 0.94),
+				"outline_color": Color(1.0, 1.0, 1.0),
+			}
+		)
 
-func _spawn_projectile(spawn_position: Vector2, direction: Vector2) -> void:
+
+func _spawn_projectile(spawn_position: Vector2, direction: Vector2, overrides: Dictionary = {}) -> void:
 	var projectile := BASIC_PROJECTILE_SCENE.instantiate() as Area2D
-	add_child(projectile)
-	projectile.set("damage", projectile_damage)
-	projectile.set("speed", projectile_speed)
+	var actual_damage := int(overrides.get("damage", projectile_damage))
+	projectile.set("damage", actual_damage)
+	projectile.set("speed", float(overrides.get("speed", projectile_speed)))
 	projectile.set("pierce_left", projectile_pierce)
+	projectile.set("bounce_left", projectile_bounce)
+	projectile.set("arena_rect", arena_rect)
+	projectile.set("explosion_radius", projectile_explosion_radius)
+	projectile.set("explosion_damage", int(round(float(actual_damage) * projectile_explosion_damage_multiplier)))
+	projectile.set("size_multiplier", float(overrides.get("size_multiplier", projectile_size_multiplier)))
+	projectile.set("visual_shape", str(overrides.get("visual_shape", "circle")))
+	projectile.set("fill_color", overrides.get("fill_color", Color(1.0, 0.92, 0.28)))
+	projectile.set("outline_color", overrides.get("outline_color", Color(1.0, 1.0, 0.82)))
+	projectile.connect("explosion_requested", Callable(self, "_on_projectile_explosion_requested"))
+	projectile.connect("bounce_requested", Callable(self, "_on_projectile_bounce_requested"))
+	add_child(projectile)
 	projectile.call("setup", spawn_position, spawn_position + direction * 100.0)
 
 
@@ -406,7 +450,7 @@ func _get_nearest_enemy() -> Node2D:
 	var nearest_enemy: Node2D = null
 	var nearest_distance := INF
 
-	for enemy in enemies:
+	for enemy in enemies.duplicate():
 		if not is_instance_valid(enemy):
 			continue
 
@@ -491,8 +535,8 @@ func _pick_upgrade_options(count: int) -> Array[Dictionary]:
 
 
 func _on_upgrade_selected(upgrade: Dictionary) -> void:
-	_apply_upgrade(upgrade)
 	_add_spell_node_from_upgrade(upgrade)
+	_apply_upgrade(upgrade)
 	run_stats["upgrades_chosen"] = int(run_stats.get("upgrades_chosen", 0)) + 1
 	_spawn_floating_text("NO +1", arena_rect.position + Vector2(arena_rect.size.x * 0.5, arena_rect.size.y - 92.0), Color(0.72, 0.96, 1.0), 0.8)
 	_reward_open = false
@@ -525,15 +569,38 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 			projectile_count = mini(projectile_count + int(values.get("projectile_count_bonus", 1)), max_projectile_count)
 		"piercing":
 			projectile_pierce += int(values.get("pierce_bonus", 1))
+		"ricochet":
+			projectile_bounce += int(values.get("bounce_bonus", 1))
+		"arcane_explosion":
+			projectile_explosion_radius += float(values.get("radius_bonus", 60.0))
+			projectile_explosion_damage_multiplier += float(values.get("damage_multiplier_bonus", 0.5))
+		"heavy_orb":
+			projectile_damage = int(round(float(projectile_damage) * float(values.get("damage_multiplier", 1.4))))
+			projectile_speed *= float(values.get("speed_multiplier", 0.85))
+			projectile_size_multiplier += float(values.get("size_bonus", 0.2))
+		"cutting_echo":
+			_cutting_echo_interval = int(values.get("shot_interval", 4))
+			_cutting_echo_damage_multiplier += float(values.get("damage_multiplier_bonus", 0.25))
+		"unstable_field":
+			_unstable_field_enabled = true
+			_unstable_field_radius += float(values.get("radius_bonus", 60.0))
+			_unstable_field_damage += int(values.get("damage_bonus", 6))
+			_unstable_field_interval = float(values.get("pulse_interval", 0.5))
+			_ensure_unstable_field_aura()
+
+	_update_active_synergies()
 
 
 func _add_spell_node_from_upgrade(upgrade: Dictionary) -> void:
+	var upgrade_id := str(upgrade.get("id", ""))
+	upgrade_stacks[upgrade_id] = int(upgrade_stacks.get(upgrade_id, 0)) + 1
 	var spell_node := {
-		"id": str(upgrade.get("id", "")),
+		"id": upgrade_id,
 		"name": str(upgrade.get("name", "Upgrade")),
 		"category": str(upgrade.get("category", "projectile")),
 		"node_label": str(upgrade.get("node_label", upgrade.get("name", "Upgrade"))),
 		"effect_type": str(upgrade.get("effect_type", "")),
+		"stack": int(upgrade_stacks.get(upgrade_id, 1)),
 	}
 
 	spell_chain_nodes.append(spell_node)
@@ -633,6 +700,67 @@ func _create_upgrade_data() -> Array[Dictionary]:
 				"pierce_bonus": 1,
 			},
 		},
+		{
+			"id": "ricochet",
+			"name": "Ricochete",
+			"description": "Projeteis ricocheteiam +1 vez nas bordas.",
+			"category": "projectile",
+			"effect_type": "projectile_bounce",
+			"node_label": "Ricochete",
+			"values": {
+				"bounce_bonus": 1,
+			},
+		},
+		{
+			"id": "arcane_explosion",
+			"name": "Explosao Arcana",
+			"description": "Impactos causam dano em area.",
+			"category": "power",
+			"effect_type": "area_explosion",
+			"node_label": "Explode",
+			"values": {
+				"radius_bonus": 60.0,
+				"damage_multiplier_bonus": 0.5,
+			},
+		},
+		{
+			"id": "heavy_orb",
+			"name": "Orbe Pesado",
+			"description": "+40% dano, -15% velocidade, projetil maior.",
+			"category": "projectile",
+			"effect_type": "heavy_projectile",
+			"node_label": "Orbe",
+			"values": {
+				"damage_multiplier": 1.4,
+				"speed_multiplier": 0.85,
+				"size_bonus": 0.2,
+			},
+		},
+		{
+			"id": "cutting_echo",
+			"name": "Eco Cortante",
+			"description": "A cada 4 disparos, lanca um projetil extra forte.",
+			"category": "rhythm",
+			"effect_type": "special_projectile",
+			"node_label": "Eco",
+			"values": {
+				"shot_interval": 4,
+				"damage_multiplier_bonus": 0.25,
+			},
+		},
+		{
+			"id": "unstable_field",
+			"name": "Campo Instavel",
+			"description": "Aura fraca causa dano periodico em inimigos proximos.",
+			"category": "area",
+			"effect_type": "player_aura",
+			"node_label": "Campo",
+			"values": {
+				"radius_bonus": 60.0,
+				"damage_bonus": 6,
+				"pulse_interval": 0.5,
+			},
+		},
 	]
 
 
@@ -648,6 +776,86 @@ func _filter_unlocked_upgrades(upgrades: Array[Dictionary]) -> Array[Dictionary]
 			filtered.append(upgrade)
 
 	return filtered
+
+
+func _on_projectile_explosion_requested(world_position: Vector2, radius: float, damage: int) -> void:
+	if radius <= 0.0 or damage <= 0:
+		return
+
+	for enemy in enemies.duplicate():
+		if not is_instance_valid(enemy):
+			continue
+		if enemy.global_position.distance_to(world_position) > radius:
+			continue
+		if enemy.has_method("take_damage"):
+			enemy.call("take_damage", damage)
+
+	_spawn_burst(world_position, Color(0.92, 0.48, 1.0), 18)
+	_spawn_floating_text("BOOM", world_position + Vector2(0.0, -18.0), Color(1.0, 0.78, 1.0), 0.55)
+
+
+func _on_projectile_bounce_requested(world_position: Vector2) -> void:
+	_spawn_burst(world_position, Color(0.58, 0.9, 1.0), 5)
+
+
+func _update_unstable_field(delta: float) -> void:
+	if not _unstable_field_enabled or not is_instance_valid(player):
+		return
+
+	_unstable_field_time_left = maxf(_unstable_field_time_left - delta, 0.0)
+	if _unstable_field_time_left > 0.0:
+		return
+
+	_unstable_field_time_left = _unstable_field_interval
+	var pulse_radius := _get_effective_unstable_field_radius()
+	for enemy in enemies:
+		if not is_instance_valid(enemy):
+			continue
+		if enemy.global_position.distance_to(player.global_position) > pulse_radius:
+			continue
+		if enemy.has_method("take_damage"):
+			enemy.call("take_damage", _unstable_field_damage)
+
+	_spawn_burst(player.global_position, Color(0.36, 0.95, 1.0), 8)
+
+
+func _ensure_unstable_field_aura() -> void:
+	if not is_instance_valid(player):
+		return
+
+	if not is_instance_valid(_unstable_field_aura):
+		_unstable_field_aura = Node2D.new()
+		_unstable_field_aura.name = "UnstableFieldAura"
+		_unstable_field_aura.set_script(UNSTABLE_FIELD_AURA_SCRIPT)
+		player.add_child(_unstable_field_aura)
+
+	_unstable_field_aura.set("radius", _get_effective_unstable_field_radius())
+
+
+func _get_effective_unstable_field_radius() -> float:
+	var radius := _unstable_field_radius
+	if _has_upgrade("unstable_field") and _has_upgrade("energy_shell"):
+		radius += 18.0
+	return radius
+
+
+func _update_active_synergies() -> void:
+	active_synergies.clear()
+
+	if _has_upgrade("initial_fragmentation") and _has_upgrade("arcane_explosion"):
+		active_synergies.append("Fragmentacao Explosiva")
+	if _has_upgrade("ricochet") and _has_upgrade("piercing"):
+		active_synergies.append("Perfuracao Saltante")
+	if _has_upgrade("unstable_field") and _has_upgrade("energy_shell"):
+		active_synergies.append("Campo Blindado")
+		_ensure_unstable_field_aura()
+
+	if is_instance_valid(spell_chain_panel):
+		spell_chain_panel.call("set_synergies", active_synergies)
+
+
+func _has_upgrade(upgrade_id: String) -> bool:
+	return int(upgrade_stacks.get(upgrade_id, 0)) > 0
 
 
 func _update_hud() -> void:
@@ -807,6 +1015,7 @@ func _finalize_run_stats() -> void:
 	run_stats["final_score"] = score
 	run_stats["build_nodes"] = _get_spell_chain_labels()
 	run_stats["victory"] = bool(run_stats.get("boss_defeated", false))
+	run_stats["active_synergies"] = active_synergies.duplicate()
 
 
 func _apply_meta_progress(victory: bool) -> void:

@@ -10,6 +10,11 @@ const BASIC_UPGRADE_IDS := [
 	"energy_shell",
 	"swift_projectile",
 	"initial_fragmentation",
+	"ricochet",
+	"arcane_explosion",
+	"heavy_orb",
+	"cutting_echo",
+	"unstable_field",
 ]
 
 var progress: Dictionary = {}

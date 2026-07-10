@@ -1,8 +1,16 @@
 extends Area2D
 
+signal explosion_requested(world_position: Vector2, radius: float, damage: int)
+signal bounce_requested(world_position: Vector2)
+
 @export var speed: float = 520.0
 @export var damage: int = 12
 @export var pierce_left: int = 0
+@export var bounce_left: int = 0
+@export var explosion_radius: float = 0.0
+@export var explosion_damage: int = 0
+@export var size_multiplier: float = 1.0
+@export var visual_shape: String = "circle"
 @export var lifetime: float = 1.6
 @export var radius: float = 6.0
 @export var fill_color: Color = Color(1.0, 0.92, 0.28)
@@ -11,6 +19,7 @@ extends Area2D
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
 var direction: Vector2 = Vector2.RIGHT
+var arena_rect: Rect2
 var _life_left: float
 
 
@@ -34,6 +43,7 @@ func setup(spawn_position: Vector2, target_position: Vector2) -> void:
 
 func _physics_process(delta: float) -> void:
 	global_position += direction * speed * delta
+	_try_bounce()
 	_life_left -= delta
 
 	if _life_left <= 0.0:
@@ -47,17 +57,62 @@ func _on_body_entered(body: Node) -> void:
 	if body.has_method("take_damage"):
 		body.call("take_damage", damage)
 
+	if explosion_radius > 0.0 and explosion_damage > 0:
+		explosion_requested.emit(global_position, explosion_radius, explosion_damage)
+
 	if pierce_left <= 0:
 		queue_free()
 	else:
 		pierce_left -= 1
 
 
+func _try_bounce() -> void:
+	if arena_rect.size == Vector2.ZERO:
+		return
+
+	if arena_rect.has_point(global_position):
+		return
+
+	if bounce_left <= 0:
+		queue_free()
+		return
+
+	var bounced := false
+	if global_position.x < arena_rect.position.x or global_position.x > arena_rect.end.x:
+		direction.x *= -1.0
+		global_position.x = clampf(global_position.x, arena_rect.position.x, arena_rect.end.x)
+		bounced = true
+	if global_position.y < arena_rect.position.y or global_position.y > arena_rect.end.y:
+		direction.y *= -1.0
+		global_position.y = clampf(global_position.y, arena_rect.position.y, arena_rect.end.y)
+		bounced = true
+
+	if bounced:
+		bounce_left -= 1
+		rotation = direction.angle()
+		modulate = Color(1.25, 1.25, 1.25, 1.0)
+		var tween := create_tween()
+		tween.tween_property(self, "modulate", Color.WHITE, 0.12)
+		bounce_requested.emit(global_position)
+
+
 func _update_collision_radius() -> void:
 	if collision_shape.shape is CircleShape2D:
-		collision_shape.shape.radius = radius
+		collision_shape.shape.radius = radius * size_multiplier
 
 
 func _draw() -> void:
-	draw_circle(Vector2.ZERO, radius, fill_color)
-	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 24, outline_color, 1.5, true)
+	var draw_radius := radius * size_multiplier
+	match visual_shape:
+		"diamond":
+			var points := PackedVector2Array([
+				Vector2(0.0, -draw_radius),
+				Vector2(draw_radius * 0.9, 0.0),
+				Vector2(0.0, draw_radius),
+				Vector2(-draw_radius * 0.9, 0.0),
+			])
+			draw_colored_polygon(points, fill_color)
+			draw_polyline(PackedVector2Array([points[0], points[1], points[2], points[3], points[0]]), outline_color, 1.5)
+		_:
+			draw_circle(Vector2.ZERO, draw_radius, fill_color)
+			draw_arc(Vector2.ZERO, draw_radius, 0.0, TAU, 24, outline_color, 1.5, true)

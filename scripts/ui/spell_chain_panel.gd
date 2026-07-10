@@ -1,9 +1,11 @@
 extends Control
 
 @onready var title_label: Label = $Panel/TitleLabel
+@onready var synergy_label: Label = $Panel/SynergyLabel
 @onready var node_row: HBoxContainer = $Panel/ScrollContainer/NodeRow
 
 var _nodes: Array[Dictionary] = []
+var _synergies: Array[String] = []
 var _pulse_last_node := false
 
 
@@ -11,6 +13,9 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title_label.add_theme_color_override("font_color", Color(0.86, 0.96, 1.0))
 	title_label.add_theme_font_size_override("font_size", 18)
+	synergy_label.add_theme_color_override("font_color", Color(1.0, 0.88, 0.48))
+	synergy_label.add_theme_font_size_override("font_size", 16)
+	set_synergies([])
 
 
 func set_chain_nodes(nodes: Array[Dictionary]) -> void:
@@ -26,6 +31,26 @@ func add_node(node_data: Dictionary) -> void:
 	_pulse_last_node = true
 	_rebuild_nodes()
 	call_deferred("_pulse_last_node_visual")
+
+
+func set_synergies(synergies: Array) -> void:
+	_synergies.clear()
+	for synergy in synergies:
+		_synergies.append(str(synergy))
+
+	if _synergies.is_empty():
+		synergy_label.text = ""
+	else:
+		synergy_label.text = "Sinergias: %s" % _format_synergies()
+
+
+func _format_synergies() -> String:
+	var text := ""
+	for index in range(_synergies.size()):
+		if index > 0:
+			text += ", "
+		text += _synergies[index]
+	return text
 
 
 func _rebuild_nodes() -> void:
@@ -47,6 +72,9 @@ func _create_node_card(node_data: Dictionary) -> PanelContainer:
 
 	var label := Label.new()
 	label.text = str(node_data.get("node_label", node_data.get("name", "No")))
+	var stack := int(node_data.get("stack", 1))
+	if stack > 1:
+		label.text += " x%d" % stack
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.clip_text = true
@@ -99,6 +127,8 @@ func _get_category_color(category: String) -> Color:
 			return Color(0.20, 0.50, 0.36, 0.94)
 		"projectile":
 			return Color(0.58, 0.42, 0.12, 0.94)
+		"area":
+			return Color(0.12, 0.48, 0.54, 0.94)
 		_:
 			return Color(0.28, 0.34, 0.42, 0.94)
 
