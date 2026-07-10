@@ -2,6 +2,7 @@ extends Control
 
 @onready var play_button: Button = $Panel/PlayButton
 @onready var progress_button: Button = $Panel/ProgressButton
+@onready var options_button: Button = $Panel/OptionsButton
 @onready var quit_button: Button = $Panel/QuitButton
 @onready var meta_label: Label = $Panel/MetaLabel
 
@@ -9,8 +10,9 @@ extends Control
 func _ready() -> void:
 	play_button.pressed.connect(_on_play_pressed)
 	progress_button.pressed.connect(_on_progress_pressed)
+	options_button.pressed.connect(_on_options_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
-	for button in [play_button, progress_button, quit_button]:
+	for button in [play_button, progress_button, options_button, quit_button]:
 		_setup_button_feedback(button)
 	_update_meta_label()
 
@@ -34,6 +36,11 @@ func _on_play_pressed() -> void:
 func _on_progress_pressed() -> void:
 	_play_audio("play_button_click")
 	get_tree().change_scene_to_file("res://scenes/ui/progress_screen.tscn")
+
+
+func _on_options_pressed() -> void:
+	_play_audio("play_button_click")
+	get_tree().change_scene_to_file("res://scenes/ui/options_menu.tscn")
 
 
 func _on_quit_pressed() -> void:

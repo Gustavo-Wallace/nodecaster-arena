@@ -15,6 +15,7 @@ var _rng := RandomNumberGenerator.new()
 func _ready() -> void:
 	_rng.randomize()
 	_build_streams()
+	_load_settings_values()
 
 
 func _process(delta: float) -> void:
@@ -93,6 +94,22 @@ func stop_music() -> void:
 	pass
 
 
+func set_master_volume(value: float) -> void:
+	master_volume = clampf(value, 0.0, 1.0)
+
+
+func set_sfx_volume(value: float) -> void:
+	sfx_volume = clampf(value, 0.0, 1.0)
+
+
+func get_master_volume() -> float:
+	return master_volume
+
+
+func get_sfx_volume() -> float:
+	return sfx_volume
+
+
 func test_all_sounds() -> void:
 	var sound_ids := [
 		"button_click",
@@ -129,6 +146,17 @@ func _build_streams() -> void:
 		"victory": _make_sequence([440.0, 660.0, 880.0, 1320.0], 0.12, 0.45, "sine"),
 		"defeat": _make_sequence([420.0, 300.0, 190.0], 0.15, 0.5, "saw"),
 	}
+
+
+func _load_settings_values() -> void:
+	var settings_manager := get_node_or_null("/root/SettingsManager")
+	if settings_manager == null:
+		return
+
+	if settings_manager.has_method("get_master_volume"):
+		master_volume = clampf(float(settings_manager.call("get_master_volume")), 0.0, 1.0)
+	if settings_manager.has_method("get_sfx_volume"):
+		sfx_volume = clampf(float(settings_manager.call("get_sfx_volume")), 0.0, 1.0)
 
 
 func _play(sound_id: String, volume_db: float = 0.0, pitch: float = 1.0, cooldown: float = DEFAULT_COOLDOWN) -> void:

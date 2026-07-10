@@ -29,18 +29,18 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -260.0
-offset_top = -190.0
+offset_top = -220.0
 offset_right = 260.0
-offset_bottom = 190.0
+offset_bottom = 220.0
 grow_horizontal = 2
 grow_vertical = 2
 
 [node name="TitleLabel" type="Label" parent="Panel"]
 layout_mode = 0
 offset_left = 36.0
-offset_top = 42.0
+offset_top = 36.0
 offset_right = 484.0
-offset_bottom = 96.0
+offset_bottom = 90.0
 text = "Nodecaster Arena"
 horizontal_alignment = 1
 theme_override_font_sizes/font_size = 38
@@ -48,9 +48,9 @@ theme_override_font_sizes/font_size = 38
 [node name="SubtitleLabel" type="Label" parent="Panel"]
 layout_mode = 0
 offset_left = 46.0
-offset_top = 108.0
+offset_top = 102.0
 offset_right = 474.0
-offset_bottom = 158.0
+offset_bottom = 152.0
 text = "Construa uma cadeia arcana e sobreviva a simulacao."
 horizontal_alignment = 1
 autowrap_mode = 3
@@ -59,32 +59,40 @@ theme_override_font_sizes/font_size = 18
 [node name="MetaLabel" type="Label" parent="Panel"]
 layout_mode = 0
 offset_left = 38.0
-offset_top = 166.0
+offset_top = 160.0
 offset_right = 482.0
-offset_bottom = 196.0
+offset_bottom = 190.0
 text = "Ecos: 0"
 horizontal_alignment = 1
 
 [node name="PlayButton" type="Button" parent="Panel"]
 layout_mode = 0
 offset_left = 170.0
-offset_top = 216.0
+offset_top = 204.0
 offset_right = 350.0
-offset_bottom = 260.0
+offset_bottom = 246.0
 text = "Jogar"
 
 [node name="ProgressButton" type="Button" parent="Panel"]
 layout_mode = 0
 offset_left = 170.0
-offset_top = 272.0
+offset_top = 258.0
 offset_right = 350.0
-offset_bottom = 316.0
+offset_bottom = 300.0
 text = "Progresso"
+
+[node name="OptionsButton" type="Button" parent="Panel"]
+layout_mode = 0
+offset_left = 170.0
+offset_top = 312.0
+offset_right = 350.0
+offset_bottom = 354.0
+text = "Opcoes"
 
 [node name="QuitButton" type="Button" parent="Panel"]
 layout_mode = 0
 offset_left = 170.0
-offset_top = 328.0
+offset_top = 366.0
 offset_right = 350.0
-offset_bottom = 372.0
+offset_bottom = 408.0
 text = "Sair"
