@@ -4,6 +4,7 @@ signal died(enemy: Node)
 
 @export var speed: float = 145.0
 @export var max_health: int = 40
+@export var score_value: int = 10
 @export var contact_damage: int = 10
 @export var contact_damage_cooldown: float = 0.65
 @export var radius: float = 16.0
