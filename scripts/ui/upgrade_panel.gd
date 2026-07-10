@@ -6,6 +6,7 @@ signal upgrade_selected(upgrade: Dictionary)
 @onready var option_1_button: Button = $Panel/Option1Button
 @onready var option_2_button: Button = $Panel/Option2Button
 @onready var option_3_button: Button = $Panel/Option3Button
+@onready var option_4_button: Button = $Panel/Option4Button
 
 var option_buttons: Array[Button] = []
 var option_category_labels: Array[Label] = []
@@ -18,7 +19,7 @@ var _panel_tween: Tween
 
 func _ready() -> void:
 	hide()
-	option_buttons = [option_1_button, option_2_button, option_3_button]
+	option_buttons = [option_1_button, option_2_button, option_3_button, option_4_button]
 	title_label.add_theme_color_override("font_color", Color(0.9, 0.98, 1.0))
 	title_label.add_theme_font_size_override("font_size", 30)
 

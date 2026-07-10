@@ -75,11 +75,11 @@ text = "Jogar"
 
 [node name="ProgressButton" type="Button" parent="Panel"]
 layout_mode = 0
-offset_left = 170.0
+offset_left = 150.0
 offset_top = 258.0
-offset_right = 350.0
+offset_right = 370.0
 offset_bottom = 300.0
-text = "Progresso"
+text = "Arvore de Ecos"
 
 [node name="OptionsButton" type="Button" parent="Panel"]
 layout_mode = 0

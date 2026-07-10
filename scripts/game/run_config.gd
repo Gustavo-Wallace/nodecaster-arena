@@ -2,7 +2,7 @@ extends Node
 
 const MAIN_MENU_SCENE := "res://scenes/ui/main_menu.tscn"
 const CHARACTER_SELECT_SCENE := "res://scenes/ui/character_select.tscn"
-const PROGRESS_SCENE := "res://scenes/ui/progress_screen.tscn"
+const PROGRESS_SCENE := "res://scenes/ui/echo_skill_tree.tscn"
 const GAME_SCENE := "res://scenes/game/game.tscn"
 
 var selected_character_id: String = "circle"

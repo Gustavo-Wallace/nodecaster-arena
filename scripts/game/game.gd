@@ -136,6 +136,7 @@ func _spawn_player() -> void:
 	player = PLAYER_SCENE.instantiate() as Node2D
 	add_child(player)
 	player.call("apply_character_data", selected_character_data)
+	player.set("incoming_damage_multiplier", _get_meta_incoming_damage_multiplier())
 	player.global_position = arena_rect.get_center()
 	player.call("set_arena_rect", arena_rect)
 	player.connect("died", Callable(self, "_on_player_died"))
@@ -268,10 +269,27 @@ func _get_selected_character_data() -> Dictionary:
 
 
 func _apply_selected_character_to_run() -> void:
+	_apply_meta_skill_bonuses_to_selected_character()
 	projectile_damage = int(selected_character_data.get("projectile_damage", projectile_damage))
 	projectile_speed = float(selected_character_data.get("projectile_speed", projectile_speed))
 	projectile_count = int(selected_character_data.get("projectile_count", projectile_count))
 	auto_fire_interval = float(selected_character_data.get("fire_interval", auto_fire_interval))
+
+
+func _apply_meta_skill_bonuses_to_selected_character() -> void:
+	var save_manager := get_node_or_null("/root/SaveManager")
+	if save_manager == null:
+		return
+
+	var health_bonus := int(save_manager.call("get_skill_effect_value", "starting_max_health_bonus"))
+	var damage_bonus := int(save_manager.call("get_skill_effect_value", "starting_projectile_damage_bonus"))
+	var speed_bonus_multiplier := float(save_manager.call("get_skill_effect_value", "starting_projectile_speed_bonus_multiplier"))
+	var fire_interval_reduction := float(save_manager.call("get_skill_effect_value", "starting_fire_interval_reduction_multiplier"))
+
+	selected_character_data["max_health"] = int(selected_character_data.get("max_health", 100)) + health_bonus
+	selected_character_data["projectile_damage"] = int(selected_character_data.get("projectile_damage", projectile_damage)) + damage_bonus
+	selected_character_data["projectile_speed"] = float(selected_character_data.get("projectile_speed", projectile_speed)) * (1.0 + speed_bonus_multiplier)
+	selected_character_data["fire_interval"] = maxf(float(selected_character_data.get("fire_interval", auto_fire_interval)) * (1.0 - fire_interval_reduction), min_auto_fire_interval)
 
 
 func _spawn_wave_enemies() -> void:
@@ -595,6 +613,7 @@ func _complete_wave() -> void:
 		_auto_fire_timer.stop()
 
 	if current_wave_type == "mini_boss":
+		_apply_miniboss_repair_bonus()
 		hud.call("set_wave_message", "Mini-Boss derrotado")
 	else:
 		hud.call("set_wave_message", "Onda concluida")
@@ -612,7 +631,7 @@ func _show_upgrade_reward() -> void:
 		_start_next_wave()
 		return
 
-	upgrade_panel.call("show_upgrades", _pick_upgrade_options(3))
+	upgrade_panel.call("show_upgrades", _pick_upgrade_options(_get_upgrade_option_count()))
 
 
 func _pick_upgrade_options(count: int) -> Array[Dictionary]:
@@ -1158,6 +1177,36 @@ func _spawn_burst(world_position: Vector2, color: Color, particle_count: int = 1
 	var burst := BURST_EFFECT_SCENE.instantiate() as Node2D
 	add_child(burst)
 	burst.call("setup", world_position, color, particle_count)
+
+
+func _get_upgrade_option_count() -> int:
+	var save_manager := get_node_or_null("/root/SaveManager")
+	if save_manager == null or not save_manager.has_method("get_upgrade_option_count"):
+		return 3
+
+	return maxi(int(save_manager.call("get_upgrade_option_count")), 3)
+
+
+func _get_meta_incoming_damage_multiplier() -> float:
+	var save_manager := get_node_or_null("/root/SaveManager")
+	if save_manager == null:
+		return 1.0
+
+	var reduction := float(save_manager.call("get_skill_effect_value", "incoming_damage_reduction"))
+	return clampf(1.0 - reduction, 0.35, 1.0)
+
+
+func _apply_miniboss_repair_bonus() -> void:
+	var save_manager := get_node_or_null("/root/SaveManager")
+	if save_manager == null or not is_instance_valid(player):
+		return
+
+	var heal_amount := int(save_manager.call("get_skill_effect_value", "miniboss_heal_bonus"))
+	if heal_amount <= 0 or not player.has_method("heal"):
+		return
+
+	player.call("heal", heal_amount)
+	_spawn_floating_text("+%d" % heal_amount, player.global_position + Vector2(0.0, -34.0), Color(0.54, 1.0, 0.72), 0.7)
 
 
 func _spawn_shatter(world_position: Vector2, color: Color, shape_type: String, intensity: float, fragment_count: int, ring_count: int = 1) -> void:

@@ -35,7 +35,7 @@ func _on_play_pressed() -> void:
 
 func _on_progress_pressed() -> void:
 	_play_audio("play_button_click")
-	get_tree().change_scene_to_file("res://scenes/ui/progress_screen.tscn")
+	get_tree().change_scene_to_file("res://scenes/ui/echo_skill_tree.tscn")
 
 
 func _on_options_pressed() -> void:

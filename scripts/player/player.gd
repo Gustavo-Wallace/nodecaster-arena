@@ -10,6 +10,7 @@ signal died
 @export var visual_shape: String = "circle"
 @export var fill_color: Color = Color(0.18, 0.78, 1.0)
 @export var outline_color: Color = Color(0.82, 0.98, 1.0)
+@export_range(0.1, 1.0, 0.01) var incoming_damage_multiplier: float = 1.0
 
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
@@ -57,9 +58,10 @@ func take_damage(amount: int) -> void:
 	if _is_dead or amount <= 0:
 		return
 
-	current_health = maxi(current_health - amount, 0)
+	var final_amount := maxi(int(ceil(float(amount) * incoming_damage_multiplier)), 1)
+	current_health = maxi(current_health - final_amount, 0)
 	health_changed.emit(current_health, max_health)
-	damage_taken.emit(amount, global_position)
+	damage_taken.emit(final_amount, global_position)
 	_play_hit_feedback()
 
 	if current_health == 0:
