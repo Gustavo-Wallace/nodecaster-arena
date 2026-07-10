@@ -4,6 +4,7 @@ extends Control
 @onready var node_row: HBoxContainer = $Panel/ScrollContainer/NodeRow
 
 var _nodes: Array[Dictionary] = []
+var _pulse_last_node := false
 
 
 func _ready() -> void:
@@ -22,11 +23,14 @@ func set_chain_nodes(nodes: Array[Dictionary]) -> void:
 
 func add_node(node_data: Dictionary) -> void:
 	_nodes.append(node_data)
+	_pulse_last_node = true
 	_rebuild_nodes()
+	call_deferred("_pulse_last_node_visual")
 
 
 func _rebuild_nodes() -> void:
 	for child in node_row.get_children():
+		node_row.remove_child(child)
 		child.queue_free()
 
 	for index in range(_nodes.size()):
@@ -97,3 +101,18 @@ func _get_category_color(category: String) -> Color:
 			return Color(0.58, 0.42, 0.12, 0.94)
 		_:
 			return Color(0.28, 0.34, 0.42, 0.94)
+
+
+func _pulse_last_node_visual() -> void:
+	if not _pulse_last_node or node_row.get_child_count() == 0:
+		return
+
+	_pulse_last_node = false
+	var last_child := node_row.get_child(node_row.get_child_count() - 1) as Control
+	if last_child == null:
+		return
+
+	last_child.scale = Vector2.ONE * 1.18
+	last_child.pivot_offset = last_child.size * 0.5
+	var tween := create_tween()
+	tween.tween_property(last_child, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

@@ -1,6 +1,7 @@
 extends CharacterBody2D
 
 signal died(enemy: Node)
+signal damage_taken(enemy: Node, amount: int, world_position: Vector2)
 
 @export var speed: float = 140.0
 @export var max_health: int = 40
@@ -16,6 +17,7 @@ var current_health: int
 var player: Node2D
 var _contact_cooldown_left: float = 0.0
 var _is_dead: bool = false
+var _hit_tween: Tween
 
 
 func _ready() -> void:
@@ -44,6 +46,8 @@ func take_damage(amount: int) -> void:
 		return
 
 	current_health = maxi(current_health - amount, 0)
+	damage_taken.emit(self, amount, global_position)
+	_play_hit_feedback()
 	queue_redraw()
 
 	if current_health == 0:
@@ -77,6 +81,19 @@ func _die() -> void:
 	_is_dead = true
 	died.emit(self)
 	queue_free()
+
+
+func _play_hit_feedback() -> void:
+	if is_instance_valid(_hit_tween):
+		_hit_tween.kill()
+
+	scale = Vector2.ONE * 1.16
+	modulate = Color(1.45, 1.45, 1.45, 1.0)
+
+	_hit_tween = create_tween()
+	_hit_tween.set_parallel(true)
+	_hit_tween.tween_property(self, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_hit_tween.tween_property(self, "modulate", Color.WHITE, 0.12)
 
 
 func _update_collision_shape() -> void:

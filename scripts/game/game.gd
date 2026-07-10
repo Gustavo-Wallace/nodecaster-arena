@@ -8,6 +8,8 @@ const BASIC_PROJECTILE_SCENE := preload("res://scenes/projectiles/basic_projecti
 const GAME_HUD_SCENE := preload("res://scenes/ui/game_hud.tscn")
 const UPGRADE_PANEL_SCENE := preload("res://scenes/ui/upgrade_panel.tscn")
 const SPELL_CHAIN_PANEL_SCENE := preload("res://scenes/ui/spell_chain_panel.tscn")
+const FLOATING_TEXT_SCENE := preload("res://scenes/ui/floating_text.tscn")
+const BURST_EFFECT_SCENE := preload("res://scenes/effects/burst_effect.tscn")
 
 @export var arena_position: Vector2 = Vector2(96.0, 72.0)
 @export var arena_size: Vector2 = Vector2(1088.0, 576.0)
@@ -37,10 +39,14 @@ var arena_rect: Rect2
 var current_wave: int = 0
 var score: int = 0
 var spell_chain_nodes: Array[Dictionary] = []
+var camera: Camera2D
 var _auto_fire_timer: Timer
 var _is_restarting: bool = false
 var _wave_in_progress: bool = false
 var _reward_open: bool = false
+var _camera_shake_time_left: float = 0.0
+var _camera_shake_duration: float = 0.0
+var _camera_shake_strength: float = 0.0
 var _rng := RandomNumberGenerator.new()
 var _available_upgrades: Array[Dictionary] = []
 
@@ -51,11 +57,16 @@ func _ready() -> void:
 	spell_chain_nodes = [_create_base_spell_node()]
 	arena_rect = Rect2(arena_position, arena_size)
 
+	_setup_camera()
 	_spawn_player()
 	_spawn_hud()
 	_start_auto_fire()
 	_start_wave(1)
 	queue_redraw()
+
+
+func _process(delta: float) -> void:
+	_update_camera_shake(delta)
 
 
 func _draw() -> void:
@@ -72,6 +83,7 @@ func _spawn_player() -> void:
 	player.global_position = arena_rect.get_center()
 	player.call("set_arena_rect", arena_rect)
 	player.connect("died", Callable(self, "_on_player_died"))
+	player.connect("damage_taken", Callable(self, "_on_player_damage_taken"))
 
 
 func _spawn_hud() -> void:
@@ -162,6 +174,7 @@ func _spawn_enemy(enemy_scene: PackedScene, spawn_position: Vector2) -> void:
 	enemy.global_position = spawn_position
 	enemy.call("setup", player)
 	enemy.connect("died", Callable(self, "_on_enemy_died"))
+	enemy.connect("damage_taken", Callable(self, "_on_enemy_damage_taken"))
 	enemies.append(enemy)
 
 
@@ -274,6 +287,12 @@ func _get_nearest_enemy() -> Node2D:
 
 
 func _on_enemy_died(enemy: Node) -> void:
+	var death_position := Vector2.ZERO
+	if enemy is Node2D:
+		var enemy_node := enemy as Node2D
+		death_position = enemy_node.global_position
+
+	_spawn_burst(death_position, Color(1.0, 0.45, 0.26), 14)
 	enemies.erase(enemy)
 	score += _get_score_value_for_enemy(enemy)
 	_update_hud()
@@ -328,6 +347,7 @@ func _pick_upgrade_options(count: int) -> Array[Dictionary]:
 func _on_upgrade_selected(upgrade: Dictionary) -> void:
 	_apply_upgrade(upgrade)
 	_add_spell_node_from_upgrade(upgrade)
+	_spawn_floating_text("NO +1", arena_rect.position + Vector2(arena_rect.size.x * 0.5, arena_rect.size.y - 92.0), Color(0.72, 0.96, 1.0), 0.8)
 	_reward_open = false
 	hud.call("set_wave_message", "Proxima onda...")
 	get_tree().create_timer(wave_interval).timeout.connect(_start_next_wave)
@@ -471,6 +491,59 @@ func _create_upgrade_data() -> Array[Dictionary]:
 func _update_hud() -> void:
 	if is_instance_valid(hud):
 		hud.call("set_wave_info", current_wave, _get_alive_enemy_count(), score)
+
+
+func _on_enemy_damage_taken(_enemy: Node, amount: int, world_position: Vector2) -> void:
+	_spawn_floating_text("-%d" % amount, world_position + Vector2(0.0, -24.0), Color(1.0, 0.78, 0.32), 0.62)
+	_spawn_burst(world_position, Color(1.0, 0.72, 0.28), 6)
+
+
+func _on_player_damage_taken(amount: int, world_position: Vector2) -> void:
+	_spawn_floating_text("-%d" % amount, world_position + Vector2(0.0, -30.0), Color(1.0, 0.34, 0.34), 0.72)
+	_start_camera_shake(0.18, 8.0)
+
+
+func _spawn_floating_text(text: String, world_position: Vector2, color: Color, duration: float = 0.72) -> void:
+	var floating_text := FLOATING_TEXT_SCENE.instantiate() as Node2D
+	add_child(floating_text)
+	floating_text.call("setup", text, world_position, color, duration)
+
+
+func _spawn_burst(world_position: Vector2, color: Color, particle_count: int = 10) -> void:
+	var burst := BURST_EFFECT_SCENE.instantiate() as Node2D
+	add_child(burst)
+	burst.call("setup", world_position, color, particle_count)
+
+
+func _setup_camera() -> void:
+	camera = Camera2D.new()
+	camera.name = "GameCamera"
+	camera.position = arena_rect.get_center()
+	camera.enabled = true
+	add_child(camera)
+	camera.make_current()
+
+
+func _start_camera_shake(duration: float, strength: float) -> void:
+	_camera_shake_duration = duration
+	_camera_shake_time_left = duration
+	_camera_shake_strength = strength
+
+
+func _update_camera_shake(delta: float) -> void:
+	if not is_instance_valid(camera):
+		return
+
+	if _camera_shake_time_left <= 0.0:
+		camera.offset = Vector2.ZERO
+		return
+
+	_camera_shake_time_left = maxf(_camera_shake_time_left - delta, 0.0)
+	var fade := _camera_shake_time_left / maxf(_camera_shake_duration, 0.001)
+	camera.offset = Vector2(
+		_rng.randf_range(-_camera_shake_strength, _camera_shake_strength),
+		_rng.randf_range(-_camera_shake_strength, _camera_shake_strength)
+	) * fade
 
 
 func _get_alive_enemy_count() -> int:
