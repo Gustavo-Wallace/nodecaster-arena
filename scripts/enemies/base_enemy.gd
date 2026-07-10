@@ -5,6 +5,8 @@ signal damage_taken(enemy: Node, amount: int, world_position: Vector2)
 
 @export var speed: float = 140.0
 @export var max_health: int = 40
+@export var enemy_id: String = "enemy"
+@export var enemy_display_name: String = "Enemy"
 @export var score_value: int = 10
 @export var contact_damage: int = 10
 @export var contact_damage_cooldown: float = 0.65

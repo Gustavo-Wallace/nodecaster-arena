@@ -47,6 +47,8 @@ var current_wave: int = 0
 var current_wave_type: String = "normal"
 var score: int = 0
 var spell_chain_nodes: Array[Dictionary] = []
+var run_time_seconds: float = 0.0
+var run_stats: Dictionary = {}
 var camera: Camera2D
 var _auto_fire_timer: Timer
 var _is_restarting: bool = false
@@ -58,11 +60,14 @@ var _camera_shake_duration: float = 0.0
 var _camera_shake_strength: float = 0.0
 var _rng := RandomNumberGenerator.new()
 var _available_upgrades: Array[Dictionary] = []
+var _wave_enemy_counts: Dictionary = {}
 
 
 func _ready() -> void:
 	_rng.randomize()
 	_available_upgrades = _create_upgrade_data()
+	_wave_enemy_counts = _create_wave_enemy_counts()
+	run_stats = _create_run_stats()
 	spell_chain_nodes = [_create_base_spell_node()]
 	arena_rect = Rect2(arena_position, arena_size)
 
@@ -75,6 +80,9 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if not _run_finished:
+		run_time_seconds += delta
+
 	_update_camera_shake(delta)
 
 
@@ -136,6 +144,7 @@ func _start_wave(wave_number: int) -> void:
 
 	current_wave = wave_number
 	current_wave_type = _get_wave_type(current_wave)
+	run_stats["max_wave_reached"] = maxi(int(run_stats.get("max_wave_reached", 0)), current_wave)
 	_wave_in_progress = true
 	_reward_open = false
 	enemies.clear()
@@ -159,6 +168,39 @@ func _get_wave_type(wave_number: int) -> String:
 	return "normal"
 
 
+func _create_wave_enemy_counts() -> Dictionary:
+	return {
+		1: 3,
+		2: 4,
+		3: 6,
+		4: 7,
+		6: 9,
+		7: 10,
+		8: 11,
+		9: 12,
+	}
+
+
+func _create_run_stats() -> Dictionary:
+	return {
+		"run_time_seconds": 0.0,
+		"max_wave_reached": 0,
+		"final_score": 0,
+		"total_enemies_defeated": 0,
+		"enemy_kills": {
+			"circle_chaser": 0,
+			"triangle_dasher": 0,
+			"square_tank": 0,
+			"pentagon_miniboss": 0,
+			"hexagon_boss": 0,
+		},
+		"miniboss_defeated": false,
+		"boss_defeated": false,
+		"upgrades_chosen": 0,
+		"build_nodes": [],
+	}
+
+
 func _spawn_wave_enemies() -> void:
 	match current_wave_type:
 		"mini_boss":
@@ -174,6 +216,9 @@ func _spawn_wave_enemies() -> void:
 
 
 func _get_enemy_count_for_wave(wave_number: int) -> int:
+	if _wave_enemy_counts.has(wave_number):
+		return int(_wave_enemy_counts[wave_number])
+
 	return base_enemies_per_wave + wave_number * enemies_added_per_wave
 
 
@@ -347,8 +392,13 @@ func _on_enemy_died(enemy: Node) -> void:
 
 	_spawn_burst(death_position, Color(1.0, 0.45, 0.26), 14)
 	enemies.erase(enemy)
+	_record_enemy_defeated(enemy)
 	score += _get_score_value_for_enemy(enemy)
 	_update_hud()
+
+	if current_wave_type == "boss" and _get_enemy_id(enemy) == "hexagon_boss":
+		_finish_run(true)
+		return
 
 	if _wave_in_progress and enemies.is_empty() and not _is_restarting and not _run_finished:
 		_complete_wave()
@@ -409,6 +459,7 @@ func _pick_upgrade_options(count: int) -> Array[Dictionary]:
 func _on_upgrade_selected(upgrade: Dictionary) -> void:
 	_apply_upgrade(upgrade)
 	_add_spell_node_from_upgrade(upgrade)
+	run_stats["upgrades_chosen"] = int(run_stats.get("upgrades_chosen", 0)) + 1
 	_spawn_floating_text("NO +1", arena_rect.position + Vector2(arena_rect.size.x * 0.5, arena_rect.size.y - 92.0), Color(0.72, 0.96, 1.0), 0.8)
 	_reward_open = false
 	hud.call("set_wave_message", "Proxima onda...")
@@ -472,23 +523,23 @@ func _create_upgrade_data() -> Array[Dictionary]:
 		{
 			"id": "arcane_damage",
 			"name": "Dano Arcano",
-			"description": "+4 de dano nos projeteis.",
+			"description": "+5 de dano nos projeteis.",
 			"category": "power",
 			"effect_type": "projectile_damage",
 			"node_label": "Dano",
 			"values": {
-				"damage_bonus": 4,
+				"damage_bonus": 5,
 			},
 		},
 		{
 			"id": "unstable_cadence",
 			"name": "Cadencia Instavel",
-			"description": "Disparos automaticos 12% mais rapidos.",
+			"description": "Disparos automaticos 16% mais rapidos.",
 			"category": "rhythm",
 			"effect_type": "fire_interval",
 			"node_label": "Cadencia",
 			"values": {
-				"interval_multiplier": 0.88,
+				"interval_multiplier": 0.84,
 			},
 		},
 		{
@@ -505,13 +556,13 @@ func _create_upgrade_data() -> Array[Dictionary]:
 		{
 			"id": "energy_shell",
 			"name": "Casca Energetica",
-			"description": "+20 de vida maxima e cura 12.",
+			"description": "+22 de vida maxima e cura 16.",
 			"category": "body",
 			"effect_type": "player_health",
 			"node_label": "Casca",
 			"values": {
-				"max_health_bonus": 20,
-				"heal_amount": 12,
+				"max_health_bonus": 22,
+				"heal_amount": 16,
 			},
 		},
 		{
@@ -553,6 +604,33 @@ func _create_upgrade_data() -> Array[Dictionary]:
 func _update_hud() -> void:
 	if is_instance_valid(hud):
 		hud.call("set_wave_info", current_wave, _get_alive_enemy_count(), score, max_run_wave, _get_wave_title(current_wave_type))
+
+
+func _record_enemy_defeated(enemy: Node) -> void:
+	var enemy_id := _get_enemy_id(enemy)
+
+	run_stats["total_enemies_defeated"] = int(run_stats.get("total_enemies_defeated", 0)) + 1
+
+	var enemy_kills = run_stats.get("enemy_kills", {})
+	enemy_kills[enemy_id] = int(enemy_kills.get(enemy_id, 0)) + 1
+	run_stats["enemy_kills"] = enemy_kills
+
+	if enemy_id == "pentagon_miniboss":
+		run_stats["miniboss_defeated"] = true
+	elif enemy_id == "hexagon_boss":
+		run_stats["boss_defeated"] = true
+
+
+func _get_enemy_id(enemy: Node) -> String:
+	var raw_enemy_id = enemy.get("enemy_id")
+	if raw_enemy_id == null:
+		return "unknown"
+
+	var enemy_id := str(raw_enemy_id)
+	if enemy_id.is_empty():
+		return "unknown"
+
+	return enemy_id
 
 
 func _get_wave_title(wave_type: String) -> String:
@@ -653,13 +731,14 @@ func _finish_run(victory: bool) -> void:
 	_run_finished = true
 	_wave_in_progress = false
 	_reward_open = false
+	_finalize_run_stats()
 
 	if is_instance_valid(_auto_fire_timer):
 		_auto_fire_timer.stop()
 	if is_instance_valid(upgrade_panel):
 		upgrade_panel.hide()
 	if is_instance_valid(result_panel):
-		result_panel.call("show_result", victory, current_wave, max_run_wave, score)
+		result_panel.call("show_result", victory, run_stats, max_run_wave)
 	if is_instance_valid(hud):
 		hud.call("set_wave_message", "Run concluida" if victory else "Run encerrada")
 
@@ -670,6 +749,22 @@ func _finish_run(victory: bool) -> void:
 		_start_camera_shake(0.24, 9.0)
 
 	_clear_active_threats()
+
+
+func _finalize_run_stats() -> void:
+	run_stats["run_time_seconds"] = run_time_seconds
+	run_stats["max_wave_reached"] = maxi(int(run_stats.get("max_wave_reached", 0)), current_wave)
+	run_stats["final_score"] = score
+	run_stats["build_nodes"] = _get_spell_chain_labels()
+
+
+func _get_spell_chain_labels() -> Array[String]:
+	var labels: Array[String] = []
+
+	for node_data in spell_chain_nodes:
+		labels.append(str(node_data.get("node_label", node_data.get("name", "No"))))
+
+	return labels
 
 
 func _clear_active_threats() -> void:

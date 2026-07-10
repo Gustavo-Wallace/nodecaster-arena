@@ -10,11 +10,15 @@ collision_layer = 2
 collision_mask = 1
 script = ExtResource("1_eey1l")
 speed = 52.0
-max_health = 720
+max_health = 620
+enemy_id = "hexagon_boss"
+enemy_display_name = "Hexagon Boss"
 score_value = 500
 contact_damage = 24
 radius = 42.0
 contact_distance = 76.0
+pattern_interval = 3.45
+projectile_damage = 12
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_qhtyx")
