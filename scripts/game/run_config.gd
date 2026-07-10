@@ -2,6 +2,7 @@ extends Node
 
 const MAIN_MENU_SCENE := "res://scenes/ui/main_menu.tscn"
 const CHARACTER_SELECT_SCENE := "res://scenes/ui/character_select.tscn"
+const PROGRESS_SCENE := "res://scenes/ui/progress_screen.tscn"
 const GAME_SCENE := "res://scenes/game/game.tscn"
 
 var selected_character_id: String = "circle"
@@ -52,29 +53,62 @@ var characters := {
 		"fill_color": Color(0.36, 0.88, 0.54),
 		"outline_color": Color(0.82, 1.0, 0.82),
 	},
+	"diamond": {
+		"id": "diamond",
+		"display_name": "Losango",
+		"profile": "Conjurador",
+		"description": "Forma instavel especializada em poder arcano.",
+		"max_health": 86,
+		"move_speed": 320.0,
+		"projectile_damage": 18,
+		"projectile_speed": 620.0,
+		"fire_interval": 0.50,
+		"projectile_count": 1,
+		"visual_shape": "diamond",
+		"fill_color": Color(0.34, 0.92, 0.92),
+		"outline_color": Color(0.9, 1.0, 1.0),
+		"unlock_id": "character_diamond",
+		"unlock_cost": 25,
+	},
 }
 
 
 func select_character(character_id: String) -> void:
-	if characters.has(character_id):
+	if characters.has(character_id) and is_character_unlocked(character_id):
 		selected_character_id = character_id
 
 
 func get_selected_character_data() -> Dictionary:
+	if not is_character_unlocked(selected_character_id):
+		selected_character_id = "circle"
+
 	return get_character_data(selected_character_id)
 
 
 func get_character_data(character_id: String) -> Dictionary:
 	if not characters.has(character_id):
-		return characters["circle"].duplicate(true)
+		character_id = "circle"
 
-	return characters[character_id].duplicate(true)
+	var character_data: Dictionary = characters[character_id].duplicate(true)
+	character_data["unlocked"] = is_character_unlocked(character_id)
+	return character_data
 
 
 func get_character_list() -> Array[Dictionary]:
 	var list: Array[Dictionary] = []
 
-	for character_id in ["circle", "triangle", "square"]:
+	for character_id in ["circle", "triangle", "square", "diamond"]:
 		list.append(get_character_data(character_id))
 
 	return list
+
+
+func is_character_unlocked(character_id: String) -> bool:
+	if character_id in ["circle", "triangle", "square"]:
+		return true
+
+	var save_manager := get_node_or_null("/root/SaveManager")
+	if save_manager == null:
+		return false
+
+	return bool(save_manager.call("is_character_unlocked", character_id))

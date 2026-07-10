@@ -1,12 +1,16 @@
 extends Control
 
 @onready var play_button: Button = $Panel/PlayButton
+@onready var progress_button: Button = $Panel/ProgressButton
 @onready var quit_button: Button = $Panel/QuitButton
+@onready var meta_label: Label = $Panel/MetaLabel
 
 
 func _ready() -> void:
 	play_button.pressed.connect(_on_play_pressed)
+	progress_button.pressed.connect(_on_progress_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
+	_update_meta_label()
 
 
 func _draw() -> void:
@@ -24,5 +28,23 @@ func _on_play_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/ui/character_select.tscn")
 
 
+func _on_progress_pressed() -> void:
+	get_tree().change_scene_to_file("res://scenes/ui/progress_screen.tscn")
+
+
 func _on_quit_pressed() -> void:
 	get_tree().quit()
+
+
+func _update_meta_label() -> void:
+	var save_manager := get_node_or_null("/root/SaveManager")
+	if save_manager == null:
+		meta_label.text = "Ecos: 0"
+		return
+
+	var summary: Dictionary = save_manager.call("get_summary")
+	meta_label.text = "Ecos: %d   Melhor onda: %d   Vitorias: %d" % [
+		int(summary.get("ecos", 0)),
+		int(summary.get("best_wave", 0)),
+		int(summary.get("victories", 0)),
+	]

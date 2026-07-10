@@ -141,6 +141,15 @@ func _draw() -> void:
 			])
 			draw_colored_polygon(points, fill_color)
 			draw_polyline(PackedVector2Array([points[0], points[1], points[2], points[0]]), outline_color, 2.5)
+		"diamond":
+			var points := PackedVector2Array([
+				Vector2(0.0, -radius),
+				Vector2(radius * 0.82, 0.0),
+				Vector2(0.0, radius),
+				Vector2(-radius * 0.82, 0.0),
+			])
+			draw_colored_polygon(points, fill_color)
+			draw_polyline(PackedVector2Array([points[0], points[1], points[2], points[3], points[0]]), outline_color, 2.5)
 		"square":
 			var side := radius * 1.62
 			var rect := Rect2(Vector2(-side * 0.5, -side * 0.5), Vector2(side, side))

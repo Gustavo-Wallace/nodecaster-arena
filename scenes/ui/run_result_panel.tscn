@@ -29,9 +29,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -360.0
-offset_top = -245.0
+offset_top = -280.0
 offset_right = 360.0
-offset_bottom = 245.0
+offset_bottom = 280.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -58,7 +58,7 @@ layout_mode = 0
 offset_left = 46.0
 offset_top = 118.0
 offset_right = 334.0
-offset_bottom = 258.0
+offset_bottom = 320.0
 text = "Pontuacao"
 
 [node name="KillsLabel" type="Label" parent="Panel"]
@@ -66,29 +66,29 @@ layout_mode = 0
 offset_left = 366.0
 offset_top = 118.0
 offset_right = 674.0
-offset_bottom = 258.0
+offset_bottom = 320.0
 text = "Inimigos"
 
 [node name="BuildLabel" type="Label" parent="Panel"]
 layout_mode = 0
 offset_left = 46.0
-offset_top = 272.0
+offset_top = 334.0
 offset_right = 674.0
-offset_bottom = 374.0
+offset_bottom = 438.0
 text = "Build"
 
 [node name="RestartButton" type="Button" parent="Panel"]
 layout_mode = 0
 offset_left = 170.0
-offset_top = 410.0
+offset_top = 476.0
 offset_right = 340.0
-offset_bottom = 454.0
+offset_bottom = 520.0
 text = "Reiniciar Run"
 
 [node name="MenuButton" type="Button" parent="Panel"]
 layout_mode = 0
 offset_left = 380.0
-offset_top = 410.0
+offset_top = 476.0
 offset_right = 550.0
-offset_bottom = 454.0
+offset_bottom = 520.0
 text = "Menu Principal"

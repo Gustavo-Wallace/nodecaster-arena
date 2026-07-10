@@ -37,13 +37,21 @@ func show_result(victory: bool, stats: Dictionary, max_wave: int) -> void:
 	var total_enemies := int(stats.get("total_enemies_defeated", 0))
 	var upgrades_chosen := int(stats.get("upgrades_chosen", 0))
 	var character_name := str(stats.get("character_name", "Circulo"))
+	var ecos_earned := int(stats.get("ecos_earned", 0))
+	var total_ecos := int(stats.get("total_ecos", 0))
+	var score_record := "Sim" if bool(stats.get("new_best_score", false)) else "Nao"
+	var wave_record := "Sim" if bool(stats.get("new_best_wave", false)) else "Nao"
 
-	stats_label.text = "Forma: %s\nOnda: %d/%d\nPontuacao: %d\nTempo: %s\nInimigos derrotados: %d\nUpgrades escolhidos: %d" % [
+	stats_label.text = "Forma: %s\nOnda: %d/%d\nPontuacao: %d\nTempo: %s\nEcos: +%d / Total %d\nRecorde pontos: %s\nRecorde onda: %s\nInimigos derrotados: %d\nUpgrades escolhidos: %d" % [
 		character_name,
 		wave_reached,
 		max_wave,
 		final_score,
 		_format_time(run_time),
+		ecos_earned,
+		total_ecos,
+		score_record,
+		wave_record,
 		total_enemies,
 		upgrades_chosen,
 	]

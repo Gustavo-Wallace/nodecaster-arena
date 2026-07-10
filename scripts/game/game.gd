@@ -68,7 +68,7 @@ func _ready() -> void:
 	_rng.randomize()
 	selected_character_data = _get_selected_character_data()
 	_apply_selected_character_to_run()
-	_available_upgrades = _create_upgrade_data()
+	_available_upgrades = _filter_unlocked_upgrades(_create_upgrade_data())
 	_wave_enemy_counts = _create_wave_enemy_counts()
 	run_stats = _create_run_stats()
 	spell_chain_nodes = [_create_base_spell_node()]
@@ -628,11 +628,26 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"category": "projectile",
 			"effect_type": "projectile_pierce",
 			"node_label": "Perfura",
+			"unlock_id": "upgrade_piercing",
 			"values": {
 				"pierce_bonus": 1,
 			},
 		},
 	]
+
+
+func _filter_unlocked_upgrades(upgrades: Array[Dictionary]) -> Array[Dictionary]:
+	var save_manager := get_node_or_null("/root/SaveManager")
+	var filtered: Array[Dictionary] = []
+
+	for upgrade in upgrades:
+		var unlock_id := str(upgrade.get("unlock_id", ""))
+		if unlock_id.is_empty():
+			filtered.append(upgrade)
+		elif save_manager != null and bool(save_manager.call("is_unlocked", unlock_id)):
+			filtered.append(upgrade)
+
+	return filtered
 
 
 func _update_hud() -> void:
@@ -766,6 +781,7 @@ func _finish_run(victory: bool) -> void:
 	_wave_in_progress = false
 	_reward_open = false
 	_finalize_run_stats()
+	_apply_meta_progress(victory)
 
 	if is_instance_valid(_auto_fire_timer):
 		_auto_fire_timer.stop()
@@ -790,6 +806,18 @@ func _finalize_run_stats() -> void:
 	run_stats["max_wave_reached"] = maxi(int(run_stats.get("max_wave_reached", 0)), current_wave)
 	run_stats["final_score"] = score
 	run_stats["build_nodes"] = _get_spell_chain_labels()
+	run_stats["victory"] = bool(run_stats.get("boss_defeated", false))
+
+
+func _apply_meta_progress(victory: bool) -> void:
+	var save_manager := get_node_or_null("/root/SaveManager")
+	run_stats["victory"] = victory
+	if save_manager == null:
+		return
+
+	var meta_result: Dictionary = save_manager.call("apply_run_result", run_stats, victory)
+	for key in meta_result.keys():
+		run_stats[key] = meta_result[key]
 
 
 func _get_spell_chain_labels() -> Array[String]:
