@@ -1,6 +1,7 @@
 extends Node
 
 const SAVE_PATH := "user://nodecaster_arena_save.cfg"
+const SKILL_TREE_VERSION := 2
 
 const BASIC_CHARACTER_IDS := ["circle", "triangle", "square"]
 const BASIC_UPGRADE_IDS := [
@@ -39,93 +40,82 @@ var unlock_definitions := {
 }
 
 var skill_definitions := {
-	"core_health_1": {
-		"id": "core_health_1",
-		"name": "Nucleo I",
-		"description": "+5 vida maxima inicial.",
+	"resonant_shell": {
+		"id": "resonant_shell",
+		"name": "Casca Ressonante",
+		"description": "No inicio de cada onda, ganha 1 escudo que absorve o proximo impacto.",
 		"branch": "core",
-		"cost": 8,
+		"cost": 14,
 		"prerequisites": [],
-		"effect_type": "starting_max_health_bonus",
-		"effect_value": 5,
+		"effect_type": "wave_shield_charges",
+		"effect_value": 1,
 		"position": Vector2(482.0, 225.0),
 	},
-	"core_health_2": {
-		"id": "core_health_2",
-		"name": "Nucleo II",
-		"description": "+5 vida maxima inicial.",
-		"branch": "core",
-		"cost": 15,
-		"prerequisites": ["core_health_1"],
-		"effect_type": "starting_max_health_bonus",
-		"effect_value": 5,
-		"position": Vector2(482.0, 115.0),
-	},
-	"core_repair_miniboss": {
-		"id": "core_repair_miniboss",
-		"name": "Reparo Inicial",
-		"description": "Recupera 10 de vida ao derrotar o mini-boss.",
-		"branch": "core",
-		"cost": 24,
-		"prerequisites": ["core_health_2"],
-		"effect_type": "miniboss_heal_bonus",
-		"effect_value": 10,
-		"position": Vector2(312.0, 35.0),
-	},
-	"core_stability_1": {
-		"id": "core_stability_1",
-		"name": "Estabilidade",
-		"description": "Reduz em 6% o dano recebido.",
+	"stable_window": {
+		"id": "stable_window",
+		"name": "Janela Estavel",
+		"description": "Apos sofrer dano, fica invulneravel por um breve momento.",
 		"branch": "core",
 		"cost": 20,
-		"prerequisites": ["core_health_1"],
-		"effect_type": "incoming_damage_reduction",
-		"effect_value": 0.06,
+		"prerequisites": ["resonant_shell"],
+		"effect_type": "post_hit_invulnerability_duration",
+		"effect_value": 0.6,
+		"position": Vector2(482.0, 115.0),
+	},
+	"field_repair": {
+		"id": "field_repair",
+		"name": "Reparo de Campo",
+		"description": "Ao derrotar o mini-boss, recupera 18 de vida.",
+		"branch": "core",
+		"cost": 24,
+		"prerequisites": ["stable_window"],
+		"effect_type": "miniboss_heal_bonus",
+		"effect_value": 18,
+		"position": Vector2(312.0, 35.0),
+	},
+	"emergency_pulse": {
+		"id": "emergency_pulse",
+		"name": "Pulso de Emergencia",
+		"description": "Abaixo de 30% de vida, receber dano libera um pulso que fere inimigos proximos.",
+		"branch": "core",
+		"cost": 32,
+		"prerequisites": ["stable_window"],
+		"effect_type": "emergency_pulse_radius",
+		"effect_value": 138,
 		"position": Vector2(652.0, 35.0),
 	},
-	"projectile_damage_1": {
-		"id": "projectile_damage_1",
-		"name": "Faisca I",
-		"description": "+1 dano inicial dos projeteis.",
+	"catalyzed_shot": {
+		"id": "catalyzed_shot",
+		"name": "Disparo Catalisado",
+		"description": "A cada 4 disparos, o proximo vira um prisma maior e muito mais forte.",
 		"branch": "projectile",
-		"cost": 8,
+		"cost": 18,
 		"prerequisites": [],
-		"effect_type": "starting_projectile_damage_bonus",
-		"effect_value": 1,
+		"effect_type": "catalyzed_shot_interval",
+		"effect_value": 4,
 		"position": Vector2(725.0, 360.0),
 	},
-	"projectile_damage_2": {
-		"id": "projectile_damage_2",
-		"name": "Faisca II",
-		"description": "+1 dano inicial dos projeteis.",
-		"branch": "projectile",
-		"cost": 16,
-		"prerequisites": ["projectile_damage_1"],
-		"effect_type": "starting_projectile_damage_bonus",
-		"effect_value": 1,
-		"position": Vector2(890.0, 360.0),
-	},
-	"projectile_speed_1": {
-		"id": "projectile_speed_1",
-		"name": "Impulso Arcano",
-		"description": "+10% velocidade inicial dos projeteis.",
+	"opening_charge": {
+		"id": "opening_charge",
+		"name": "Carga de Abertura",
+		"description": "Nos primeiros segundos de cada onda, seus projeteis recebem +1 perfuracao.",
 		"branch": "projectile",
 		"cost": 22,
-		"prerequisites": ["projectile_damage_2"],
-		"effect_type": "starting_projectile_speed_bonus_multiplier",
-		"effect_value": 0.1,
-		"position": Vector2(1040.0, 275.0),
+		"prerequisites": ["catalyzed_shot"],
+		"effect_type": "opening_charge_duration",
+		"effect_value": 4.5,
+		"position": Vector2(890.0, 275.0),
 	},
-	"initial_rhythm": {
-		"id": "initial_rhythm",
-		"name": "Ritmo Inicial",
-		"description": "Reduz em 7% o intervalo inicial de disparo.",
+	"initial_fragment": {
+		"id": "initial_fragment",
+		"name": "Fragmento Inicial",
+		"description": "Toda run comeca com Fragmentacao ja conectada ao seu feitico.",
 		"branch": "projectile",
-		"cost": 28,
-		"prerequisites": ["projectile_speed_1"],
-		"effect_type": "starting_fire_interval_reduction_multiplier",
-		"effect_value": 0.07,
-		"position": Vector2(1040.0, 445.0),
+		"cost": 26,
+		"prerequisites": ["catalyzed_shot"],
+		"effect_type": "starting_fragmentation",
+		"effect_value": 1,
+		"position": Vector2(890.0, 445.0),
 	},
 	"unlock_piercing": {
 		"id": "unlock_piercing",
@@ -145,10 +135,54 @@ var skill_definitions := {
 		"description": "Mostra 4 mutacoes entre ondas. Voce ainda escolhe 1.",
 		"branch": "arcane",
 		"cost": 60,
-		"prerequisites": ["unlock_piercing", "projectile_damage_2"],
+		"prerequisites": ["prepared_choice"],
 		"effect_type": "upgrade_option_bonus",
 		"effect_value": 1,
 		"position": Vector2(650.0, 650.0),
+	},
+	"prepared_choice": {
+		"id": "prepared_choice",
+		"name": "Escolha Preparada",
+		"description": "Ganha 1 reroll por run no painel de mutacoes.",
+		"branch": "arcane",
+		"cost": 18,
+		"prerequisites": ["unlock_piercing"],
+		"effect_type": "upgrade_reroll_charges",
+		"effect_value": 1,
+		"position": Vector2(312.0, 650.0),
+	},
+	"arcane_memory": {
+		"id": "arcane_memory",
+		"name": "Memoria Arcana",
+		"description": "Toda run comeca com 1 mutacao basica aleatoria ja aplicada.",
+		"branch": "arcane",
+		"cost": 34,
+		"prerequisites": ["prepared_choice"],
+		"effect_type": "starting_random_mutation",
+		"effect_value": 1,
+		"position": Vector2(130.0, 745.0),
+	},
+	"directed_affinity": {
+		"id": "directed_affinity",
+		"name": "Afinidade Dirigida",
+		"description": "O primeiro painel de mutacao sempre oferece ao menos 1 opcao ofensiva.",
+		"branch": "arcane",
+		"cost": 28,
+		"prerequisites": ["expanded_options"],
+		"effect_type": "force_first_offensive_option",
+		"effect_value": 1,
+		"position": Vector2(810.0, 745.0),
+	},
+	"synergy_resonance": {
+		"id": "synergy_resonance",
+		"name": "Ressonancia de Sinergia",
+		"description": "Ao ja possuir parte de uma sinergia, favorece uma mutacao compativel nas recompensas.",
+		"branch": "arcane",
+		"cost": 42,
+		"prerequisites": ["directed_affinity"],
+		"effect_type": "synergy_option_bias",
+		"effect_value": 1,
+		"position": Vector2(1000.0, 650.0),
 	},
 	"unlock_diamond": {
 		"id": "unlock_diamond",
@@ -161,18 +195,6 @@ var skill_definitions := {
 		"target_id": "diamond",
 		"effect_value": 1,
 		"position": Vector2(300.0, 360.0),
-	},
-	"future_star": {
-		"id": "future_star",
-		"name": "Estrela",
-		"description": "Forma futura preparada para uma proxima etapa.",
-		"branch": "forms",
-		"cost": 0,
-		"prerequisites": ["unlock_diamond"],
-		"effect_type": "future",
-		"effect_value": 0,
-		"position": Vector2(115.0, 360.0),
-		"future": true,
 	},
 }
 
@@ -207,6 +229,11 @@ func load_progress() -> void:
 		[],
 		config.get_value("skills", "purchased", progress["purchased_skills"])
 	)
+	var stored_skill_tree_version := int(config.get_value("skills", "tree_version", 1))
+	if stored_skill_tree_version < SKILL_TREE_VERSION:
+		# Version 2 replaces the old numeric tree. Ecos, records and permanent unlocks stay intact.
+		progress["purchased_skills"] = []
+	progress["skill_tree_version"] = SKILL_TREE_VERSION
 	_migrate_legacy_unlocks_to_skills()
 	_apply_skill_unlocks_to_progress()
 	save_progress()
@@ -221,6 +248,7 @@ func save_progress() -> void:
 	config.set_value("unlocks", "characters", progress.get("unlocked_characters", BASIC_CHARACTER_IDS))
 	config.set_value("unlocks", "upgrades", progress.get("unlocked_upgrades", BASIC_UPGRADE_IDS))
 	config.set_value("skills", "purchased", progress.get("purchased_skills", []))
+	config.set_value("skills", "tree_version", int(progress.get("skill_tree_version", SKILL_TREE_VERSION)))
 	config.save(SAVE_PATH)
 
 
@@ -416,6 +444,7 @@ func _create_default_progress() -> Dictionary:
 		"unlocked_characters": BASIC_CHARACTER_IDS.duplicate(),
 		"unlocked_upgrades": BASIC_UPGRADE_IDS.duplicate(),
 		"purchased_skills": [],
+		"skill_tree_version": SKILL_TREE_VERSION,
 		"best_wave": 0,
 		"best_score": 0,
 		"victories": 0,
@@ -462,18 +491,20 @@ func _string_array_has(values, needle: String) -> bool:
 
 func _get_ordered_skill_ids() -> Array[String]:
 	return [
-		"core_health_1",
-		"core_health_2",
-		"core_repair_miniboss",
-		"core_stability_1",
-		"projectile_damage_1",
-		"projectile_damage_2",
-		"projectile_speed_1",
-		"initial_rhythm",
+		"resonant_shell",
+		"stable_window",
+		"field_repair",
+		"emergency_pulse",
+		"catalyzed_shot",
+		"opening_charge",
+		"initial_fragment",
 		"unlock_piercing",
+		"prepared_choice",
 		"expanded_options",
+		"arcane_memory",
+		"directed_affinity",
+		"synergy_resonance",
 		"unlock_diamond",
-		"future_star",
 	]
 
 

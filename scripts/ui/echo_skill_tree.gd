@@ -75,7 +75,7 @@ func _clear_tree_content() -> void:
 func _create_branch_labels() -> void:
 	var labels := [
 		{"text": "NUCLEO", "position": Vector2(470.0, 30.0), "branch": "core"},
-		{"text": "PROJETEIS", "position": Vector2(830.0, 290.0), "branch": "projectile"},
+		{"text": "PROJETEIS", "position": Vector2(780.0, 220.0), "branch": "projectile"},
 		{"text": "NOS ARCANOS", "position": Vector2(590.0, 615.0), "branch": "arcane"},
 		{"text": "FORMAS", "position": Vector2(150.0, 300.0), "branch": "forms"},
 	]
@@ -249,30 +249,34 @@ func _get_skill_by_id(skill_id: String) -> Dictionary:
 
 func _get_short_node_label(skill: Dictionary) -> String:
 	match str(skill.get("id", "")):
-		"core_health_1":
-			return "Nucleo I"
-		"core_health_2":
-			return "Nucleo II"
-		"core_repair_miniboss":
+		"resonant_shell":
+			return "Casca"
+		"stable_window":
+			return "Janela"
+		"field_repair":
 			return "Reparo"
-		"core_stability_1":
-			return "Estavel"
-		"projectile_damage_1":
-			return "Faisca I"
-		"projectile_damage_2":
-			return "Faisca II"
-		"projectile_speed_1":
-			return "Impulso"
-		"initial_rhythm":
-			return "Ritmo"
+		"emergency_pulse":
+			return "Pulso"
+		"catalyzed_shot":
+			return "Catalisa"
+		"opening_charge":
+			return "Abertura"
+		"initial_fragment":
+			return "Fragmento"
 		"unlock_piercing":
 			return "Perfura"
+		"prepared_choice":
+			return "Reroll"
 		"expanded_options":
 			return "+Opcoes"
+		"arcane_memory":
+			return "Memoria"
+		"directed_affinity":
+			return "Afinidade"
+		"synergy_resonance":
+			return "Sinergia"
 		"unlock_diamond":
 			return "Losango"
-		"future_star":
-			return "Estrela"
 		_:
 			return str(skill.get("name", "Skill"))
 

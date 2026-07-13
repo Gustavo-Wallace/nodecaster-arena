@@ -17,7 +17,7 @@ layout_mode = 0
 offset_left = 16.0
 offset_top = 14.0
 offset_right = 304.0
-offset_bottom = 160.0
+offset_bottom = 182.0
 color = Color(0.012, 0.018, 0.026, 0.78)
 
 [node name="HealthLabel" type="Label" parent="."]
@@ -73,8 +73,16 @@ layout_mode = 0
 offset_left = 24.0
 offset_top = 128.0
 offset_right = 292.0
-offset_bottom = 154.0
+offset_bottom = 148.0
 text = "TEMPO 00:00"
+
+[node name="MetaLabel" type="Label" parent="."]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 150.0
+offset_right = 292.0
+offset_bottom = 174.0
+text = ""
 
 [node name="MessageLabel" type="Label" parent="."]
 layout_mode = 0

@@ -85,6 +85,10 @@ var _unstable_field_damage: int = 0
 var _unstable_field_interval: float = 0.5
 var _unstable_field_time_left: float = 0.0
 var _unstable_field_aura: Node2D
+var _rerolls_left: int = 0
+var _has_shown_upgrade_panel: bool = false
+var _opening_charge_time_left: float = 0.0
+var _emergency_pulse_cooldown_left: float = 0.0
 
 
 func _ready() -> void:
@@ -100,6 +104,7 @@ func _ready() -> void:
 	_setup_camera()
 	_spawn_player()
 	_spawn_hud()
+	_apply_meta_run_effects()
 	_start_auto_fire()
 	_start_wave(1)
 	queue_redraw()
@@ -109,6 +114,11 @@ func _process(delta: float) -> void:
 	if not _run_finished:
 		run_time_seconds += delta
 		_update_unstable_field(delta)
+		var opening_charge_was_active := _opening_charge_time_left > 0.0
+		_opening_charge_time_left = maxf(_opening_charge_time_left - delta, 0.0)
+		_emergency_pulse_cooldown_left = maxf(_emergency_pulse_cooldown_left - delta, 0.0)
+		if opening_charge_was_active:
+			_update_meta_hud()
 		if is_instance_valid(hud):
 			hud.call("set_run_time", run_time_seconds)
 
@@ -141,6 +151,10 @@ func _spawn_player() -> void:
 	player.call("set_arena_rect", arena_rect)
 	player.connect("died", Callable(self, "_on_player_died"))
 	player.connect("damage_taken", Callable(self, "_on_player_damage_taken"))
+	if player.has_signal("shield_changed"):
+		player.connect("shield_changed", Callable(self, "_on_player_shield_changed"))
+	if player.has_signal("shield_absorbed"):
+		player.connect("shield_absorbed", Callable(self, "_on_player_shield_absorbed"))
 
 
 func _spawn_hud() -> void:
@@ -160,6 +174,7 @@ func _spawn_hud() -> void:
 	upgrade_panel = UPGRADE_PANEL_SCENE.instantiate() as Control
 	hud_layer.add_child(upgrade_panel)
 	upgrade_panel.connect("upgrade_selected", Callable(self, "_on_upgrade_selected"))
+	upgrade_panel.connect("reroll_requested", Callable(self, "_on_upgrade_reroll_requested"))
 
 	result_panel = RUN_RESULT_PANEL_SCENE.instantiate() as Control
 	hud_layer.add_child(result_panel)
@@ -185,6 +200,7 @@ func _start_wave(wave_number: int) -> void:
 	_wave_in_progress = true
 	_reward_open = false
 	enemies.clear()
+	_activate_wave_meta_effects()
 
 	if is_instance_valid(_auto_fire_timer):
 		_auto_fire_timer.wait_time = auto_fire_interval
@@ -198,6 +214,7 @@ func _start_wave(wave_number: int) -> void:
 	_spawn_wave_enemies()
 
 	_update_hud()
+	_update_meta_hud()
 	hud.call("set_wave_message", _get_wave_message())
 
 
@@ -277,19 +294,81 @@ func _apply_selected_character_to_run() -> void:
 
 
 func _apply_meta_skill_bonuses_to_selected_character() -> void:
+	# Permanent skills now alter run behavior instead of character base stats.
+	pass
+
+
+func _apply_meta_run_effects() -> void:
 	var save_manager := get_node_or_null("/root/SaveManager")
 	if save_manager == null:
 		return
 
-	var health_bonus := int(save_manager.call("get_skill_effect_value", "starting_max_health_bonus"))
-	var damage_bonus := int(save_manager.call("get_skill_effect_value", "starting_projectile_damage_bonus"))
-	var speed_bonus_multiplier := float(save_manager.call("get_skill_effect_value", "starting_projectile_speed_bonus_multiplier"))
-	var fire_interval_reduction := float(save_manager.call("get_skill_effect_value", "starting_fire_interval_reduction_multiplier"))
+	_rerolls_left = int(save_manager.call("get_skill_effect_value", "upgrade_reroll_charges"))
+	if is_instance_valid(player) and player.has_method("set_post_hit_invulnerability"):
+		var invulnerability := float(save_manager.call("get_skill_effect_value", "post_hit_invulnerability_duration"))
+		player.call("set_post_hit_invulnerability", invulnerability)
 
-	selected_character_data["max_health"] = int(selected_character_data.get("max_health", 100)) + health_bonus
-	selected_character_data["projectile_damage"] = int(selected_character_data.get("projectile_damage", projectile_damage)) + damage_bonus
-	selected_character_data["projectile_speed"] = float(selected_character_data.get("projectile_speed", projectile_speed)) * (1.0 + speed_bonus_multiplier)
-	selected_character_data["fire_interval"] = maxf(float(selected_character_data.get("fire_interval", auto_fire_interval)) * (1.0 - fire_interval_reduction), min_auto_fire_interval)
+	if _has_meta_skill("initial_fragment"):
+		_apply_starting_meta_upgrade("initial_fragmentation", "FRAGMENTO INICIAL")
+	if _has_meta_skill("arcane_memory"):
+		_apply_random_memory_upgrade()
+
+	_update_meta_hud()
+
+
+func _activate_wave_meta_effects() -> void:
+	if is_instance_valid(player) and _has_meta_skill("resonant_shell") and player.has_method("set_shield_charges"):
+		var charges := maxi(int(_get_meta_effect_value("wave_shield_charges")), 1)
+		player.call("set_shield_charges", charges)
+		_spawn_floating_text("ESCUDO", player.global_position + Vector2(0.0, -34.0), Color(0.5, 0.94, 1.0), 0.58)
+
+	_opening_charge_time_left = _get_meta_effect_value("opening_charge_duration") if _has_meta_skill("opening_charge") else 0.0
+	if _opening_charge_time_left > 0.0 and is_instance_valid(player):
+		_spawn_floating_text("CARGA", player.global_position + Vector2(0.0, -52.0), Color(1.0, 0.84, 0.34), 0.5)
+
+
+func _apply_starting_meta_upgrade(upgrade_id: String, message: String) -> void:
+	var upgrade := _get_upgrade_by_id(upgrade_id)
+	if upgrade.is_empty():
+		return
+
+	_add_spell_node_from_upgrade(upgrade)
+	_apply_upgrade(upgrade)
+	if is_instance_valid(player):
+		_spawn_floating_text(message, player.global_position + Vector2(0.0, -46.0), Color(0.76, 0.96, 1.0), 0.7)
+
+
+func _apply_random_memory_upgrade() -> void:
+	var memory_pool := ["arcane_damage", "swift_projectile", "ricochet", "arcane_explosion", "energy_shell"]
+	var candidates: Array[String] = []
+	for upgrade_id in memory_pool:
+		var upgrade := _get_upgrade_by_id(upgrade_id)
+		if not upgrade.is_empty():
+			candidates.append(upgrade_id)
+
+	if candidates.is_empty():
+		return
+
+	_apply_starting_meta_upgrade(candidates[_rng.randi_range(0, candidates.size() - 1)], "MEMORIA ARCANA")
+
+
+func _get_upgrade_by_id(upgrade_id: String) -> Dictionary:
+	for upgrade in _available_upgrades:
+		if str(upgrade.get("id", "")) == upgrade_id:
+			return upgrade.duplicate(true)
+	return {}
+
+
+func _has_meta_skill(skill_id: String) -> bool:
+	var save_manager := get_node_or_null("/root/SaveManager")
+	return save_manager != null and bool(save_manager.call("is_skill_purchased", skill_id))
+
+
+func _get_meta_effect_value(effect_type: String) -> float:
+	var save_manager := get_node_or_null("/root/SaveManager")
+	if save_manager == null:
+		return 0.0
+	return float(save_manager.call("get_skill_effect_value", effect_type))
 
 
 func _spawn_wave_enemies() -> void:
@@ -507,6 +586,18 @@ func _fire_at_nearest_enemy() -> void:
 	var count := maxi(projectile_count, 1)
 	var total_spread := deg_to_rad(projectile_spread_degrees) * float(count - 1)
 	var start_angle := -total_spread * 0.5
+	_shot_sequence += 1
+	var catalyzed := _has_meta_skill("catalyzed_shot") and _shot_sequence % maxi(int(_get_meta_effect_value("catalyzed_shot_interval")), 1) == 0
+	var projectile_overrides: Dictionary = {}
+	if catalyzed:
+		projectile_overrides = {
+			"damage": int(round(float(projectile_damage) * 1.8)),
+			"size_multiplier": projectile_size_multiplier * 1.45,
+			"visual_shape": "diamond",
+			"fill_color": Color(1.0, 0.48, 0.9),
+			"outline_color": Color(1.0, 0.94, 0.68),
+		}
+		_spawn_floating_text("CATALISADO", player.global_position + Vector2(0.0, -42.0), Color(1.0, 0.66, 0.94), 0.46)
 
 	for index in range(count):
 		var angle_offset := 0.0
@@ -514,10 +605,9 @@ func _fire_at_nearest_enemy() -> void:
 			angle_offset = start_angle + deg_to_rad(projectile_spread_degrees) * float(index)
 
 		var direction := base_direction.rotated(angle_offset)
-		_spawn_projectile(player.global_position + direction * 30.0, direction)
+		_spawn_projectile(player.global_position + direction * 30.0, direction, projectile_overrides)
 
 	_play_audio("play_shoot")
-	_shot_sequence += 1
 	if _cutting_echo_interval > 0 and _shot_sequence % _cutting_echo_interval == 0:
 		_spawn_projectile(
 			player.global_position + base_direction * 34.0,
@@ -538,14 +628,15 @@ func _spawn_projectile(spawn_position: Vector2, direction: Vector2, overrides: D
 	var actual_damage := int(overrides.get("damage", projectile_damage))
 	projectile.set("damage", actual_damage)
 	projectile.set("speed", float(overrides.get("speed", projectile_speed)))
-	projectile.set("pierce_left", projectile_pierce)
+	var opening_pierce := 1 if _opening_charge_time_left > 0.0 else 0
+	projectile.set("pierce_left", projectile_pierce + opening_pierce)
 	projectile.set("bounce_left", projectile_bounce)
 	projectile.set("arena_rect", arena_rect)
 	projectile.set("explosion_radius", projectile_explosion_radius)
 	projectile.set("explosion_damage", int(round(float(actual_damage) * projectile_explosion_damage_multiplier)))
 	projectile.set("size_multiplier", float(overrides.get("size_multiplier", projectile_size_multiplier)))
 	projectile.set("visual_shape", str(overrides.get("visual_shape", "circle")))
-	var projectile_colors := _get_projectile_visual_colors(overrides)
+	var projectile_colors := _get_projectile_visual_colors(overrides, opening_pierce > 0)
 	projectile.set("fill_color", projectile_colors["fill_color"])
 	projectile.set("outline_color", projectile_colors["outline_color"])
 	projectile.connect("explosion_requested", Callable(self, "_on_projectile_explosion_requested"))
@@ -631,14 +722,17 @@ func _show_upgrade_reward() -> void:
 		_start_next_wave()
 		return
 
-	upgrade_panel.call("show_upgrades", _pick_upgrade_options(_get_upgrade_option_count()))
+	upgrade_panel.call("show_upgrades", _pick_upgrade_options(_get_upgrade_option_count()), _rerolls_left)
+	_has_shown_upgrade_panel = true
 
 
 func _pick_upgrade_options(count: int) -> Array[Dictionary]:
 	var pool: Array[Dictionary] = _available_upgrades.duplicate()
 	var picked: Array[Dictionary] = []
 
+	_pick_directed_affinity_option(pool, picked, count)
 	_pick_priority_meta_upgrades(pool, picked, count)
+	_pick_synergy_option(pool, picked, count)
 
 	while picked.size() < count and not pool.is_empty():
 		var index := _rng.randi_range(0, pool.size() - 1)
@@ -648,6 +742,48 @@ func _pick_upgrade_options(count: int) -> Array[Dictionary]:
 		pool.remove_at(index)
 
 	return picked
+
+
+func _pick_directed_affinity_option(pool: Array[Dictionary], picked: Array[Dictionary], count: int) -> void:
+	if _has_shown_upgrade_panel or not _has_meta_skill("directed_affinity") or picked.size() >= count:
+		return
+
+	for index in range(pool.size()):
+		var candidate: Dictionary = pool[index]
+		var category := str(candidate.get("category", ""))
+		if category not in ["power", "projectile"]:
+			continue
+		var upgrade: Dictionary = candidate.duplicate(true)
+		_prepare_upgrade_option(upgrade)
+		picked.append(upgrade)
+		pool.remove_at(index)
+		return
+
+
+func _pick_synergy_option(pool: Array[Dictionary], picked: Array[Dictionary], count: int) -> void:
+	if not _has_meta_skill("synergy_resonance") or picked.size() >= count or _rng.randf() > 0.7:
+		return
+
+	var complementary_upgrade := ""
+	if _has_upgrade("initial_fragmentation") and not _has_upgrade("arcane_explosion"):
+		complementary_upgrade = "arcane_explosion"
+	elif _has_upgrade("ricochet") and not _has_upgrade("piercing"):
+		complementary_upgrade = "piercing"
+	elif _has_upgrade("unstable_field") and not _has_upgrade("energy_shell"):
+		complementary_upgrade = "energy_shell"
+
+	if complementary_upgrade.is_empty():
+		return
+
+	for index in range(pool.size()):
+		var candidate: Dictionary = pool[index]
+		if str(candidate.get("id", "")) != complementary_upgrade:
+			continue
+		var upgrade: Dictionary = candidate.duplicate(true)
+		_prepare_upgrade_option(upgrade)
+		picked.append(upgrade)
+		pool.remove_at(index)
+		return
 
 
 func _pick_priority_meta_upgrades(pool: Array[Dictionary], picked: Array[Dictionary], count: int) -> void:
@@ -684,6 +820,15 @@ func _on_upgrade_selected(upgrade: Dictionary) -> void:
 	_reward_open = false
 	hud.call("set_wave_message", "Proxima onda...")
 	get_tree().create_timer(wave_interval).timeout.connect(_start_next_wave)
+
+
+func _on_upgrade_reroll_requested() -> void:
+	if not _reward_open or _rerolls_left <= 0:
+		return
+
+	_rerolls_left -= 1
+	_update_meta_hud()
+	upgrade_panel.call("show_upgrades", _pick_upgrade_options(_get_upgrade_option_count()), _rerolls_left)
 
 
 func _apply_upgrade(upgrade: Dictionary) -> void:
@@ -1013,6 +1158,23 @@ func _update_hud() -> void:
 		hud.call("set_wave_info", current_wave, _get_alive_enemy_count(), score, max_run_wave, _get_wave_hud_title())
 
 
+func _update_meta_hud() -> void:
+	if not is_instance_valid(hud):
+		return
+
+	var details: Array[String] = []
+	if is_instance_valid(player):
+		var shield_charges := int(player.get("shield_charges"))
+		if shield_charges > 0:
+			details.append("ESCUDO %d" % shield_charges)
+	if _rerolls_left > 0:
+		details.append("REROLL %d" % _rerolls_left)
+	if _opening_charge_time_left > 0.0:
+		details.append("CARGA %.1fs" % _opening_charge_time_left)
+
+	hud.call("set_meta_info", " | ".join(details))
+
+
 func _record_enemy_defeated(enemy: Node) -> void:
 	var enemy_id := _get_enemy_id(enemy)
 
@@ -1114,6 +1276,42 @@ func _on_player_damage_taken(amount: int, world_position: Vector2) -> void:
 	_play_audio("play_player_hit")
 	_spawn_floating_text("-%d" % amount, world_position + Vector2(0.0, -30.0), Color(1.0, 0.34, 0.34), 0.72)
 	_start_camera_shake(0.18, 8.0)
+	_try_trigger_emergency_pulse()
+
+
+func _on_player_shield_changed(_charges: int) -> void:
+	_update_meta_hud()
+
+
+func _on_player_shield_absorbed(world_position: Vector2) -> void:
+	_play_audio("play_player_hit")
+	_spawn_floating_text("BLOQUEIO", world_position + Vector2(0.0, -32.0), Color(0.5, 0.94, 1.0), 0.6)
+	_spawn_impact_ring(world_position, Color(0.48, 0.92, 1.0, 0.76), 14.0, 48.0, 0.3, 2.5)
+	_start_camera_shake(0.1, 3.0)
+
+
+func _try_trigger_emergency_pulse() -> void:
+	if not _has_meta_skill("emergency_pulse") or _emergency_pulse_cooldown_left > 0.0 or not is_instance_valid(player):
+		return
+
+	var max_health := int(player.get("max_health"))
+	var current_health := int(player.get("current_health"))
+	if max_health <= 0 or float(current_health) / float(max_health) > 0.3:
+		return
+
+	var pulse_radius := _get_meta_effect_value("emergency_pulse_radius")
+	for enemy in enemies.duplicate():
+		if not is_instance_valid(enemy) or enemy.global_position.distance_to(player.global_position) > pulse_radius:
+			continue
+		if enemy.has_method("take_damage"):
+			enemy.call("take_damage", 14)
+
+	_emergency_pulse_cooldown_left = 7.0
+	_play_audio("play_explosion")
+	_spawn_floating_text("PULSO", player.global_position + Vector2(0.0, -48.0), Color(0.64, 0.84, 1.0), 0.68)
+	_spawn_burst(player.global_position, Color(0.48, 0.82, 1.0), 16)
+	_spawn_impact_ring(player.global_position, Color(0.5, 0.84, 1.0, 0.78), 22.0, pulse_radius, 0.5, 3.6)
+	_start_camera_shake(0.16, 5.0)
 
 
 func _on_star_bomber_exploded(enemy: Node, world_position: Vector2, radius: float, damage: int) -> void:
@@ -1188,12 +1386,7 @@ func _get_upgrade_option_count() -> int:
 
 
 func _get_meta_incoming_damage_multiplier() -> float:
-	var save_manager := get_node_or_null("/root/SaveManager")
-	if save_manager == null:
-		return 1.0
-
-	var reduction := float(save_manager.call("get_skill_effect_value", "incoming_damage_reduction"))
-	return clampf(1.0 - reduction, 0.35, 1.0)
+	return 1.0
 
 
 func _apply_miniboss_repair_bonus() -> void:
@@ -1207,6 +1400,7 @@ func _apply_miniboss_repair_bonus() -> void:
 
 	player.call("heal", heal_amount)
 	_spawn_floating_text("+%d" % heal_amount, player.global_position + Vector2(0.0, -34.0), Color(0.54, 1.0, 0.72), 0.7)
+	_spawn_impact_ring(player.global_position, Color(0.54, 1.0, 0.72, 0.62), 12.0, 54.0, 0.35, 2.2)
 
 
 func _spawn_shatter(world_position: Vector2, color: Color, shape_type: String, intensity: float, fragment_count: int, ring_count: int = 1) -> void:
@@ -1281,13 +1475,18 @@ func _get_enemy_color(enemy: Node) -> Color:
 			return Color(1.0, 0.28, 0.34)
 
 
-func _get_projectile_visual_colors(overrides: Dictionary) -> Dictionary:
+func _get_projectile_visual_colors(overrides: Dictionary, opening_charged: bool = false) -> Dictionary:
 	if overrides.has("fill_color") or overrides.has("outline_color"):
 		return {
 			"fill_color": overrides.get("fill_color", Color(1.0, 0.92, 0.28)),
 			"outline_color": overrides.get("outline_color", Color(1.0, 1.0, 0.82)),
 		}
 
+	if opening_charged:
+		return {
+			"fill_color": Color(1.0, 0.72, 0.24),
+			"outline_color": Color(1.0, 0.98, 0.72),
+		}
 	if projectile_explosion_radius > 0.0:
 		return {
 			"fill_color": Color(0.92, 0.48, 1.0),

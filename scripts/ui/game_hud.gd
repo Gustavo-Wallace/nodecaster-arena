@@ -6,6 +6,7 @@ extends Control
 @onready var enemies_label: Label = $EnemiesLabel
 @onready var score_label: Label = $ScoreLabel
 @onready var time_label: Label = $TimeLabel
+@onready var meta_label: Label = $MetaLabel
 @onready var message_label: Label = $MessageLabel
 
 const HEALTH_BAR_WIDTH := 264.0
@@ -16,15 +17,18 @@ var _message_tween: Tween
 
 
 func _ready() -> void:
-	for label in [health_label, wave_label, enemies_label, score_label, time_label, message_label]:
+	for label in [health_label, wave_label, enemies_label, score_label, time_label, meta_label, message_label]:
 		label.add_theme_color_override("font_color", Color(0.86, 0.96, 1.0))
 		label.add_theme_font_size_override("font_size", 20)
 
 	wave_label.add_theme_color_override("font_color", Color(1.0, 0.92, 0.58))
 	message_label.add_theme_color_override("font_color", Color(1.0, 0.92, 0.48))
 	message_label.add_theme_font_size_override("font_size", 24)
+	meta_label.add_theme_color_override("font_color", Color(0.56, 0.9, 1.0))
+	meta_label.add_theme_font_size_override("font_size", 15)
 	set_wave_info(0, 0, 0)
 	set_wave_message("")
+	set_meta_info("")
 	set_run_time(0.0)
 
 
@@ -79,6 +83,10 @@ func set_run_time(seconds: float) -> void:
 	var minutes := int(total_seconds / 60)
 	var remaining_seconds := total_seconds % 60
 	time_label.text = "TEMPO %02d:%02d" % [minutes, remaining_seconds]
+
+
+func set_meta_info(info: String) -> void:
+	meta_label.text = info
 
 
 func set_wave_message(message: String) -> void:

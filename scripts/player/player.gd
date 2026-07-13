@@ -2,6 +2,8 @@ extends CharacterBody2D
 
 signal health_changed(current_health: int, max_health: int)
 signal damage_taken(amount: int, world_position: Vector2)
+signal shield_changed(charges: int)
+signal shield_absorbed(world_position: Vector2)
 signal died
 
 @export var speed: float = 320.0
@@ -18,6 +20,9 @@ var current_health: int
 var arena_rect: Rect2 = Rect2(Vector2.ZERO, Vector2(1280.0, 720.0))
 var _is_dead: bool = false
 var _hit_tween: Tween
+var shield_charges: int = 0
+var post_hit_invulnerability_duration: float = 0.0
+var _damage_invulnerability_left: float = 0.0
 
 
 func _ready() -> void:
@@ -33,6 +38,7 @@ func _physics_process(_delta: float) -> void:
 		velocity = Vector2.ZERO
 		return
 
+	_damage_invulnerability_left = maxf(_damage_invulnerability_left - _delta, 0.0)
 	velocity = _read_movement_input() * speed
 	move_and_slide()
 	_clamp_to_arena()
@@ -55,11 +61,21 @@ func apply_character_data(character_data: Dictionary) -> void:
 
 
 func take_damage(amount: int) -> void:
-	if _is_dead or amount <= 0:
+	if _is_dead or amount <= 0 or _damage_invulnerability_left > 0.0:
+		return
+
+	if shield_charges > 0:
+		shield_charges -= 1
+		shield_changed.emit(shield_charges)
+		shield_absorbed.emit(global_position)
+		_damage_invulnerability_left = 0.12
+		_play_shield_feedback()
+		queue_redraw()
 		return
 
 	var final_amount := maxi(int(ceil(float(amount) * incoming_damage_multiplier)), 1)
 	current_health = maxi(current_health - final_amount, 0)
+	_damage_invulnerability_left = post_hit_invulnerability_duration
 	health_changed.emit(current_health, max_health)
 	damage_taken.emit(final_amount, global_position)
 	_play_hit_feedback()
@@ -83,6 +99,28 @@ func increase_max_health(amount: int, heal_amount: int) -> void:
 	max_health += amount
 	current_health = mini(current_health + heal_amount, max_health)
 	health_changed.emit(current_health, max_health)
+
+
+func grant_shield(charges: int = 1) -> void:
+	if _is_dead or charges <= 0:
+		return
+
+	shield_charges += charges
+	shield_changed.emit(shield_charges)
+	queue_redraw()
+
+
+func set_shield_charges(charges: int) -> void:
+	if _is_dead:
+		return
+
+	shield_charges = maxi(charges, 0)
+	shield_changed.emit(shield_charges)
+	queue_redraw()
+
+
+func set_post_hit_invulnerability(duration: float) -> void:
+	post_hit_invulnerability_duration = maxf(duration, 0.0)
 
 
 func _read_movement_input() -> Vector2:
@@ -128,6 +166,15 @@ func _play_hit_feedback() -> void:
 	_hit_tween.tween_property(self, "modulate", Color.WHITE, 0.16)
 
 
+func _play_shield_feedback() -> void:
+	if is_instance_valid(_hit_tween):
+		_hit_tween.kill()
+
+	modulate = Color(0.52, 0.95, 1.0, 1.0)
+	_hit_tween = create_tween()
+	_hit_tween.tween_property(self, "modulate", Color.WHITE, 0.18)
+
+
 func _update_collision_radius() -> void:
 	if collision_shape.shape is CircleShape2D:
 		collision_shape.shape.radius = radius
@@ -162,3 +209,6 @@ func _draw() -> void:
 			draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48, outline_color, 2.5, true)
 
 	draw_circle(Vector2.ZERO, radius * 0.28, Color(1.0, 1.0, 1.0, 0.9))
+	if shield_charges > 0:
+		draw_arc(Vector2.ZERO, radius + 8.0, 0.0, TAU, 40, Color(0.46, 0.94, 1.0, 0.9), 2.5, true)
+		draw_arc(Vector2.ZERO, radius + 12.0, -PI * 0.6, PI * 0.35, 20, Color(0.8, 1.0, 1.0, 0.55), 1.5, true)

@@ -1,12 +1,14 @@
 extends Control
 
 signal upgrade_selected(upgrade: Dictionary)
+signal reroll_requested
 
 @onready var title_label: Label = $Panel/TitleLabel
 @onready var option_1_button: Button = $Panel/Option1Button
 @onready var option_2_button: Button = $Panel/Option2Button
 @onready var option_3_button: Button = $Panel/Option3Button
 @onready var option_4_button: Button = $Panel/Option4Button
+@onready var reroll_button: Button = $Panel/RerollButton
 
 var option_buttons: Array[Button] = []
 var option_category_labels: Array[Label] = []
@@ -15,6 +17,7 @@ var option_description_labels: Array[Label] = []
 var option_impact_labels: Array[Label] = []
 var _upgrades: Array[Dictionary] = []
 var _panel_tween: Tween
+var _rerolls_left: int = 0
 
 
 func _ready() -> void:
@@ -27,6 +30,11 @@ func _ready() -> void:
 		var button := option_buttons[index]
 		button.pressed.connect(_on_option_pressed.bind(index))
 		_setup_option_card(button)
+
+	reroll_button.pressed.connect(_on_reroll_pressed)
+	reroll_button.focus_mode = Control.FOCUS_NONE
+	reroll_button.add_theme_stylebox_override("normal", _create_card_style(Color(0.08, 0.14, 0.17, 0.98), Color(0.4, 0.82, 1.0, 0.9)))
+	reroll_button.add_theme_stylebox_override("hover", _create_card_style(Color(0.12, 0.2, 0.24, 1.0), Color(0.75, 0.94, 1.0, 1.0)))
 
 
 func _setup_option_card(button: Button) -> void:
@@ -96,8 +104,9 @@ func _setup_option_card(button: Button) -> void:
 	option_impact_labels.append(impact)
 
 
-func show_upgrades(upgrades: Array[Dictionary]) -> void:
+func show_upgrades(upgrades: Array[Dictionary], rerolls_left: int = 0) -> void:
 	_upgrades = upgrades
+	_rerolls_left = maxi(rerolls_left, 0)
 
 	for index in range(option_buttons.size()):
 		var button := option_buttons[index]
@@ -117,8 +126,15 @@ func show_upgrades(upgrades: Array[Dictionary]) -> void:
 		option_description_labels[index].text = str(upgrade.get("description", ""))
 		option_impact_labels[index].text = _format_upgrade_impact(upgrade)
 
+	_update_reroll_button()
 	_animate_open()
 	show()
+
+
+func _update_reroll_button() -> void:
+	reroll_button.visible = _rerolls_left > 0
+	reroll_button.disabled = _rerolls_left <= 0
+	reroll_button.text = "Reroll (%d)" % _rerolls_left
 
 
 func _on_option_pressed(index: int) -> void:
@@ -128,6 +144,14 @@ func _on_option_pressed(index: int) -> void:
 	_play_audio("play_upgrade_pick")
 	hide()
 	upgrade_selected.emit(_upgrades[index])
+
+
+func _on_reroll_pressed() -> void:
+	if _rerolls_left <= 0:
+		return
+
+	_play_audio("play_button_click")
+	reroll_requested.emit()
 
 
 func _animate_open() -> void:
