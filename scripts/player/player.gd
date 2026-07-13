@@ -60,6 +60,12 @@ func apply_character_data(character_data: Dictionary) -> void:
 	queue_redraw()
 
 
+func apply_elemental_identity(fill: Color, outline: Color) -> void:
+	fill_color = fill
+	outline_color = outline
+	queue_redraw()
+
+
 func take_damage(amount: int) -> void:
 	if _is_dead or amount <= 0 or _damage_invulnerability_left > 0.0:
 		return

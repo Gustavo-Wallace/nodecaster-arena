@@ -94,16 +94,14 @@ func get_visual_profile(base_profile: Dictionary = {}) -> Dictionary:
 	var trail_style := "standard"
 
 	if has_node("arcane_damage"):
-		primary = primary.lerp(Color(0.92, 0.4, 1.0), 0.78)
-		secondary = Color(1.0, 0.78, 1.0)
+		secondary = secondary.lerp(Color(1.0, 0.78, 1.0), 0.54)
 		glow += 0.35
 	if has_node("arcane_explosion"):
 		impact_color = Color(1.0, 0.48, 0.16)
 		secondary = secondary.lerp(Color(1.0, 0.78, 0.26), 0.55)
 		glow += 0.2
 	if has_node("piercing"):
-		primary = primary.lerp(Color(0.58, 0.94, 1.0), 0.38)
-		secondary = Color(0.92, 1.0, 1.0)
+		secondary = secondary.lerp(Color(0.92, 1.0, 1.0), 0.68)
 		trail_style = "piercing"
 	if has_node("ricochet"):
 		secondary = Color(0.42, 0.94, 1.0)

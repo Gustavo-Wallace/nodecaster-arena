@@ -12,7 +12,7 @@ const DELIVERIES := {
 	"chain_lightning": {
 		"id": "chain_lightning",
 		"display_name": "Cadeia de Raio",
-		"description": "Salta entre inimigos proximos, perde dano a cada salto e domina grupos.",
+		"description": "Atinge ate 3 alvos proximos; dano cai a cada salto. Forte contra grupos.",
 		"available": true,
 		"tags": ["cadeia", "grupos"],
 	},

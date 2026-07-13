@@ -38,11 +38,16 @@ const UNSTABLE_FIELD_AURA_SCRIPT := preload("res://scripts/effects/unstable_fiel
 @export var projectile_size_multiplier: float = 1.0
 @export var projectile_explosion_radius: float = 0.0
 @export var projectile_explosion_damage_multiplier: float = 0.0
-@export var chain_range: float = 450.0
-@export var chain_jump_range: float = 220.0
-@export var chain_max_jumps: int = 3
-@export var chain_damage_falloff: float = 0.75
-@export var chain_base_damage_multiplier: float = 0.85
+@export var chain_range: float = 410.0
+@export var chain_jump_range: float = 185.0
+# max_hits inclui o primeiro alvo: a cadeia base nunca atinge mais de tres inimigos.
+@export var chain_max_hits: int = 3
+@export var chain_max_hits_cap: int = 8
+@export var chain_max_jump_range: float = 320.0
+@export var chain_min_cast_interval: float = 0.55
+@export var chain_cast_interval_multiplier: float = 1.45
+@export var chain_damage_falloff: float = 0.65
+@export var chain_base_damage_multiplier: float = 0.68
 @export var chain_visual_duration: float = 0.18
 @export var base_enemies_per_wave: int = 1
 @export var enemies_added_per_wave: int = 2
@@ -105,7 +110,7 @@ var _emergency_pulse_cooldown_left: float = 0.0
 var _graph_open: bool = false
 var _chain_range_bonus: float = 0.0
 var _chain_jump_range_bonus: float = 0.0
-var _chain_bonus_jumps: int = 0
+var _chain_bonus_hits: int = 0
 var _chain_falloff_bonus: float = 0.0
 var _chain_range_multiplier: float = 1.0
 
@@ -206,6 +211,11 @@ func _spawn_player() -> void:
 	player = PLAYER_SCENE.instantiate() as Node2D
 	add_child(player)
 	player.call("apply_character_data", selected_character_data)
+	player.call(
+		"apply_elemental_identity",
+		_spell_attributes.get("fill_color", Color(0.18, 0.78, 1.0)),
+		_spell_attributes.get("outline_color", Color(0.82, 0.98, 1.0))
+	)
 	player.set("incoming_damage_multiplier", _get_meta_incoming_damage_multiplier())
 	player.global_position = arena_rect.get_center()
 	player.call("set_arena_rect", arena_rect)
@@ -372,6 +382,8 @@ func _apply_spell_blueprint_to_run() -> void:
 	projectile_damage = maxi(1, int(round(float(projectile_damage) * float(_spell_attributes.get("damage_multiplier", 1.0)))))
 	projectile_speed *= float(_spell_attributes.get("projectile_speed_multiplier", 1.0))
 	auto_fire_interval = maxf(auto_fire_interval * float(_spell_attributes.get("fire_interval_multiplier", 1.0)), min_auto_fire_interval)
+	if _is_chain_lightning_delivery():
+		auto_fire_interval = maxf(auto_fire_interval * chain_cast_interval_multiplier, chain_min_cast_interval)
 	projectile_size_multiplier *= float(_spell_attributes.get("size_multiplier", 1.0))
 	projectile_pierce += int(_spell_attributes.get("pierce_bonus", 0))
 
@@ -461,7 +473,7 @@ func _apply_random_memory_upgrade() -> void:
 
 func _get_upgrade_by_id(upgrade_id: String) -> Dictionary:
 	for upgrade in _available_upgrades:
-		if str(upgrade.get("id", "")) == upgrade_id:
+		if str(upgrade.get("id", "")) == upgrade_id and _is_upgrade_compatible_with_current_delivery(upgrade):
 			return upgrade.duplicate(true)
 	return {}
 
@@ -749,7 +761,7 @@ func _cast_chain_lightning_spell() -> void:
 	var catalyzed := _has_meta_skill("catalyzed_shot") and _shot_sequence % maxi(int(_get_meta_effect_value("catalyzed_shot_interval")), 1) == 0
 	var echo_cast := _cutting_echo_interval > 0 and _shot_sequence % _cutting_echo_interval == 0
 	var base_damage := maxi(1, int(round(float(projectile_damage) * float(parameters["damage_multiplier"]) * (1.8 if catalyzed else 1.0))))
-	var max_jumps := int(parameters["max_jumps"]) + (1 if echo_cast else 0)
+	var max_hits := mini(int(parameters["max_hits"]) + (1 if echo_cast else 0), chain_max_hits_cap)
 	if echo_cast:
 		base_damage = maxi(1, int(round(float(base_damage) * _cutting_echo_damage_multiplier)))
 	if catalyzed:
@@ -759,7 +771,7 @@ func _cast_chain_lightning_spell() -> void:
 
 	var chain_points: Array[Vector2] = [player.global_position]
 	var current_target := first_target
-	for hit_index in range(max_jumps + 1):
+	for hit_index in range(max_hits):
 		if not is_instance_valid(current_target):
 			break
 
@@ -787,10 +799,10 @@ func _get_chain_parameters() -> Dictionary:
 	var jump_range_multiplier := float(_spell_attributes.get("chain_jump_range_multiplier", 1.0))
 	var falloff_multiplier := float(_spell_attributes.get("chain_falloff_multiplier", 1.0))
 	return {
-		"range": (chain_range * range_multiplier) + _chain_range_bonus,
-		"jump_range": (chain_jump_range * jump_range_multiplier) + _chain_jump_range_bonus,
-		"max_jumps": chain_max_jumps + _chain_bonus_jumps + int(_spell_attributes.get("chain_bonus_jumps", 0)),
-		"falloff": clampf(chain_damage_falloff * falloff_multiplier + _chain_falloff_bonus, 0.45, 0.95),
+		"range": minf((chain_range * range_multiplier) + _chain_range_bonus, 520.0),
+		"jump_range": minf((chain_jump_range * jump_range_multiplier) + _chain_jump_range_bonus, chain_max_jump_range),
+		"max_hits": mini(chain_max_hits + _chain_bonus_hits + int(_spell_attributes.get("chain_bonus_jumps", 0)), chain_max_hits_cap),
+		"falloff": clampf(chain_damage_falloff * falloff_multiplier + _chain_falloff_bonus, 0.55, 0.9),
 		"damage_multiplier": chain_base_damage_multiplier,
 		"visual_width": 4.0 * float(_spell_attributes.get("chain_visual_width_multiplier", 1.0)),
 	}
@@ -957,7 +969,7 @@ func _show_upgrade_reward() -> void:
 
 
 func _pick_upgrade_options(count: int) -> Array[Dictionary]:
-	var pool: Array[Dictionary] = _available_upgrades.duplicate()
+	var pool: Array[Dictionary] = _filter_delivery_compatible_upgrades(_available_upgrades)
 	var picked: Array[Dictionary] = []
 
 	_pick_directed_affinity_option(pool, picked, count)
@@ -1040,6 +1052,13 @@ func _pick_priority_meta_upgrades(pool: Array[Dictionary], picked: Array[Diction
 func _prepare_upgrade_option(upgrade: Dictionary) -> void:
 	var upgrade_id := str(upgrade.get("id", ""))
 	upgrade["current_stack"] = int(upgrade_stacks.get(upgrade_id, 0))
+	var delivery_effects = upgrade.get("delivery_effects", {})
+	if delivery_effects is Dictionary and delivery_effects.has(str(selected_spell_summary.get("delivery_id", "simple_projectile"))):
+		var effect_data = delivery_effects[str(selected_spell_summary.get("delivery_id", "simple_projectile"))]
+		if effect_data is Dictionary:
+			for key in ["name", "description", "impact_text"]:
+				if effect_data.has(key):
+					upgrade[key] = effect_data[key]
 
 
 func _on_upgrade_selected(upgrade: Dictionary) -> void:
@@ -1069,7 +1088,8 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 		"arcane_damage":
 			projectile_damage += int(values.get("damage_bonus", 4))
 		"unstable_cadence":
-			auto_fire_interval = maxf(auto_fire_interval * float(values.get("interval_multiplier", 0.88)), min_auto_fire_interval)
+			var minimum_interval := chain_min_cast_interval if _is_chain_lightning_delivery() else min_auto_fire_interval
+			auto_fire_interval = maxf(auto_fire_interval * float(values.get("interval_multiplier", 0.88)), minimum_interval)
 			if is_instance_valid(_auto_fire_timer):
 				_auto_fire_timer.wait_time = auto_fire_interval
 		"light_core":
@@ -1087,19 +1107,16 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 				_chain_jump_range_bonus += 24.0
 		"initial_fragmentation":
 			if _is_chain_lightning_delivery():
-				_chain_bonus_jumps += int(values.get("projectile_count_bonus", 1))
+				_chain_bonus_hits = mini(_chain_bonus_hits + int(values.get("projectile_count_bonus", 1)), chain_max_hits_cap - chain_max_hits)
 			else:
 				projectile_count = mini(projectile_count + int(values.get("projectile_count_bonus", 1)), max_projectile_count)
 		"piercing":
 			if _is_chain_lightning_delivery():
-				_chain_falloff_bonus += 0.08 * float(values.get("pierce_bonus", 1))
+				_chain_falloff_bonus = minf(_chain_falloff_bonus + 0.05 * float(values.get("pierce_bonus", 1)), 0.25)
 			else:
 				projectile_pierce += int(values.get("pierce_bonus", 1))
 		"ricochet":
-			if _is_chain_lightning_delivery():
-				_chain_bonus_jumps += int(values.get("bounce_bonus", 1))
-			else:
-				projectile_bounce += int(values.get("bounce_bonus", 1))
+			projectile_bounce += int(values.get("bounce_bonus", 1))
 		"arcane_explosion":
 			projectile_explosion_radius += float(values.get("radius_bonus", 60.0))
 			projectile_explosion_damage_multiplier += float(values.get("damage_multiplier_bonus", 0.5))
@@ -1179,6 +1196,12 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"values": {
 				"damage_bonus": 5,
 			},
+			"delivery_effects": {
+				"chain_lightning": {
+					"description": "+5 de dano base por alvo da Cadeia.",
+					"impact_text": "+5 dano por alvo",
+				},
+			},
 		},
 		{
 			"id": "unstable_cadence",
@@ -1190,6 +1213,12 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"node_label": "Cadencia",
 			"values": {
 				"interval_multiplier": 0.84,
+			},
+			"delivery_effects": {
+				"chain_lightning": {
+					"description": "Conjuracoes de Cadeia 16% mais rapidas, respeitando o limite minimo.",
+					"impact_text": "-16% intervalo da cadeia",
+				},
 			},
 		},
 		{
@@ -1228,6 +1257,13 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"values": {
 				"projectile_speed_bonus": 80.0,
 			},
+			"delivery_effects": {
+				"chain_lightning": {
+					"name": "Condutor Veloz",
+					"description": "Aumenta o alcance inicial e o alcance entre alvos da Cadeia.",
+					"impact_text": "+52 alcance, +24 salto",
+				},
+			},
 		},
 		{
 			"id": "initial_fragmentation",
@@ -1239,6 +1275,14 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"node_label": "Fragmenta",
 			"values": {
 				"projectile_count_bonus": 1,
+			},
+			"max_stacks_by_delivery": {"chain_lightning": 2},
+			"delivery_effects": {
+				"chain_lightning": {
+					"name": "Fragmentacao em Cadeia",
+					"description": "Atinge +1 alvo total por cadeia. Limite de 2 stacks.",
+					"impact_text": "+1 alvo maximo",
+				},
 			},
 		},
 		{
@@ -1253,6 +1297,14 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"values": {
 				"pierce_bonus": 1,
 			},
+			"max_stacks_by_delivery": {"chain_lightning": 3},
+			"delivery_effects": {
+				"chain_lightning": {
+					"name": "Condutor Perfurante",
+					"description": "Cada salto conserva mais dano. Limite de 3 stacks.",
+					"impact_text": "+5% dano retido por salto",
+				},
+			},
 		},
 		{
 			"id": "ricochet",
@@ -1265,6 +1317,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"values": {
 				"bounce_bonus": 1,
 			},
+			"compatible_deliveries": ["simple_projectile"],
 		},
 		{
 			"id": "arcane_explosion",
@@ -1277,6 +1330,12 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"values": {
 				"radius_bonus": 60.0,
 				"damage_multiplier_bonus": 0.5,
+			},
+			"delivery_effects": {
+				"chain_lightning": {
+					"description": "Somente o primeiro alvo da Cadeia gera uma explosao arcana.",
+					"impact_text": "Explosao no primeiro alvo",
+				},
 			},
 		},
 		{
@@ -1292,6 +1351,14 @@ func _create_upgrade_data() -> Array[Dictionary]:
 				"speed_multiplier": 0.85,
 				"size_bonus": 0.2,
 			},
+			"max_stacks_by_delivery": {"chain_lightning": 2},
+			"delivery_effects": {
+				"chain_lightning": {
+					"name": "Descarga Pesada",
+					"description": "+40% dano da Cadeia, com -12% de alcance inicial.",
+					"impact_text": "+40% dano, -12% alcance",
+				},
+			},
 		},
 		{
 			"id": "cutting_echo",
@@ -1304,6 +1371,14 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"values": {
 				"shot_interval": 4,
 				"damage_multiplier_bonus": 0.25,
+			},
+			"max_stacks_by_delivery": {"chain_lightning": 2},
+			"delivery_effects": {
+				"chain_lightning": {
+					"name": "Eco Ressonante",
+					"description": "A cada 4 cadeias, a proxima ganha dano extra e +1 alvo.",
+					"impact_text": "Eco: dano extra e +1 alvo",
+				},
 			},
 		},
 		{
@@ -1339,6 +1414,30 @@ func _filter_unlocked_upgrades(upgrades: Array[Dictionary]) -> Array[Dictionary]
 			filtered.append(upgrade)
 
 	return filtered
+
+
+func _filter_delivery_compatible_upgrades(upgrades: Array[Dictionary]) -> Array[Dictionary]:
+	var filtered: Array[Dictionary] = []
+
+	for upgrade in upgrades:
+		if _is_upgrade_compatible_with_current_delivery(upgrade):
+			filtered.append(upgrade.duplicate(true))
+
+	return filtered
+
+
+func _is_upgrade_compatible_with_current_delivery(upgrade: Dictionary) -> bool:
+	var delivery_id := str(selected_spell_summary.get("delivery_id", "simple_projectile"))
+	var compatible_deliveries = upgrade.get("compatible_deliveries", [])
+	if compatible_deliveries is Array and not compatible_deliveries.is_empty() and not compatible_deliveries.has(delivery_id):
+		return false
+
+	var upgrade_id := str(upgrade.get("id", ""))
+	var stack_caps = upgrade.get("max_stacks_by_delivery", {})
+	if stack_caps is Dictionary and stack_caps.has(delivery_id):
+		return int(upgrade_stacks.get(upgrade_id, 0)) < int(stack_caps[delivery_id])
+
+	return true
 
 
 func _on_projectile_explosion_requested(world_position: Vector2, radius: float, damage: int) -> void:
@@ -1775,13 +1874,13 @@ func _get_projectile_visual_colors(overrides: Dictionary, opening_charged: bool 
 	var secondary: Color = visual_profile.get("secondary_color", Color(1.0, 1.0, 0.82))
 	if overrides.has("fill_color") or overrides.has("outline_color"):
 		return {
-			"fill_color": primary.lerp(overrides.get("fill_color", primary), 0.78),
-			"outline_color": secondary.lerp(overrides.get("outline_color", secondary), 0.78),
+			"fill_color": primary.lerp(overrides.get("fill_color", primary), 0.28),
+			"outline_color": secondary.lerp(overrides.get("outline_color", secondary), 0.58),
 		}
 
 	if opening_charged:
 		return {
-			"fill_color": primary.lerp(Color(1.0, 0.72, 0.24), 0.58),
+			"fill_color": primary.lerp(Color(1.0, 0.72, 0.24), 0.24),
 			"outline_color": secondary.lerp(Color(1.0, 0.98, 0.72), 0.58),
 		}
 

@@ -244,6 +244,10 @@ func _get_category_color(category: String) -> Color:
 
 
 func _format_upgrade_impact(upgrade: Dictionary) -> String:
+	var custom_impact := str(upgrade.get("impact_text", ""))
+	if not custom_impact.is_empty():
+		return custom_impact
+
 	var values = upgrade.get("values", {})
 	match str(upgrade.get("id", "")):
 		"arcane_damage":
