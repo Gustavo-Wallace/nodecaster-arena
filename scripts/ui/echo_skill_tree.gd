@@ -1,40 +1,68 @@
 extends Control
 
-const NODE_SIZE := Vector2(156.0, 62.0)
-const CONTENT_SIZE := Vector2(1220.0, 820.0)
-const HUB_CENTER := Vector2(560.0, 390.0)
-const MIN_ZOOM := 0.6
-const MAX_ZOOM := 1.5
-const DEFAULT_ZOOM := 1.0
-const ZOOM_STEP := 1.12
-const PAN_DRAG_THRESHOLD := 8.0
+const SECTION_LAYOUT := [
+	{
+		"panel": "UnlocksPanel",
+		"title": "UNLOCKS",
+		"color": Color(0.42, 0.9, 1.0),
+		"groups": [
+			{"title": "UNLOCK MATRIX", "skills": ["unlock_matrix"]},
+			{"title": "SPELL SHAPES", "skills": ["unlock_diamond_shape", "unlock_star_shape"]},
+			{"title": "ELEMENTS", "skills": ["unlock_shadow_element", "unlock_light_element"]},
+			{"title": "CAST TYPES", "skills": ["unlock_persistent_waves", "unlock_summoning", "unlock_orbitals", "unlock_dual_casting"]},
+		],
+	},
+	{
+		"panel": "CorePanel",
+		"title": "CORE / UTILITY",
+		"color": Color(0.52, 1.0, 0.72),
+		"groups": [
+			{"title": "DEFENSE", "skills": ["resonant_shell", "stable_window", "emergency_pulse"]},
+			{"title": "RUN CONTROL", "skills": ["prepared_choice", "expanded_choices", "arcane_memory", "directed_tuning"]},
+		],
+	},
+	{
+		"panel": "ElementsPanel",
+		"title": "ELEMENT MASTERY",
+		"color": Color(0.78, 0.52, 1.0),
+		"groups": [
+			{"title": "ARCANE", "color": Color(0.78, 0.52, 1.0), "skills": ["arcane_focus", "arcane_echo"]},
+			{"title": "FIRE", "color": Color(1.0, 0.38, 0.2), "skills": ["longer_burn", "hotter_burn"]},
+			{"title": "ICE", "color": Color(0.4, 0.8, 1.0), "skills": ["longer_chill", "deeper_chill"]},
+			{"title": "ELECTRIC", "color": Color(1.0, 0.86, 0.22), "skills": ["higher_voltage", "static_charge"]},
+		],
+	},
+	{
+		"panel": "CastTypesPanel",
+		"title": "CAST TYPE MASTERY",
+		"color": Color(1.0, 0.84, 0.36),
+		"groups": [
+			{"title": "SIMPLE PROJECTILE", "skills": ["projectile_calibration", "opening_pierce", "stable_volley"]},
+			{"title": "CHAIN LIGHTNING", "skills": ["conductive_path", "static_memory", "reduced_falloff"]},
+			{"title": "AREA FIELD", "skills": ["lingering_field", "wider_field", "initial_pulse"]},
+			{"title": "SLASH", "skills": ["blade_rhythm", "extended_edge", "second_cut"]},
+		],
+	},
+]
 
 @onready var ecos_label: Label = $Header/EcosLabel
 @onready var back_button: Button = $Header/BackButton
 @onready var center_button: Button = $Header/CenterButton
-@onready var tree_viewport: Panel = $TreeViewport
-@onready var tree_content: Control = $TreeViewport/TreeContent
-@onready var name_label: Label = $DetailsPanel/NameLabel
-@onready var branch_label: Label = $DetailsPanel/BranchLabel
-@onready var description_label: Label = $DetailsPanel/DescriptionLabel
-@onready var cost_label: Label = $DetailsPanel/CostLabel
-@onready var status_label: Label = $DetailsPanel/StatusLabel
-@onready var prerequisites_label: Label = $DetailsPanel/PrerequisitesLabel
-@onready var buy_button: Button = $DetailsPanel/BuyButton
+@onready var board_scroll: ScrollContainer = $Main/BoardScroll
+@onready var name_label: Label = $Main/DetailsPanel/NameLabel
+@onready var branch_label: Label = $Main/DetailsPanel/BranchLabel
+@onready var description_label: Label = $Main/DetailsPanel/DescriptionLabel
+@onready var cost_label: Label = $Main/DetailsPanel/CostLabel
+@onready var status_label: Label = $Main/DetailsPanel/StatusLabel
+@onready var prerequisites_label: Label = $Main/DetailsPanel/PrerequisitesLabel
+@onready var buy_button: Button = $Main/DetailsPanel/BuyButton
 
 var _skills: Array[Dictionary] = []
 var _skill_buttons: Dictionary = {}
-var _selected_skill_id := ""
-var _is_panning := false
-var _pan_start_mouse := Vector2.ZERO
-var _pan_start_position := Vector2.ZERO
-var _tree_zoom := DEFAULT_ZOOM
-var _pan_dragged := false
-var _suppress_skill_selection := false
+var _selected_skill_id: String = ""
 
 
 func _ready() -> void:
-	tree_viewport.gui_input.connect(_on_tree_viewport_gui_input)
 	back_button.pressed.connect(_on_back_pressed)
 	center_button.pressed.connect(_on_center_pressed)
 	buy_button.pressed.connect(_on_buy_pressed)
@@ -42,16 +70,13 @@ func _ready() -> void:
 	_setup_button_feedback(center_button)
 	_setup_button_feedback(buy_button)
 	_refresh_tree(false)
-	call_deferred("_center_tree")
+	call_deferred("_center_board")
 
 
 func _refresh_tree(keep_selection: bool = true) -> void:
-	_clear_tree_content()
 	_load_skills()
-	_create_branch_labels()
-	_create_connection_lines()
-	_create_hub()
-	_build_skill_buttons()
+	_clear_sections()
+	_build_sections()
 	_update_ecos_label()
 
 	if not keep_selection or _selected_skill_id.is_empty() or not _skill_buttons.has(_selected_skill_id):
@@ -73,101 +98,85 @@ func _load_skills() -> void:
 			_skills.append(skill)
 
 
-func _clear_tree_content() -> void:
-	for child in tree_content.get_children():
-		tree_content.remove_child(child)
-		child.queue_free()
+func _clear_sections() -> void:
 	_skill_buttons.clear()
+	for section in SECTION_LAYOUT:
+		var panel_name := str(section.get("panel", ""))
+		var content := get_node_or_null("Main/BoardScroll/Board/Sections/%s/Content" % panel_name) as VBoxContainer
+		if content == null:
+			continue
+		for child in content.get_children():
+			content.remove_child(child)
+			child.queue_free()
 
 
-func _create_branch_labels() -> void:
-	var labels := [
-		{"text": "CORE", "position": Vector2(470.0, 30.0), "branch": "core"},
-		{"text": "PROJECTILES", "position": Vector2(780.0, 220.0), "branch": "projectile"},
-		{"text": "ARCANE NODES", "position": Vector2(590.0, 615.0), "branch": "arcane"},
-		{"text": "FORMS", "position": Vector2(150.0, 300.0), "branch": "forms"},
-	]
+func _build_sections() -> void:
+	for section in SECTION_LAYOUT:
+		var panel_name := str(section.get("panel", ""))
+		var content := get_node_or_null("Main/BoardScroll/Board/Sections/%s/Content" % panel_name) as VBoxContainer
+		if content == null:
+			continue
 
-	for label_data in labels:
-		var label := Label.new()
-		label.text = str(label_data.get("text", ""))
-		var label_position: Vector2 = label_data.get("position", Vector2.ZERO)
-		label.position = label_position
-		label.size = Vector2(260.0, 32.0)
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.add_theme_font_size_override("font_size", 18)
-		label.add_theme_color_override("font_color", _get_branch_color(str(label_data.get("branch", ""))))
-		tree_content.add_child(label)
+		var section_color: Color = section.get("color", Color(0.86, 0.96, 1.0))
+		content.add_child(_create_section_title(str(section.get("title", "")), section_color))
+		var groups: Array = section.get("groups", [])
+		for group in groups:
+			if group is Dictionary:
+				_build_group(content, group, section_color)
 
 
-func _create_hub() -> void:
-	var hub := Panel.new()
-	hub.name = "EchoHub"
-	hub.position = HUB_CENTER - Vector2(52.0, 52.0)
-	hub.size = Vector2(104.0, 104.0)
-	hub.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hub.add_theme_stylebox_override("panel", _create_node_style(Color(0.08, 0.12, 0.15, 0.96), Color(0.86, 1.0, 1.0, 0.92), 52))
-	tree_content.add_child(hub)
+func _build_group(content: VBoxContainer, group: Dictionary, default_color: Color) -> void:
+	var group_color: Color = group.get("color", default_color)
+	content.add_child(_create_group_title(str(group.get("title", "")), group_color))
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	var skill_ids: Array = group.get("skills", [])
+	for skill_id_value in skill_ids:
+		var skill_id := str(skill_id_value)
+		var skill := _get_skill_by_id(skill_id)
+		if skill.is_empty():
+			continue
+		var button := _create_skill_button(skill)
+		grid.add_child(button)
+	content.add_child(grid)
 
+
+func _create_section_title(text_value: String, color: Color) -> Label:
 	var label := Label.new()
-	label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	label.text = "ECHO"
+	label.text = text_value
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", 20)
-	label.add_theme_color_override("font_color", Color(0.9, 1.0, 1.0))
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hub.add_child(label)
+	label.add_theme_font_size_override("font_size", 18)
+	label.add_theme_color_override("font_color", color)
+	return label
 
 
-func _create_connection_lines() -> void:
-	for skill in _skills:
-		var skill_id := str(skill.get("id", ""))
-		var prerequisites = skill.get("prerequisites", [])
-		if prerequisites is Array or prerequisites is PackedStringArray:
-			if prerequisites.is_empty():
-				_add_connection_line(HUB_CENTER, _get_skill_center(skill_id), skill)
-			else:
-				for prerequisite in prerequisites:
-					_add_connection_line(_get_skill_center(str(prerequisite)), _get_skill_center(skill_id), skill)
+func _create_group_title(text_value: String, color: Color) -> Label:
+	var label := Label.new()
+	label.text = text_value
+	label.add_theme_font_size_override("font_size", 12)
+	label.add_theme_color_override("font_color", Color(color.r, color.g, color.b, 0.9))
+	return label
 
 
-func _add_connection_line(start: Vector2, end: Vector2, skill: Dictionary) -> void:
-	var branch_color := _get_branch_color(str(skill.get("branch", "")))
-	var line := Line2D.new()
-	line.width = 4.0
-	line.default_color = Color(branch_color.r, branch_color.g, branch_color.b, 0.34)
-	if bool(skill.get("purchased", false)):
-		line.default_color = Color(branch_color.r, branch_color.g, branch_color.b, 0.9)
-		line.width = 5.0
-	elif bool(skill.get("can_purchase", false)):
-		line.default_color = Color(1.0, 0.86, 0.38, 0.72)
-
-	line.add_point(start)
-	line.add_point(end)
-	tree_content.add_child(line)
-
-
-func _build_skill_buttons() -> void:
-	for skill in _skills:
-		var button := Button.new()
-		var skill_id := str(skill.get("id", ""))
-		button.name = "Skill_%s" % skill_id
-		button.text = _get_short_node_label(skill)
-		var skill_position := _get_skill_position(skill_id)
-		button.position = skill_position
-		button.size = NODE_SIZE
-		button.focus_mode = Control.FOCUS_NONE
-		button.clip_contents = true
-		button.pressed.connect(_on_skill_button_pressed.bind(skill_id))
-		button.gui_input.connect(_on_skill_button_gui_input)
-		button.add_theme_font_size_override("font_size", 15)
-		button.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.65))
-		button.add_theme_constant_override("outline_size", 2)
-		_setup_button_feedback(button)
-		_apply_skill_button_style(button, skill)
-		tree_content.add_child(button)
-		_skill_buttons[skill_id] = button
+func _create_skill_button(skill: Dictionary) -> Button:
+	var skill_id := str(skill.get("id", ""))
+	var button := Button.new()
+	button.name = "Skill_%s" % skill_id
+	button.text = _get_short_node_label(skill)
+	button.custom_minimum_size = Vector2(178.0, 42.0)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.focus_mode = Control.FOCUS_NONE
+	button.clip_contents = true
+	button.pressed.connect(_on_skill_button_pressed.bind(skill_id))
+	button.add_theme_font_size_override("font_size", 13)
+	button.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.65))
+	button.add_theme_constant_override("outline_size", 2)
+	_setup_button_feedback(button)
+	_apply_skill_button_style(button, skill)
+	_skill_buttons[skill_id] = button
+	return button
 
 
 func _update_ecos_label() -> void:
@@ -175,22 +184,15 @@ func _update_ecos_label() -> void:
 	if save_manager == null:
 		ecos_label.text = "Echoes: 0"
 		return
-
 	var summary: Dictionary = save_manager.call("get_summary")
 	ecos_label.text = "Echoes: %d" % int(summary.get("ecos", 0))
 
 
-func _select_skill(skill_id: String) -> void:
+func _on_skill_button_pressed(skill_id: String) -> void:
 	_selected_skill_id = skill_id
 	_play_audio("play_button_click")
 	_update_details()
 	_refresh_button_styles()
-
-
-func _on_skill_button_pressed(skill_id: String) -> void:
-	if _suppress_skill_selection or _pan_dragged:
-		return
-	_select_skill(skill_id)
 
 
 func _update_details() -> void:
@@ -228,18 +230,15 @@ func _update_details() -> void:
 		buy_button.text = "Buy"
 		buy_button.disabled = true
 
-	var branch_color := _get_branch_color(str(skill.get("branch", "")))
-	branch_label.add_theme_color_override("font_color", branch_color)
+	branch_label.add_theme_color_override("font_color", _get_branch_color(str(skill.get("branch", ""))))
 
 
 func _on_buy_pressed() -> void:
 	if _selected_skill_id.is_empty():
 		return
-
 	var save_manager := get_node_or_null("/root/SaveManager")
 	if save_manager == null:
 		return
-
 	var purchased := bool(save_manager.call("purchase_skill", _selected_skill_id))
 	_play_audio("play_unlock" if purchased else "play_error")
 	_refresh_tree(true)
@@ -247,80 +246,73 @@ func _on_buy_pressed() -> void:
 
 
 func _get_selected_skill() -> Dictionary:
-	for skill in _skills:
-		if str(skill.get("id", "")) == _selected_skill_id:
-			return skill
-
-	return {}
+	return _get_skill_by_id(_selected_skill_id)
 
 
 func _get_skill_by_id(skill_id: String) -> Dictionary:
 	for skill in _skills:
 		if str(skill.get("id", "")) == skill_id:
 			return skill
-
 	return {}
 
 
 func _get_short_node_label(skill: Dictionary) -> String:
 	match str(skill.get("id", "")):
-		"resonant_shell":
-			return "Shell"
-		"stable_window":
-			return "Window"
-		"field_repair":
-			return "Repair"
-		"emergency_pulse":
-			return "Pulse"
-		"catalyzed_shot":
-			return "Catalyze"
-		"opening_charge":
-			return "Opening"
-		"initial_fragment":
-			return "Fragment"
-		"unlock_piercing":
-			return "Pierce"
-		"prepared_choice":
-			return "Reroll"
-		"expanded_options":
-			return "+Options"
-		"arcane_memory":
-			return "Memory"
-		"directed_affinity":
-			return "Affinity"
-		"synergy_resonance":
-			return "Synergy"
-		"unlock_diamond":
-			return "Diamond"
-		_:
-			return str(skill.get("name", "Skill"))
-
-
-func _get_skill_name(skill_id: String) -> String:
-	var skill := _get_skill_by_id(skill_id)
-	if skill.is_empty():
-		return skill_id
-
-	return str(skill.get("name", skill_id))
+		"resonant_shell": return "Shell"
+		"stable_window": return "Window"
+		"emergency_pulse": return "Pulse"
+		"prepared_choice": return "Reroll"
+		"expanded_choices": return "Choices"
+		"arcane_memory": return "Memory"
+		"directed_tuning": return "Tuning"
+		"unlock_matrix": return "Unlock Matrix"
+		"unlock_diamond_shape": return "Diamond"
+		"unlock_star_shape": return "Star"
+		"unlock_shadow_element": return "Shadow"
+		"unlock_light_element": return "Light"
+		"unlock_persistent_waves": return "Waves"
+		"unlock_summoning": return "Summoning"
+		"unlock_orbitals": return "Orbitals"
+		"unlock_dual_casting": return "Dual Cast"
+		"projectile_calibration": return "Calibrate"
+		"opening_pierce": return "Opening"
+		"stable_volley": return "Volley"
+		"conductive_path": return "Path"
+		"static_memory": return "Memory"
+		"reduced_falloff": return "Falloff"
+		"lingering_field": return "Linger"
+		"wider_field": return "Wider"
+		"initial_pulse": return "Pulse"
+		"blade_rhythm": return "Rhythm"
+		"extended_edge": return "Edge"
+		"second_cut": return "Second Cut"
+		"arcane_focus": return "Focus"
+		"arcane_echo": return "Echo"
+		"longer_burn": return "Burn"
+		"hotter_burn": return "Hotter"
+		"longer_chill": return "Chill"
+		"deeper_chill": return "Deeper"
+		"higher_voltage": return "Voltage"
+		"static_charge": return "Static"
+		_: return str(skill.get("name", "Skill"))
 
 
 func _format_prerequisites(skill: Dictionary) -> String:
-	var prerequisites = skill.get("prerequisites", [])
-	if not (prerequisites is Array or prerequisites is PackedStringArray) or prerequisites.is_empty():
+	var prerequisites: Array = skill.get("prerequisites", [])
+	if prerequisites.is_empty():
 		return "Requirements: none"
-
 	var names: Array[String] = []
 	for prerequisite in prerequisites:
-		names.append(_get_skill_name(str(prerequisite)))
-
+		var prerequisite_skill := _get_skill_by_id(str(prerequisite))
+		names.append(str(prerequisite_skill.get("name", prerequisite)))
 	return "Requirements: %s" % ", ".join(names)
 
 
 func _refresh_button_styles() -> void:
 	for skill in _skills:
 		var skill_id := str(skill.get("id", ""))
-		if _skill_buttons.has(skill_id):
-			var button := _skill_buttons[skill_id] as Button
+		var button := _skill_buttons.get(skill_id) as Button
+		if button != null:
 			_apply_skill_button_style(button, skill)
 
 
@@ -329,7 +321,6 @@ func _apply_skill_button_style(button: Button, skill: Dictionary) -> void:
 	var bg_color := Color(0.045, 0.052, 0.066, 0.96)
 	var border_color := Color(branch_color.r, branch_color.g, branch_color.b, 0.38)
 	var font_color := Color(0.68, 0.75, 0.82)
-
 	if bool(skill.get("purchased", false)):
 		bg_color = Color(branch_color.r * 0.35, branch_color.g * 0.35, branch_color.b * 0.35, 0.98)
 		border_color = Color(branch_color.r, branch_color.g, branch_color.b, 1.0)
@@ -338,26 +329,22 @@ func _apply_skill_button_style(button: Button, skill: Dictionary) -> void:
 		bg_color = Color(0.105, 0.112, 0.13, 0.98)
 		border_color = Color(1.0, 0.86, 0.38, 1.0)
 		font_color = Color(1.0, 0.95, 0.76)
-	elif bool(skill.get("affordable", false)) and bool(skill.get("available", false)):
-		bg_color = Color(0.075, 0.082, 0.1, 0.96)
-		border_color = Color(branch_color.r, branch_color.g, branch_color.b, 0.62)
 	elif bool(skill.get("future", false)):
 		bg_color = Color(0.03, 0.034, 0.042, 0.92)
 		border_color = Color(0.18, 0.22, 0.28, 0.76)
 		font_color = Color(0.42, 0.46, 0.52)
 
-	var radius := 24
+	var radius := 8
 	if str(skill.get("id", "")) == _selected_skill_id:
 		border_color = Color(1.0, 1.0, 1.0, 1.0)
-		radius = 28
-
+		radius = 8
 	button.add_theme_stylebox_override("normal", _create_node_style(bg_color, border_color, radius))
 	button.add_theme_stylebox_override("hover", _create_node_style(bg_color.lightened(0.08), border_color.lightened(0.1), radius))
 	button.add_theme_stylebox_override("pressed", _create_node_style(bg_color.darkened(0.08), Color(1.0, 0.92, 0.48, 1.0), radius))
 	button.add_theme_color_override("font_color", font_color)
 
 
-func _create_node_style(bg_color: Color, border_color: Color, corner_radius: int = 18) -> StyleBoxFlat:
+func _create_node_style(bg_color: Color, border_color: Color, corner_radius: int = 8) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = bg_color
 	style.border_color = border_color
@@ -369,180 +356,54 @@ func _create_node_style(bg_color: Color, border_color: Color, corner_radius: int
 	style.corner_radius_top_right = corner_radius
 	style.corner_radius_bottom_left = corner_radius
 	style.corner_radius_bottom_right = corner_radius
-	style.shadow_color = Color(border_color.r, border_color.g, border_color.b, 0.18)
-	style.shadow_size = 6
 	return style
-
-
-func _get_skill_position(skill_id: String) -> Vector2:
-	var skill := _get_skill_by_id(skill_id)
-	if skill.is_empty():
-		return Vector2.ZERO
-
-	var position: Vector2 = skill.get("position", Vector2.ZERO)
-	return position
-
-
-func _get_skill_center(skill_id: String) -> Vector2:
-	return _get_skill_position(skill_id) + NODE_SIZE * 0.5
 
 
 func _get_branch_color(branch: String) -> Color:
 	match branch:
-		"core":
-			return Color(0.52, 1.0, 0.72)
-		"projectile":
-			return Color(1.0, 0.84, 0.36)
-		"arcane":
-			return Color(0.78, 0.52, 1.0)
-		"forms":
-			return Color(0.42, 0.9, 1.0)
-		_:
-			return Color(0.86, 0.96, 1.0)
+		"core": return Color(0.52, 1.0, 0.72)
+		"unlocks", "shape_unlocks", "element_unlocks", "cast_unlocks": return Color(0.42, 0.9, 1.0)
+		"cast_projectile": return Color(1.0, 0.84, 0.36)
+		"cast_chain": return Color(1.0, 0.95, 0.42)
+		"cast_area": return Color(1.0, 0.58, 0.32)
+		"cast_slash": return Color(1.0, 0.42, 0.74)
+		"element_arcane": return Color(0.78, 0.52, 1.0)
+		"element_fire": return Color(1.0, 0.38, 0.2)
+		"element_ice": return Color(0.4, 0.8, 1.0)
+		"element_electric": return Color(1.0, 0.86, 0.22)
+		_: return Color(0.86, 0.96, 1.0)
 
 
 func _format_branch(branch: String) -> String:
 	match branch:
-		"core":
-			return "Branch: Core"
-		"projectile":
-			return "Branch: Projectiles"
-		"arcane":
-			return "Branch: Arcane Nodes"
-		"forms":
-			return "Branch: Forms"
-		_:
-			return "Branch: General"
+		"core": return "Branch: Core / Utility"
+		"unlocks": return "Branch: Unlocks"
+		"shape_unlocks": return "Branch: Spell Shape Unlocks"
+		"element_unlocks": return "Branch: Element Unlocks"
+		"cast_unlocks": return "Branch: Cast Type Unlocks"
+		"cast_projectile", "cast_chain", "cast_area", "cast_slash": return "Branch: Cast Type Mastery"
+		"element_arcane", "element_fire", "element_ice", "element_electric": return "Branch: Element Mastery"
+		_: return "Branch: General"
 
 
-func _on_tree_viewport_gui_input(event: InputEvent) -> void:
-	var mouse_button := event as InputEventMouseButton
-	if mouse_button != null:
-		_handle_tree_mouse_button(mouse_button)
-		return
-
-	var mouse_motion := event as InputEventMouseMotion
-	if mouse_motion != null and _is_panning:
-		_update_pan(get_global_mouse_position())
-
-
-func _on_skill_button_gui_input(event: InputEvent) -> void:
-	var mouse_button := event as InputEventMouseButton
-	if mouse_button != null:
-		_handle_tree_mouse_button(mouse_button)
-		return
-
-	var mouse_motion := event as InputEventMouseMotion
-	if mouse_motion != null and _is_panning:
-		_update_pan(get_global_mouse_position())
-
-
-func _handle_tree_mouse_button(event: InputEventMouseButton) -> void:
-	if event.button_index == MOUSE_BUTTON_LEFT:
-		if event.pressed:
-			_begin_pan(get_global_mouse_position())
-		else:
-			_end_pan()
-		return
-
-	if not event.pressed:
-		return
-
-	if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-		_zoom_at_cursor(ZOOM_STEP)
-	elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-		_zoom_at_cursor(1.0 / ZOOM_STEP)
-
-
-func _begin_pan(mouse_position: Vector2) -> void:
-	_is_panning = true
-	_pan_dragged = false
-	_pan_start_mouse = mouse_position
-	_pan_start_position = tree_content.position
-
-
-func _update_pan(mouse_position: Vector2) -> void:
-	var delta := mouse_position - _pan_start_mouse
-	if delta.length() >= PAN_DRAG_THRESHOLD:
-		_pan_dragged = true
-	_set_tree_position(_pan_start_position + delta)
-
-
-func _end_pan() -> void:
-	if _pan_dragged:
-		_suppress_skill_selection = true
-		call_deferred("_clear_skill_selection_suppression")
-	_is_panning = false
-
-
-func _clear_skill_selection_suppression() -> void:
-	_suppress_skill_selection = false
-
-
-func _zoom_at_cursor(multiplier: float) -> void:
-	var focus_point := tree_viewport.get_local_mouse_position()
-	var content_point := (focus_point - tree_content.position) / maxf(_tree_zoom, 0.001)
-	var target_zoom := clampf(_tree_zoom * multiplier, MIN_ZOOM, MAX_ZOOM)
-	if is_equal_approx(target_zoom, _tree_zoom):
-		return
-
-	_tree_zoom = target_zoom
-	tree_content.scale = Vector2.ONE * _tree_zoom
-	_set_tree_position(focus_point - content_point * _tree_zoom)
-
-
-func _center_tree() -> void:
-	_tree_zoom = DEFAULT_ZOOM
-	tree_content.scale = Vector2.ONE * _tree_zoom
-	var bounds := _get_skill_bounds()
-	var centered_position := tree_viewport.size * 0.5 - bounds.get_center() * _tree_zoom
-	_set_tree_position(centered_position)
-
-
-func _set_tree_position(new_position: Vector2) -> void:
-	var viewport_size := tree_viewport.size
-	var scaled_content_size := CONTENT_SIZE * _tree_zoom
-	var min_position := viewport_size - scaled_content_size
-	var max_position := Vector2.ZERO
-
-	if scaled_content_size.x <= viewport_size.x:
-		new_position.x = (viewport_size.x - scaled_content_size.x) * 0.5
-	else:
-		new_position.x = clampf(new_position.x, min_position.x, max_position.x)
-
-	if scaled_content_size.y <= viewport_size.y:
-		new_position.y = (viewport_size.y - scaled_content_size.y) * 0.5
-	else:
-		new_position.y = clampf(new_position.y, min_position.y, max_position.y)
-
-	tree_content.position = new_position
-
-
-func _get_skill_bounds() -> Rect2:
-	var bounds := Rect2(HUB_CENTER, Vector2.ZERO)
-	for skill in _skills:
-		var skill_id := str(skill.get("id", ""))
-		var skill_position := _get_skill_position(skill_id)
-		var skill_rect := Rect2(skill_position, NODE_SIZE)
-		bounds = bounds.merge(skill_rect)
-
-	return bounds.grow(120.0)
+func _center_board() -> void:
+	board_scroll.get_h_scroll_bar().value = 0.0
+	board_scroll.get_v_scroll_bar().value = 0.0
 
 
 func _on_center_pressed() -> void:
 	_play_audio("play_button_click")
-	_center_tree()
+	_center_board()
 
 
 func _pulse_selected_button() -> void:
-	if not _skill_buttons.has(_selected_skill_id):
+	var button := _skill_buttons.get(_selected_skill_id) as Button
+	if button == null:
 		return
-
-	var button := _skill_buttons[_selected_skill_id] as Button
 	button.pivot_offset = button.size * 0.5
 	var tween := create_tween()
-	tween.tween_property(button, "scale", Vector2.ONE * 1.08, 0.08)
-	tween.tween_property(button, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(button, "scale", Vector2.ONE * 1.05, 0.08)
+	tween.tween_property(button, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func _on_back_pressed() -> void:
@@ -557,9 +418,11 @@ func _setup_button_feedback(button: Button) -> void:
 
 
 func _on_button_hovered(button: Button, hovered: bool) -> void:
+	if button.disabled:
+		return
 	button.pivot_offset = button.size * 0.5
 	var tween := create_tween()
-	tween.tween_property(button, "scale", Vector2.ONE * (1.035 if hovered else 1.0), 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(button, "scale", Vector2.ONE * (1.025 if hovered else 1.0), 0.1)
 
 
 func _play_audio(method_name: String) -> void:

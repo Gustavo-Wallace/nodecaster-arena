@@ -19,6 +19,7 @@ signal bounce_requested(world_position: Vector2)
 @export var glow_strength: float = 0.0
 @export var element_effect_id: String = "direct"
 @export var element_effect_power: float = 0.0
+@export var element_effect_duration_multiplier: float = 1.0
 
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
@@ -62,7 +63,7 @@ func _on_body_entered(body: Node) -> void:
 	if body.has_method("take_damage"):
 		body.call("take_damage", damage)
 	if body.has_method("apply_elemental_effect") and element_effect_id != "direct":
-		body.call("apply_elemental_effect", element_effect_id, element_effect_power, damage)
+		body.call("apply_elemental_effect", element_effect_id, element_effect_power, damage, element_effect_duration_multiplier)
 
 	if explosion_radius > 0.0 and explosion_damage > 0:
 		explosion_requested.emit(global_position, explosion_radius, explosion_damage)

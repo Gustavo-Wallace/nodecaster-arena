@@ -83,17 +83,44 @@ const SHAPES := {
 		"slash_arc_multiplier": 0.92,
 		"modifiers_text": "+28% damage, larger and slower projectiles.",
 	},
+	"diamond": {
+		"id": "diamond",
+		"display_name": "Diamond",
+		"description": "A rapid Spell Shape for fast, precise casts.",
+		"visual_shape": "diamond",
+		"base_color": Color(0.36, 0.92, 0.94),
+		"damage_multiplier": 0.9,
+		"projectile_speed_multiplier": 1.16,
+		"fire_interval_multiplier": 0.82,
+		"size_multiplier": 0.9,
+		"pierce_bonus": 0,
+		"duration_multiplier": 0.92,
+		"area_multiplier": 0.94,
+		"chain_range_multiplier": 1.08,
+		"chain_jump_range_multiplier": 1.1,
+		"chain_visual_width_multiplier": 0.9,
+		"area_size_multiplier": 0.9,
+		"area_duration_multiplier": 0.9,
+		"area_tick_interval_multiplier": 0.88,
+		"area_damage_multiplier": 0.94,
+		"slash_range_multiplier": 1.06,
+		"slash_size_multiplier": 0.88,
+		"slash_width_multiplier": 0.84,
+		"slash_damage_multiplier": 0.92,
+		"slash_arc_multiplier": 1.05,
+		"modifiers_text": "+18% cast rhythm, +16% speed, -10% damage.",
+	},
 	"star": {
 		"id": "star",
-		"display_name": "Estrela",
-		"description": "Form reserved for future matrices.",
+		"display_name": "Star",
+		"description": "Spell Shape reserved for future matrices.",
 		"visual_shape": "star",
 		"available": false,
 	},
 	"pentagon": {
 		"id": "pentagon",
-		"display_name": "Pentagono",
-		"description": "Form reserved for future matrices.",
+		"display_name": "Pentagon",
+		"description": "Spell Shape reserved for future matrices.",
 		"visual_shape": "pentagon",
 		"available": false,
 	},
@@ -107,6 +134,6 @@ static func get_data(shape_id: String) -> Dictionary:
 
 static func get_available() -> Array[Dictionary]:
 	var shapes: Array[Dictionary] = []
-	for shape_id in ["circle", "triangle", "square"]:
+	for shape_id in ["circle", "triangle", "square", "diamond", "star", "pentagon"]:
 		shapes.append(get_data(shape_id))
 	return shapes

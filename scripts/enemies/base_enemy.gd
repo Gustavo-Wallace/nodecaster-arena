@@ -63,14 +63,14 @@ func take_damage(amount: int) -> void:
 		_die()
 
 
-func apply_elemental_effect(effect_id: String, effect_power: float, source_damage: int) -> void:
+func apply_elemental_effect(effect_id: String, effect_power: float, source_damage: int, duration_multiplier: float = 1.0) -> void:
 	match effect_id:
 		"burn":
-			_burn_time_left = maxf(_burn_time_left, 1.8)
+			_burn_time_left = maxf(_burn_time_left, 1.8 * duration_multiplier)
 			_burn_tick_left = minf(_burn_tick_left, 0.22)
 			_burn_damage = maxi(_burn_damage, maxi(1, int(round(float(source_damage) * effect_power))))
 		"slow":
-			_slow_time_left = maxf(_slow_time_left, 1.4)
+			_slow_time_left = maxf(_slow_time_left, 1.4 * duration_multiplier)
 			_slow_multiplier = minf(_slow_multiplier, clampf(effect_power, 0.35, 0.92))
 	queue_redraw()
 

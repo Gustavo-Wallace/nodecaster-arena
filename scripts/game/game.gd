@@ -148,6 +148,12 @@ var _area_damage_multiplier: float = 1.0
 var _slash_range_bonus: float = 0.0
 var _slash_size_multiplier: float = 1.0
 var _slash_targets_bonus: int = 0
+var _simple_projectile_echo_interval: int = 0
+var _chain_memory_interval: int = 0
+var _area_initial_pulse_multiplier: float = 0.0
+var _slash_empowered_interval: int = 0
+var _element_effect_duration_multiplier: float = 1.0
+var _electric_empowered_interval: int = 0
 
 
 func _ready() -> void:
@@ -458,10 +464,9 @@ func _apply_meta_run_effects() -> void:
 		var invulnerability := float(save_manager.call("get_skill_effect_value", "post_hit_invulnerability_duration"))
 		player.call("set_post_hit_invulnerability", invulnerability)
 
+	_apply_persistent_spell_masteries()
 	_add_active_meta_nodes_to_graph()
 
-	if _has_meta_skill("initial_fragment"):
-		_apply_starting_meta_upgrade("initial_fragmentation", "INITIAL FRAGMENT")
 	if _has_meta_skill("arcane_memory"):
 		_apply_random_memory_upgrade()
 
@@ -472,8 +477,7 @@ func _add_active_meta_nodes_to_graph() -> void:
 	var meta_nodes := [
 		{"skill": "resonant_shell", "id": "meta_resonant_shell", "name": "Resonant Shell", "label": "Shield", "branch": "core"},
 		{"skill": "stable_window", "id": "meta_stable_window", "name": "Stable Window", "label": "Window", "branch": "core"},
-		{"skill": "catalyzed_shot", "id": "meta_catalyzed_shot", "name": "Catalyzed Shot", "label": "Catalyze", "branch": "rhythm"},
-		{"skill": "opening_charge", "id": "meta_opening_charge", "name": "Opening Charge", "label": "Charge", "branch": "rhythm"},
+		{"skill": "opening_pierce", "id": "meta_opening_pierce", "name": "Opening Pierce", "label": "Pierce", "branch": "rhythm"},
 	]
 
 	for meta_node in meta_nodes:
@@ -496,7 +500,7 @@ func _activate_wave_meta_effects() -> void:
 		player.call("set_shield_charges", charges)
 		_spawn_floating_text("SHIELD", player.global_position + Vector2(0.0, -34.0), Color(0.5, 0.94, 1.0), 0.58)
 
-	_opening_charge_time_left = _get_meta_effect_value("opening_charge_duration") if _has_meta_skill("opening_charge") else 0.0
+	_opening_charge_time_left = _get_cast_type_bonus("simple_projectile", "opening_pierce_duration") if _is_simple_projectile_cast_type() else 0.0
 	if _opening_charge_time_left > 0.0 and is_instance_valid(player):
 		_spawn_floating_text("CHARGE", player.global_position + Vector2(0.0, -52.0), Color(1.0, 0.84, 0.34), 0.5)
 
@@ -543,6 +547,53 @@ func _get_meta_effect_value(effect_type: String) -> float:
 	if save_manager == null:
 		return 0.0
 	return float(save_manager.call("get_skill_effect_value", effect_type))
+
+
+func _get_cast_type_bonus(cast_type_id: String, bonus_type: String) -> float:
+	var save_manager := get_node_or_null("/root/SaveManager")
+	if save_manager == null:
+		return 0.0
+	return float(save_manager.call("get_cast_type_bonus", cast_type_id, bonus_type))
+
+
+func _get_element_bonus(element_id: String, bonus_type: String) -> float:
+	var save_manager := get_node_or_null("/root/SaveManager")
+	if save_manager == null:
+		return 0.0
+	return float(save_manager.call("get_element_bonus", element_id, bonus_type))
+
+
+func _apply_persistent_spell_masteries() -> void:
+	var cast_type_id := str(selected_spell_summary.get("delivery_id", "simple_projectile"))
+	match cast_type_id:
+		"simple_projectile":
+			projectile_speed *= 1.0 + _get_cast_type_bonus(cast_type_id, "projectile_speed_multiplier")
+			_simple_projectile_echo_interval = int(_get_cast_type_bonus(cast_type_id, "echo_interval"))
+		"chain_lightning":
+			_chain_jump_range_bonus += _get_cast_type_bonus(cast_type_id, "jump_range_bonus")
+			_chain_memory_interval = int(_get_cast_type_bonus(cast_type_id, "memory_interval"))
+			_chain_falloff_bonus += _get_cast_type_bonus(cast_type_id, "falloff_bonus")
+		"area":
+			_area_duration_multiplier += _get_cast_type_bonus(cast_type_id, "duration_multiplier")
+			_area_size_multiplier += _get_cast_type_bonus(cast_type_id, "size_multiplier")
+			_area_initial_pulse_multiplier = _get_cast_type_bonus(cast_type_id, "initial_pulse_multiplier")
+		"slash":
+			_slash_range_bonus += _get_cast_type_bonus(cast_type_id, "range_bonus")
+			_slash_empowered_interval = int(_get_cast_type_bonus(cast_type_id, "empowered_interval"))
+			_slash_targets_bonus += int(_get_cast_type_bonus(cast_type_id, "target_bonus"))
+
+	var element_id := str(selected_spell_summary.get("element_id", "arcane"))
+	var damage_bonus := _get_element_bonus(element_id, "damage_multiplier")
+	if damage_bonus > 0.0:
+		projectile_damage = maxi(1, int(round(float(projectile_damage) * (1.0 + damage_bonus))))
+
+	_element_effect_duration_multiplier += _get_element_bonus(element_id, "effect_duration_multiplier")
+	if element_id == "fire":
+		_spell_attributes["element_effect_power"] = float(_spell_attributes.get("element_effect_power", 0.0)) * (1.0 + _get_element_bonus(element_id, "effect_power_multiplier"))
+	elif element_id == "ice":
+		_spell_attributes["element_effect_power"] = maxf(0.35, float(_spell_attributes.get("element_effect_power", 0.72)) - _get_element_bonus(element_id, "slow_multiplier_bonus"))
+	elif element_id == "lightning":
+		_electric_empowered_interval = int(_get_element_bonus(element_id, "empowered_interval"))
 
 
 func _spawn_wave_enemies() -> void:
@@ -777,6 +828,7 @@ func _cast_projectile_spell() -> void:
 	_shot_sequence += 1
 	var catalyzed := _has_meta_skill("catalyzed_shot") and _shot_sequence % maxi(int(_get_meta_effect_value("catalyzed_shot_interval")), 1) == 0
 	var projectile_overrides: Dictionary = {}
+	var empowered_multiplier := _get_elemental_empowerment_multiplier()
 	if catalyzed:
 		projectile_overrides = {
 			"damage": int(round(float(projectile_damage) * 1.8)),
@@ -786,6 +838,9 @@ func _cast_projectile_spell() -> void:
 			"outline_color": Color(1.0, 0.94, 0.68),
 		}
 		_spawn_floating_text("CATALYZED", player.global_position + Vector2(0.0, -42.0), Color(1.0, 0.66, 0.94), 0.46)
+	if empowered_multiplier > 1.0:
+		projectile_overrides["damage"] = int(round(float(projectile_damage) * empowered_multiplier))
+		_spawn_floating_text("STATIC", player.global_position + Vector2(0.0, -58.0), Color(1.0, 0.94, 0.42), 0.42)
 
 	for index in range(count):
 		var angle_offset := 0.0
@@ -796,6 +851,8 @@ func _cast_projectile_spell() -> void:
 		_spawn_projectile(player.global_position + direction * 30.0, direction, projectile_overrides)
 
 	_play_audio("play_shoot")
+	if _simple_projectile_echo_interval > 0 and _shot_sequence % _simple_projectile_echo_interval == 0:
+		_spawn_projectile(player.global_position + base_direction * 26.0, base_direction.rotated(0.11), {"damage": int(round(float(projectile_damage) * 0.62)), "size_multiplier": projectile_size_multiplier * 0.7})
 	if _cutting_echo_interval > 0 and _shot_sequence % _cutting_echo_interval == 0:
 		_spawn_projectile(
 			player.global_position + base_direction * 34.0,
@@ -821,14 +878,18 @@ func _cast_chain_lightning_spell() -> void:
 	_shot_sequence += 1
 	var catalyzed := _has_meta_skill("catalyzed_shot") and _shot_sequence % maxi(int(_get_meta_effect_value("catalyzed_shot_interval")), 1) == 0
 	var echo_cast := _cutting_echo_interval > 0 and _shot_sequence % _cutting_echo_interval == 0
-	var base_damage := maxi(1, int(round(float(projectile_damage) * float(parameters["damage_multiplier"]) * (1.8 if catalyzed else 1.0))))
-	var max_hits := mini(int(parameters["max_hits"]) + (1 if echo_cast else 0), chain_max_hits_cap)
+	var empowered_multiplier := _get_elemental_empowerment_multiplier()
+	var base_damage := maxi(1, int(round(float(projectile_damage) * float(parameters["damage_multiplier"]) * (1.8 if catalyzed else 1.0) * empowered_multiplier)))
+	var memory_hit_bonus := 1 if _chain_memory_interval > 0 and _shot_sequence % _chain_memory_interval == 0 else 0
+	var max_hits := mini(int(parameters["max_hits"]) + (1 if echo_cast else 0) + memory_hit_bonus, chain_max_hits_cap)
 	if echo_cast:
 		base_damage = maxi(1, int(round(float(base_damage) * _cutting_echo_damage_multiplier)))
 	if catalyzed:
 		_spawn_floating_text("CATALYZED", player.global_position + Vector2(0.0, -42.0), Color(1.0, 0.66, 0.94), 0.46)
 	if echo_cast:
 		_spawn_floating_text("ECHO", player.global_position + Vector2(0.0, -64.0), Color(0.72, 1.0, 0.94), 0.42)
+	if empowered_multiplier > 1.0:
+		_spawn_floating_text("STATIC", player.global_position + Vector2(0.0, -58.0), Color(1.0, 0.94, 0.42), 0.42)
 
 	var chain_points: Array[Vector2] = [player.global_position]
 	var current_target := first_target
@@ -863,6 +924,16 @@ func _is_slash_delivery() -> bool:
 	return str(selected_spell_summary.get("delivery_id", "simple_projectile")) == "slash"
 
 
+func _is_simple_projectile_cast_type() -> bool:
+	return str(selected_spell_summary.get("delivery_id", "simple_projectile")) == "simple_projectile"
+
+
+func _get_elemental_empowerment_multiplier() -> float:
+	if _electric_empowered_interval > 0 and _shot_sequence % _electric_empowered_interval == 0:
+		return 1.25
+	return 1.0
+
+
 func _cast_slash_spell() -> void:
 	var parameters: Dictionary = _get_slash_parameters()
 	var target_count := int(parameters["targets"])
@@ -873,12 +944,16 @@ func _cast_slash_spell() -> void:
 	_shot_sequence += 1
 	var catalyzed := _has_meta_skill("catalyzed_shot") and _shot_sequence % maxi(int(_get_meta_effect_value("catalyzed_shot_interval")), 1) == 0
 	var echo_cast := _cutting_echo_interval > 0 and _shot_sequence % _cutting_echo_interval == 0
-	var damage_multiplier := float(parameters["damage_multiplier"]) * (1.8 if catalyzed else 1.0)
+	var empowered_multiplier := _get_elemental_empowerment_multiplier()
+	var rhythm_multiplier := 1.4 if _slash_empowered_interval > 0 and _shot_sequence % _slash_empowered_interval == 0 else 1.0
+	var damage_multiplier := float(parameters["damage_multiplier"]) * (1.8 if catalyzed else 1.0) * empowered_multiplier * rhythm_multiplier
 	var hit_damage := maxi(1, int(round(float(projectile_damage) * damage_multiplier)))
 	var first_target_position: Vector2 = targets[0].global_position
 
 	if catalyzed:
 		_spawn_floating_text("CATALYZED", player.global_position + Vector2(0.0, -42.0), Color(1.0, 0.66, 0.94), 0.46)
+	if empowered_multiplier > 1.0:
+		_spawn_floating_text("STATIC", player.global_position + Vector2(0.0, -58.0), Color(1.0, 0.94, 0.42), 0.42)
 
 	for target in targets:
 		_apply_slash_hit(target, hit_damage, parameters, false)
@@ -937,7 +1012,8 @@ func _apply_slash_hit(target: Node2D, damage: int, parameters: Dictionary, is_ec
 			"apply_elemental_effect",
 			str(_spell_attributes.get("element_effect_id", "direct")),
 			float(_spell_attributes.get("element_effect_power", 0.0)),
-			damage
+			damage,
+			_element_effect_duration_multiplier
 		)
 
 	_spawn_slash_effect(target_position, parameters, is_echo)
@@ -1007,9 +1083,12 @@ func _cast_area_spell() -> void:
 
 	_shot_sequence += 1
 	var catalyzed := _has_meta_skill("catalyzed_shot") and _shot_sequence % maxi(int(_get_meta_effect_value("catalyzed_shot_interval")), 1) == 0
-	var tick_damage := maxi(1, int(round(float(projectile_damage) * float(parameters["damage_multiplier"]) * (1.8 if catalyzed else 1.0))))
+	var empowered_multiplier := _get_elemental_empowerment_multiplier()
+	var tick_damage := maxi(1, int(round(float(projectile_damage) * float(parameters["damage_multiplier"]) * (1.8 if catalyzed else 1.0) * empowered_multiplier)))
 	if catalyzed:
 		_spawn_floating_text("CATALYZED", player.global_position + Vector2(0.0, -42.0), Color(1.0, 0.66, 0.94), 0.46)
+	if empowered_multiplier > 1.0:
+		_spawn_floating_text("STATIC", player.global_position + Vector2(0.0, -58.0), Color(1.0, 0.94, 0.42), 0.42)
 
 	_remove_invalid_area_spells()
 	if _active_area_spells.size() >= area_max_active:
@@ -1036,6 +1115,8 @@ func _cast_area_spell() -> void:
 	)
 	_active_area_spells.append(area_spell)
 	_play_audio("play_area_cast")
+	if _area_initial_pulse_multiplier > 0.0:
+		_on_area_spell_pulse(target.global_position, float(parameters["radius"]) * 0.58, maxi(1, int(round(float(tick_damage) * _area_initial_pulse_multiplier))), str(_spell_attributes.get("element_effect_id", "direct")), float(_spell_attributes.get("element_effect_power", 0.0)))
 
 	if projectile_explosion_radius > 0.0 and projectile_explosion_damage_multiplier > 0.0:
 		_on_area_spell_pulse(
@@ -1066,7 +1147,7 @@ func _on_area_spell_pulse(world_position: Vector2, pulse_radius: float, damage: 
 		if enemy.has_method("take_damage"):
 			enemy.call("take_damage", damage)
 		if enemy.has_method("apply_elemental_effect") and effect_id != "direct":
-			enemy.call("apply_elemental_effect", effect_id, effect_power, damage)
+			enemy.call("apply_elemental_effect", effect_id, effect_power, damage, _element_effect_duration_multiplier)
 		enemies_hit += 1
 
 	if enemies_hit > 0:
@@ -1089,7 +1170,8 @@ func _apply_chain_hit(enemy: Node2D, damage: int) -> void:
 			"apply_elemental_effect",
 			str(_spell_attributes.get("element_effect_id", "direct")),
 			float(_spell_attributes.get("element_effect_power", 0.0)),
-			damage
+			damage,
+			_element_effect_duration_multiplier
 		)
 
 
@@ -1132,6 +1214,7 @@ func _spawn_projectile(spawn_position: Vector2, direction: Vector2, overrides: D
 	projectile.set("visual_shape", str(overrides.get("visual_shape", _spell_attributes.get("visual_shape", "circle"))))
 	projectile.set("element_effect_id", str(_spell_attributes.get("element_effect_id", "direct")))
 	projectile.set("element_effect_power", float(_spell_attributes.get("element_effect_power", 0.0)))
+	projectile.set("element_effect_duration_multiplier", _element_effect_duration_multiplier)
 	var visual_profile := _get_spell_visual_profile()
 	projectile.set("trail_style", str(visual_profile.get("trail_style", "standard")))
 	projectile.set("glow_strength", float(visual_profile.get("glow", 0.0)))
@@ -1245,7 +1328,7 @@ func _pick_upgrade_options(count: int) -> Array[Dictionary]:
 
 
 func _pick_directed_affinity_option(pool: Array[Dictionary], picked: Array[Dictionary], count: int) -> void:
-	if _has_shown_upgrade_panel or not _has_meta_skill("directed_affinity") or picked.size() >= count:
+	if _has_shown_upgrade_panel or not _has_meta_skill("directed_tuning") or picked.size() >= count:
 		return
 
 	for index in range(pool.size()):

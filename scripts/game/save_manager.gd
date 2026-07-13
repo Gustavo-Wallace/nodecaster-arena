@@ -1,9 +1,12 @@
 extends Node
 
 const SAVE_PATH := "user://nodecaster_arena_save.cfg"
-const SKILL_TREE_VERSION := 2
+const SKILL_TREE_VERSION := 3
 
 const BASIC_CHARACTER_IDS := ["circle", "triangle", "square"]
+const BASIC_SPELL_SHAPE_IDS := ["circle", "triangle", "square"]
+const BASIC_ELEMENT_IDS := ["arcane", "fire", "ice", "lightning"]
+const BASIC_CAST_TYPE_IDS := ["simple_projectile", "chain_lightning", "area", "slash"]
 const BASIC_UPGRADE_IDS := [
 	"arcane_damage",
 	"unstable_cadence",
@@ -40,162 +43,45 @@ var unlock_definitions := {
 }
 
 var skill_definitions := {
-	"resonant_shell": {
-		"id": "resonant_shell",
-		"name": "Resonant Shell",
-		"description": "At the start of each wave, gain 1 shield that absorbs the next hit.",
-		"branch": "core",
-		"cost": 14,
-		"prerequisites": [],
-		"effect_type": "wave_shield_charges",
-		"effect_value": 1,
-		"position": Vector2(482.0, 225.0),
-	},
-	"stable_window": {
-		"id": "stable_window",
-		"name": "Stable Window",
-		"description": "After taking damage, become invulnerable for a brief moment.",
-		"branch": "core",
-		"cost": 20,
-		"prerequisites": ["resonant_shell"],
-		"effect_type": "post_hit_invulnerability_duration",
-		"effect_value": 0.6,
-		"position": Vector2(482.0, 115.0),
-	},
-	"field_repair": {
-		"id": "field_repair",
-		"name": "Field Repair",
-		"description": "Defeating the mini-boss restores 18 health.",
-		"branch": "core",
-		"cost": 24,
-		"prerequisites": ["stable_window"],
-		"effect_type": "miniboss_heal_bonus",
-		"effect_value": 18,
-		"position": Vector2(312.0, 35.0),
-	},
-	"emergency_pulse": {
-		"id": "emergency_pulse",
-		"name": "Emergency Pulse",
-		"description": "Below 30% health, taking damage releases a pulse that hurts nearby enemies.",
-		"branch": "core",
-		"cost": 32,
-		"prerequisites": ["stable_window"],
-		"effect_type": "emergency_pulse_radius",
-		"effect_value": 138,
-		"position": Vector2(652.0, 35.0),
-	},
-	"catalyzed_shot": {
-		"id": "catalyzed_shot",
-		"name": "Catalyzed Shot",
-		"description": "Every 4 casts, the next becomes a larger and much stronger prism.",
-		"branch": "projectile",
-		"cost": 18,
-		"prerequisites": [],
-		"effect_type": "catalyzed_shot_interval",
-		"effect_value": 4,
-		"position": Vector2(725.0, 360.0),
-	},
-	"opening_charge": {
-		"id": "opening_charge",
-		"name": "Opening Charge",
-		"description": "For the first seconds of each wave, your projectiles gain +1 pierce.",
-		"branch": "projectile",
-		"cost": 22,
-		"prerequisites": ["catalyzed_shot"],
-		"effect_type": "opening_charge_duration",
-		"effect_value": 4.5,
-		"position": Vector2(890.0, 275.0),
-	},
-	"initial_fragment": {
-		"id": "initial_fragment",
-		"name": "Initial Fragment",
-		"description": "Every run starts with Fragmentation already connected to your spell.",
-		"branch": "projectile",
-		"cost": 26,
-		"prerequisites": ["catalyzed_shot"],
-		"effect_type": "starting_fragmentation",
-		"effect_value": 1,
-		"position": Vector2(890.0, 445.0),
-	},
-	"unlock_piercing": {
-		"id": "unlock_piercing",
-		"name": "Piercing",
-		"description": "Unlocks the Piercing node in runs.",
-		"branch": "arcane",
-		"cost": 20,
-		"prerequisites": [],
-		"effect_type": "unlock_upgrade",
-		"target_id": "piercing",
-		"effect_value": 1,
-		"position": Vector2(482.0, 525.0),
-	},
-	"expanded_options": {
-		"id": "expanded_options",
-		"name": "Expanded Options",
-		"description": "Shows 4 mutations between waves. You still choose 1.",
-		"branch": "arcane",
-		"cost": 60,
-		"prerequisites": ["prepared_choice"],
-		"effect_type": "upgrade_option_bonus",
-		"effect_value": 1,
-		"position": Vector2(650.0, 650.0),
-	},
-	"prepared_choice": {
-		"id": "prepared_choice",
-		"name": "Prepared Choice",
-		"description": "Gain 1 reroll per run in the mutation panel.",
-		"branch": "arcane",
-		"cost": 18,
-		"prerequisites": ["unlock_piercing"],
-		"effect_type": "upgrade_reroll_charges",
-		"effect_value": 1,
-		"position": Vector2(312.0, 650.0),
-	},
-	"arcane_memory": {
-		"id": "arcane_memory",
-		"name": "Arcane Memory",
-		"description": "Every run starts with 1 random basic mutation already applied.",
-		"branch": "arcane",
-		"cost": 34,
-		"prerequisites": ["prepared_choice"],
-		"effect_type": "starting_random_mutation",
-		"effect_value": 1,
-		"position": Vector2(130.0, 745.0),
-	},
-	"directed_affinity": {
-		"id": "directed_affinity",
-		"name": "Directed Affinity",
-		"description": "The first mutation panel always offers at least 1 offensive option.",
-		"branch": "arcane",
-		"cost": 28,
-		"prerequisites": ["expanded_options"],
-		"effect_type": "force_first_offensive_option",
-		"effect_value": 1,
-		"position": Vector2(810.0, 745.0),
-	},
-	"synergy_resonance": {
-		"id": "synergy_resonance",
-		"name": "Synergy Resonance",
-		"description": "When you already own part of a synergy, rewards favor a compatible mutation.",
-		"branch": "arcane",
-		"cost": 42,
-		"prerequisites": ["directed_affinity"],
-		"effect_type": "synergy_option_bias",
-		"effect_value": 1,
-		"position": Vector2(1000.0, 650.0),
-	},
-	"unlock_diamond": {
-		"id": "unlock_diamond",
-		"name": "Diamond",
-		"description": "Unlocks the Diamond form in character selection.",
-		"branch": "forms",
-		"cost": 25,
-		"prerequisites": [],
-		"effect_type": "unlock_character",
-		"target_id": "diamond",
-		"effect_value": 1,
-		"position": Vector2(300.0, 360.0),
-	},
+	"resonant_shell": {"id": "resonant_shell", "name": "Resonant Shell", "description": "At the start of each wave, gain 1 shield that absorbs the next hit.", "branch": "core", "cost": 14, "prerequisites": [], "effect_type": "wave_shield_charges", "effect_value": 1, "position": Vector2(910.0, 360.0)},
+	"stable_window": {"id": "stable_window", "name": "Stable Window", "description": "After taking damage, become invulnerable for a brief moment.", "branch": "core", "cost": 20, "prerequisites": ["resonant_shell"], "effect_type": "post_hit_invulnerability_duration", "effect_value": 0.6, "position": Vector2(910.0, 245.0)},
+	"emergency_pulse": {"id": "emergency_pulse", "name": "Emergency Pulse", "description": "Below 30% health, taking damage releases a defensive pulse.", "branch": "core", "cost": 32, "prerequisites": ["stable_window"], "effect_type": "emergency_pulse_radius", "effect_value": 138, "position": Vector2(720.0, 140.0)},
+	"prepared_choice": {"id": "prepared_choice", "name": "Prepared Choice", "description": "Gain 1 reroll per run in the mutation panel.", "branch": "core", "cost": 18, "prerequisites": [], "effect_type": "upgrade_reroll_charges", "effect_value": 1, "position": Vector2(1210.0, 360.0)},
+	"expanded_choices": {"id": "expanded_choices", "name": "Expanded Choices", "description": "Mutation panels show 4 options. You still choose only 1.", "branch": "core", "cost": 60, "prerequisites": ["prepared_choice"], "effect_type": "upgrade_option_bonus", "effect_value": 1, "position": Vector2(1400.0, 270.0)},
+	"arcane_memory": {"id": "arcane_memory", "name": "Arcane Memory", "description": "Start each run with 1 random basic node already connected.", "branch": "core", "cost": 34, "prerequisites": ["prepared_choice"], "effect_type": "starting_random_mutation", "effect_value": 1, "position": Vector2(1400.0, 430.0)},
+	"directed_tuning": {"id": "directed_tuning", "name": "Directed Tuning", "description": "The first mutation panel always includes an offensive option.", "branch": "core", "cost": 28, "prerequisites": ["expanded_choices"], "effect_type": "force_first_offensive_option", "effect_value": 1, "position": Vector2(1610.0, 350.0)},
+
+	"unlock_matrix": {"id": "unlock_matrix", "name": "Unlock Matrix", "description": "Opens advanced branches for Spell Shapes, Elements, and Cast Types.", "branch": "unlocks", "cost": 20, "prerequisites": [], "position": Vector2(540.0, 655.0)},
+	"unlock_diamond_shape": {"id": "unlock_diamond_shape", "name": "Diamond Shape", "description": "Unlocks Diamond Spell Shape: rapid casts with slightly lower damage.", "branch": "shape_unlocks", "cost": 28, "prerequisites": ["unlock_matrix"], "effect_type": "unlock_spell_shape", "target_id": "diamond", "position": Vector2(270.0, 530.0)},
+	"unlock_star_shape": {"id": "unlock_star_shape", "name": "Star Shape", "description": "A future Spell Shape for multi-hit builds.", "branch": "shape_unlocks", "cost": 52, "prerequisites": ["unlock_diamond_shape"], "future": true, "position": Vector2(55.0, 430.0)},
+	"unlock_shadow_element": {"id": "unlock_shadow_element", "name": "Shadow Element", "description": "Unlocks Shadow: a dark, high-impact element.", "branch": "element_unlocks", "cost": 30, "prerequisites": ["unlock_matrix"], "effect_type": "unlock_element", "target_id": "shadow", "position": Vector2(270.0, 705.0)},
+	"unlock_light_element": {"id": "unlock_light_element", "name": "Light Element", "description": "A future healing and elite-focused element.", "branch": "element_unlocks", "cost": 56, "prerequisites": ["unlock_shadow_element"], "future": true, "position": Vector2(55.0, 805.0)},
+	"unlock_persistent_waves": {"id": "unlock_persistent_waves", "name": "Persistent Waves", "description": "Future Cast Type. Coming soon.", "branch": "cast_unlocks", "cost": 58, "prerequisites": ["unlock_matrix"], "future": true, "position": Vector2(480.0, 930.0)},
+	"unlock_summoning": {"id": "unlock_summoning", "name": "Summoning", "description": "Future Cast Type for player echoes. Coming soon.", "branch": "cast_unlocks", "cost": 78, "prerequisites": ["unlock_persistent_waves"], "future": true, "position": Vector2(650.0, 1040.0)},
+	"unlock_orbitals": {"id": "unlock_orbitals", "name": "Orbitals", "description": "Future Cast Type. Coming soon.", "branch": "cast_unlocks", "cost": 70, "prerequisites": ["unlock_matrix"], "future": true, "position": Vector2(790.0, 910.0)},
+	"unlock_dual_casting": {"id": "unlock_dual_casting", "name": "Dual Casting", "description": "Late-game Cast Type. Coming soon.", "branch": "cast_unlocks", "cost": 96, "prerequisites": ["unlock_orbitals"], "future": true, "position": Vector2(960.0, 860.0)},
+
+	"projectile_calibration": {"id": "projectile_calibration", "name": "Projectile Calibration", "description": "Simple Projectile gains faster launch speed.", "branch": "cast_projectile", "cost": 18, "prerequisites": [], "scope": "cast_type", "scope_id": "simple_projectile", "bonus_type": "projectile_speed_multiplier", "effect_value": 0.16, "position": Vector2(1300.0, 650.0)},
+	"opening_pierce": {"id": "opening_pierce", "name": "Opening Pierce", "description": "Simple Projectile gains +1 pierce during the first seconds of each wave.", "branch": "cast_projectile", "cost": 24, "prerequisites": ["projectile_calibration"], "scope": "cast_type", "scope_id": "simple_projectile", "bonus_type": "opening_pierce_duration", "effect_value": 4.5, "position": Vector2(1510.0, 560.0)},
+	"stable_volley": {"id": "stable_volley", "name": "Stable Volley", "description": "Every 5th Simple Projectile cast fires a smaller extra shot.", "branch": "cast_projectile", "cost": 30, "prerequisites": ["projectile_calibration"], "scope": "cast_type", "scope_id": "simple_projectile", "bonus_type": "echo_interval", "effect_value": 5, "position": Vector2(1510.0, 700.0)},
+	"conductive_path": {"id": "conductive_path", "name": "Conductive Path", "description": "Chain Lightning gains a longer jump range.", "branch": "cast_chain", "cost": 22, "prerequisites": [], "scope": "cast_type", "scope_id": "chain_lightning", "bonus_type": "jump_range_bonus", "effect_value": 34, "position": Vector2(1330.0, 810.0)},
+	"static_memory": {"id": "static_memory", "name": "Static Memory", "description": "Every 5th Chain Lightning gains +1 maximum hit.", "branch": "cast_chain", "cost": 30, "prerequisites": ["conductive_path"], "scope": "cast_type", "scope_id": "chain_lightning", "bonus_type": "memory_interval", "effect_value": 5, "position": Vector2(1540.0, 810.0)},
+	"reduced_falloff": {"id": "reduced_falloff", "name": "Reduced Falloff", "description": "Chain Lightning keeps more damage after each jump.", "branch": "cast_chain", "cost": 32, "prerequisites": ["static_memory"], "scope": "cast_type", "scope_id": "chain_lightning", "bonus_type": "falloff_bonus", "effect_value": 0.07, "position": Vector2(1750.0, 900.0)},
+	"lingering_field": {"id": "lingering_field", "name": "Lingering Field", "description": "Area Field remains active longer.", "branch": "cast_area", "cost": 22, "prerequisites": [], "scope": "cast_type", "scope_id": "area", "bonus_type": "duration_multiplier", "effect_value": 0.24, "position": Vector2(1000.0, 1000.0)},
+	"wider_field": {"id": "wider_field", "name": "Wider Field", "description": "Area Field covers a wider radius.", "branch": "cast_area", "cost": 28, "prerequisites": ["lingering_field"], "scope": "cast_type", "scope_id": "area", "bonus_type": "size_multiplier", "effect_value": 0.2, "position": Vector2(790.0, 1085.0)},
+	"initial_pulse": {"id": "initial_pulse", "name": "Initial Pulse", "description": "Area Field releases a small impact pulse when created.", "branch": "cast_area", "cost": 30, "prerequisites": ["wider_field"], "scope": "cast_type", "scope_id": "area", "bonus_type": "initial_pulse_multiplier", "effect_value": 0.45, "position": Vector2(570.0, 1080.0)},
+	"blade_rhythm": {"id": "blade_rhythm", "name": "Blade Rhythm", "description": "Every 5th Slash is empowered.", "branch": "cast_slash", "cost": 22, "prerequisites": [], "scope": "cast_type", "scope_id": "slash", "bonus_type": "empowered_interval", "effect_value": 5, "position": Vector2(1280.0, 1040.0)},
+	"extended_edge": {"id": "extended_edge", "name": "Extended Edge", "description": "Slash gains additional reach.", "branch": "cast_slash", "cost": 26, "prerequisites": ["blade_rhythm"], "scope": "cast_type", "scope_id": "slash", "bonus_type": "range_bonus", "effect_value": 46, "position": Vector2(1500.0, 1040.0)},
+	"second_cut": {"id": "second_cut", "name": "Second Cut", "description": "Slash can hit one additional nearby target.", "branch": "cast_slash", "cost": 34, "prerequisites": ["extended_edge"], "scope": "cast_type", "scope_id": "slash", "bonus_type": "target_bonus", "effect_value": 1, "position": Vector2(1710.0, 1130.0)},
+
+	"arcane_focus": {"id": "arcane_focus", "name": "Arcane Focus", "description": "Arcane casts deal slightly more direct damage.", "branch": "element_arcane", "cost": 20, "prerequisites": [], "scope": "element", "scope_id": "arcane", "bonus_type": "damage_multiplier", "effect_value": 0.1, "position": Vector2(260.0, 1210.0)},
+	"arcane_echo": {"id": "arcane_echo", "name": "Arcane Echo", "description": "Future arcane secondary pulse. Coming soon.", "branch": "element_arcane", "cost": 42, "prerequisites": ["arcane_focus"], "future": true, "position": Vector2(50.0, 1310.0)},
+	"longer_burn": {"id": "longer_burn", "name": "Longer Burn", "description": "Fire burn lasts longer.", "branch": "element_fire", "cost": 20, "prerequisites": [], "scope": "element", "scope_id": "fire", "bonus_type": "effect_duration_multiplier", "effect_value": 0.35, "position": Vector2(810.0, 1290.0)},
+	"hotter_burn": {"id": "hotter_burn", "name": "Hotter Burn", "description": "Fire burn deals more damage per tick.", "branch": "element_fire", "cost": 28, "prerequisites": ["longer_burn"], "scope": "element", "scope_id": "fire", "bonus_type": "effect_power_multiplier", "effect_value": 0.25, "position": Vector2(640.0, 1380.0)},
+	"longer_chill": {"id": "longer_chill", "name": "Longer Chill", "description": "Ice slows enemies for longer.", "branch": "element_ice", "cost": 20, "prerequisites": [], "scope": "element", "scope_id": "ice", "bonus_type": "effect_duration_multiplier", "effect_value": 0.3, "position": Vector2(1050.0, 1290.0)},
+	"deeper_chill": {"id": "deeper_chill", "name": "Deeper Chill", "description": "Ice applies a stronger slow.", "branch": "element_ice", "cost": 28, "prerequisites": ["longer_chill"], "scope": "element", "scope_id": "ice", "bonus_type": "slow_multiplier_bonus", "effect_value": 0.1, "position": Vector2(1050.0, 1380.0)},
+	"higher_voltage": {"id": "higher_voltage", "name": "Higher Voltage", "description": "Electric casts deal slightly more damage.", "branch": "element_electric", "cost": 22, "prerequisites": [], "scope": "element", "scope_id": "lightning", "bonus_type": "damage_multiplier", "effect_value": 0.1, "position": Vector2(1370.0, 1290.0)},
+	"static_charge": {"id": "static_charge", "name": "Static Charge", "description": "Every 5th Electric cast is empowered.", "branch": "element_electric", "cost": 30, "prerequisites": ["higher_voltage"], "scope": "element", "scope_id": "lightning", "bonus_type": "empowered_interval", "effect_value": 5, "position": Vector2(1580.0, 1370.0)},
 }
 
 
@@ -231,10 +117,8 @@ func load_progress() -> void:
 	)
 	var stored_skill_tree_version := int(config.get_value("skills", "tree_version", 1))
 	if stored_skill_tree_version < SKILL_TREE_VERSION:
-		# Version 2 replaces the old numeric tree. Ecos, records and permanent unlocks stay intact.
-		progress["purchased_skills"] = []
+		_migrate_legacy_skill_purchases()
 	progress["skill_tree_version"] = SKILL_TREE_VERSION
-	_migrate_legacy_unlocks_to_skills()
 	_apply_skill_unlocks_to_progress()
 	save_progress()
 
@@ -352,6 +236,36 @@ func purchase_skill(skill_id: String) -> bool:
 
 func is_skill_purchased(skill_id: String) -> bool:
 	return _string_array_has(progress.get("purchased_skills", []), skill_id)
+
+
+func has_skill(skill_id: String) -> bool:
+	return is_skill_purchased(skill_id)
+
+
+func is_spell_shape_unlocked(shape_id: String) -> bool:
+	if shape_id in BASIC_SPELL_SHAPE_IDS:
+		return true
+	return _is_scope_target_unlocked("unlock_spell_shape", shape_id)
+
+
+func is_element_unlocked(element_id: String) -> bool:
+	if element_id in BASIC_ELEMENT_IDS:
+		return true
+	return _is_scope_target_unlocked("unlock_element", element_id)
+
+
+func is_cast_type_unlocked(cast_type_id: String) -> bool:
+	if cast_type_id in BASIC_CAST_TYPE_IDS:
+		return true
+	return _is_scope_target_unlocked("unlock_cast_type", cast_type_id)
+
+
+func get_cast_type_bonus(cast_type_id: String, bonus_type: String) -> float:
+	return _get_scoped_bonus("cast_type", cast_type_id, bonus_type)
+
+
+func get_element_bonus(element_id: String, bonus_type: String) -> float:
+	return _get_scoped_bonus("element", element_id, bonus_type)
 
 
 func get_skill_effect_value(effect_type: String) -> float:
@@ -493,18 +407,40 @@ func _get_ordered_skill_ids() -> Array[String]:
 	return [
 		"resonant_shell",
 		"stable_window",
-		"field_repair",
 		"emergency_pulse",
-		"catalyzed_shot",
-		"opening_charge",
-		"initial_fragment",
-		"unlock_piercing",
 		"prepared_choice",
-		"expanded_options",
+		"expanded_choices",
 		"arcane_memory",
-		"directed_affinity",
-		"synergy_resonance",
-		"unlock_diamond",
+		"directed_tuning",
+		"unlock_matrix",
+		"unlock_diamond_shape",
+		"unlock_star_shape",
+		"unlock_shadow_element",
+		"unlock_light_element",
+		"unlock_persistent_waves",
+		"unlock_summoning",
+		"unlock_orbitals",
+		"unlock_dual_casting",
+		"projectile_calibration",
+		"opening_pierce",
+		"stable_volley",
+		"conductive_path",
+		"static_memory",
+		"reduced_falloff",
+		"lingering_field",
+		"wider_field",
+		"initial_pulse",
+		"blade_rhythm",
+		"extended_edge",
+		"second_cut",
+		"arcane_focus",
+		"arcane_echo",
+		"longer_burn",
+		"hotter_burn",
+		"longer_chill",
+		"deeper_chill",
+		"higher_voltage",
+		"static_charge",
 	]
 
 
@@ -577,19 +513,46 @@ func _apply_skill_unlocks_to_progress() -> void:
 					_add_unlocked_id("unlocked_upgrades", "upgrade_piercing")
 
 
-func _migrate_legacy_unlocks_to_skills() -> void:
-	if _string_array_has(progress.get("unlocked_characters", []), "diamond") or _string_array_has(progress.get("unlocked_characters", []), "character_diamond"):
-		_add_unlocked_id("purchased_skills", "unlock_diamond")
+func _is_scope_target_unlocked(effect_type: String, target_id: String) -> bool:
+	for skill_id in progress.get("purchased_skills", []):
+		var skill: Dictionary = skill_definitions.get(str(skill_id), {})
+		if str(skill.get("effect_type", "")) == effect_type and str(skill.get("target_id", "")) == target_id:
+			return true
+	return false
 
-	if _string_array_has(progress.get("unlocked_upgrades", []), "piercing") or _string_array_has(progress.get("unlocked_upgrades", []), "upgrade_piercing"):
-		_add_unlocked_id("purchased_skills", "unlock_piercing")
+
+func _get_scoped_bonus(scope: String, scope_id: String, bonus_type: String) -> float:
+	var total: float = 0.0
+	for skill_id in progress.get("purchased_skills", []):
+		var skill: Dictionary = skill_definitions.get(str(skill_id), {})
+		if str(skill.get("scope", "")) != scope:
+			continue
+		if str(skill.get("scope_id", "")) != scope_id:
+			continue
+		if str(skill.get("bonus_type", "")) == bonus_type:
+			total += float(skill.get("effect_value", 0.0))
+	return total
 
 
-func _get_skill_id_for_legacy_unlock(unlock_id: String) -> String:
-	match unlock_id:
-		"character_diamond":
-			return "unlock_diamond"
-		"upgrade_piercing":
-			return "unlock_piercing"
-		_:
-			return ""
+func _migrate_legacy_skill_purchases() -> void:
+	var legacy_mapping := {
+		"catalyzed_shot": "projectile_calibration",
+		"opening_charge": "opening_pierce",
+		"initial_fragment": "arcane_memory",
+		"unlock_piercing": "opening_pierce",
+		"expanded_options": "expanded_choices",
+		"directed_affinity": "directed_tuning",
+		"synergy_resonance": "directed_tuning",
+		"field_repair": "emergency_pulse",
+	}
+	var migrated: Array[String] = []
+	for skill_id in progress.get("purchased_skills", []):
+		var source_id := str(skill_id)
+		var target_id := str(legacy_mapping.get(source_id, source_id))
+		if skill_definitions.has(target_id) and not migrated.has(target_id):
+			migrated.append(target_id)
+	progress["purchased_skills"] = migrated
+
+
+func _get_skill_id_for_legacy_unlock(_unlock_id: String) -> String:
+	return ""

@@ -61,39 +61,95 @@ offset_right = 1238.0
 offset_bottom = 61.0
 text = "Back"
 
-[node name="TreeViewport" type="Panel" parent="."]
-clip_contents = true
-layout_mode = 0
+[node name="Main" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 offset_left = 28.0
 offset_top = 104.0
-offset_right = 884.0
-offset_bottom = 692.0
-mouse_filter = 0
+offset_right = -30.0
+offset_bottom = -28.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 24
 
-[node name="TreeContent" type="Control" parent="TreeViewport"]
-layout_mode = 0
-offset_right = 1220.0
-offset_bottom = 820.0
-mouse_filter = 2
+[node name="BoardScroll" type="ScrollContainer" parent="Main"]
+custom_minimum_size = Vector2(820, 0)
+layout_mode = 2
+size_flags_horizontal = 3
 
-[node name="HintLabel" type="Label" parent="TreeViewport"]
-layout_mode = 0
-offset_left = 18.0
-offset_top = 548.0
-offset_right = 520.0
-offset_bottom = 574.0
-text = "Drag to pan. Use the mouse wheel to zoom."
-theme_override_colors/font_color = Color(0.62, 0.7, 0.78, 0.78)
+[node name="Board" type="VBoxContainer" parent="Main/BoardScroll"]
+custom_minimum_size = Vector2(850, 900)
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="EchoRoot" type="PanelContainer" parent="Main/BoardScroll/Board"]
+custom_minimum_size = Vector2(0, 92)
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="Main/BoardScroll/Board/EchoRoot"]
+layout_mode = 2
+theme_override_constants/separation = 2
+alignment = 1
+
+[node name="Title" type="Label" parent="Main/BoardScroll/Board/EchoRoot/Content"]
+layout_mode = 2
+text = "ECHO"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.86, 1, 1, 1)
+theme_override_font_sizes/font_size = 26
+
+[node name="Subtitle" type="Label" parent="Main/BoardScroll/Board/EchoRoot/Content"]
+layout_mode = 2
+text = "Persistent progression core"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.56, 0.78, 0.9, 1)
 theme_override_font_sizes/font_size = 14
 
-[node name="DetailsPanel" type="Panel" parent="."]
-layout_mode = 0
-offset_left = 914.0
-offset_top = 104.0
-offset_right = 1250.0
-offset_bottom = 692.0
+[node name="Sections" type="GridContainer" parent="Main/BoardScroll/Board"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 14
+theme_override_constants/v_separation = 14
 
-[node name="NameLabel" type="Label" parent="DetailsPanel"]
+[node name="UnlocksPanel" type="PanelContainer" parent="Main/BoardScroll/Board/Sections"]
+custom_minimum_size = Vector2(410, 390)
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="Main/BoardScroll/Board/Sections/UnlocksPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CorePanel" type="PanelContainer" parent="Main/BoardScroll/Board/Sections"]
+custom_minimum_size = Vector2(410, 390)
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="Main/BoardScroll/Board/Sections/CorePanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ElementsPanel" type="PanelContainer" parent="Main/BoardScroll/Board/Sections"]
+custom_minimum_size = Vector2(410, 400)
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="Main/BoardScroll/Board/Sections/ElementsPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CastTypesPanel" type="PanelContainer" parent="Main/BoardScroll/Board/Sections"]
+custom_minimum_size = Vector2(410, 400)
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="Main/BoardScroll/Board/Sections/CastTypesPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DetailsPanel" type="Panel" parent="Main"]
+custom_minimum_size = Vector2(336, 0)
+layout_mode = 2
+
+[node name="NameLabel" type="Label" parent="Main/DetailsPanel"]
 layout_mode = 0
 offset_left = 24.0
 offset_top = 26.0
@@ -102,7 +158,7 @@ offset_bottom = 68.0
 text = "Skill"
 theme_override_font_sizes/font_size = 26
 
-[node name="BranchLabel" type="Label" parent="DetailsPanel"]
+[node name="BranchLabel" type="Label" parent="Main/DetailsPanel"]
 layout_mode = 0
 offset_left = 24.0
 offset_top = 74.0
@@ -111,7 +167,7 @@ offset_bottom = 102.0
 text = "Branch"
 theme_override_font_sizes/font_size = 16
 
-[node name="DescriptionLabel" type="Label" parent="DetailsPanel"]
+[node name="DescriptionLabel" type="Label" parent="Main/DetailsPanel"]
 layout_mode = 0
 offset_left = 24.0
 offset_top = 122.0
@@ -121,7 +177,7 @@ text = "Description"
 autowrap_mode = 3
 theme_override_font_sizes/font_size = 18
 
-[node name="CostLabel" type="Label" parent="DetailsPanel"]
+[node name="CostLabel" type="Label" parent="Main/DetailsPanel"]
 layout_mode = 0
 offset_left = 24.0
 offset_top = 254.0
@@ -130,7 +186,7 @@ offset_bottom = 284.0
 text = "Cost"
 theme_override_font_sizes/font_size = 18
 
-[node name="StatusLabel" type="Label" parent="DetailsPanel"]
+[node name="StatusLabel" type="Label" parent="Main/DetailsPanel"]
 layout_mode = 0
 offset_left = 24.0
 offset_top = 304.0
@@ -140,7 +196,7 @@ text = "Status"
 autowrap_mode = 3
 theme_override_font_sizes/font_size = 16
 
-[node name="PrerequisitesLabel" type="Label" parent="DetailsPanel"]
+[node name="PrerequisitesLabel" type="Label" parent="Main/DetailsPanel"]
 layout_mode = 0
 offset_left = 24.0
 offset_top = 386.0
@@ -150,7 +206,7 @@ text = "Requirements"
 autowrap_mode = 3
 theme_override_font_sizes/font_size = 15
 
-[node name="BuyButton" type="Button" parent="DetailsPanel"]
+[node name="BuyButton" type="Button" parent="Main/DetailsPanel"]
 layout_mode = 0
 offset_left = 78.0
 offset_top = 514.0

@@ -87,33 +87,38 @@ func select_character(character_id: String) -> void:
 
 
 func select_spell_shape(shape_id: String) -> void:
-	selected_spell_shape_id = str(SPELL_SHAPE_DATA.get_data(shape_id).get("id", "circle"))
+	var resolved_id := str(SPELL_SHAPE_DATA.get_data(shape_id).get("id", "circle"))
+	if is_spell_shape_unlocked(resolved_id):
+		selected_spell_shape_id = resolved_id
 
 
 func select_spell_element(element_id: String) -> void:
-	selected_spell_element_id = str(SPELL_ELEMENT_DATA.get_data(element_id).get("id", "arcane"))
+	var resolved_id := str(SPELL_ELEMENT_DATA.get_data(element_id).get("id", "arcane"))
+	if is_element_unlocked(resolved_id):
+		selected_spell_element_id = resolved_id
 
 
 func select_spell_delivery(delivery_id: String) -> void:
 	var delivery_data: Dictionary = SPELL_DELIVERY_DATA.get_data(delivery_id)
-	if bool(delivery_data.get("available", false)):
+	if bool(delivery_data.get("available", false)) and is_cast_type_unlocked(str(delivery_data.get("id", "simple_projectile"))):
 		selected_spell_delivery_id = str(delivery_data.get("id", "simple_projectile"))
 
 
 func get_spell_blueprint():
+	_ensure_spell_selection_is_valid()
 	return SPELL_BLUEPRINT_SCRIPT.new(selected_spell_shape_id, selected_spell_element_id, selected_spell_delivery_id)
 
 
 func get_spell_shape_list() -> Array[Dictionary]:
-	return SPELL_SHAPE_DATA.get_available()
+	return _decorate_spell_options(SPELL_SHAPE_DATA.get_available(), "shape")
 
 
 func get_spell_element_list() -> Array[Dictionary]:
-	return SPELL_ELEMENT_DATA.get_available()
+	return _decorate_spell_options(SPELL_ELEMENT_DATA.get_available(), "element")
 
 
 func get_spell_delivery_list() -> Array[Dictionary]:
-	return SPELL_DELIVERY_DATA.get_all()
+	return _decorate_spell_options(SPELL_DELIVERY_DATA.get_all(), "cast_type")
 
 
 func get_selected_character_data() -> Dictionary:
@@ -150,3 +155,48 @@ func is_character_unlocked(character_id: String) -> bool:
 		return false
 
 	return bool(save_manager.call("is_character_unlocked", character_id))
+
+
+func is_spell_shape_unlocked(shape_id: String) -> bool:
+	var save_manager := get_node_or_null("/root/SaveManager")
+	return save_manager == null or bool(save_manager.call("is_spell_shape_unlocked", shape_id))
+
+
+func is_element_unlocked(element_id: String) -> bool:
+	var save_manager := get_node_or_null("/root/SaveManager")
+	return save_manager == null or bool(save_manager.call("is_element_unlocked", element_id))
+
+
+func is_cast_type_unlocked(cast_type_id: String) -> bool:
+	var save_manager := get_node_or_null("/root/SaveManager")
+	return save_manager == null or bool(save_manager.call("is_cast_type_unlocked", cast_type_id))
+
+
+func _ensure_spell_selection_is_valid() -> void:
+	if not is_spell_shape_unlocked(selected_spell_shape_id):
+		selected_spell_shape_id = "circle"
+	if not is_element_unlocked(selected_spell_element_id):
+		selected_spell_element_id = "arcane"
+	if not is_cast_type_unlocked(selected_spell_delivery_id):
+		selected_spell_delivery_id = "simple_projectile"
+
+
+func _decorate_spell_options(options: Array[Dictionary], option_kind: String) -> Array[Dictionary]:
+	var decorated: Array[Dictionary] = []
+	for option in options:
+		var data: Dictionary = option.duplicate(true)
+		var option_id := str(data.get("id", ""))
+		var future := not bool(data.get("available", true))
+		var unlocked := false
+		match option_kind:
+			"shape":
+				unlocked = is_spell_shape_unlocked(option_id)
+			"element":
+				unlocked = is_element_unlocked(option_id)
+			_:
+				unlocked = is_cast_type_unlocked(option_id)
+		data["unlocked"] = unlocked
+		data["future"] = future
+		data["available"] = unlocked and not future
+		decorated.append(data)
+	return decorated

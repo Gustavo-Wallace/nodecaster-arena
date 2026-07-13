@@ -31,31 +31,46 @@ func _build_options() -> void:
 
 	for shape in _run_config.call("get_spell_shape_list"):
 		var data: Dictionary = shape
-		var button := _create_option_button(str(data.get("display_name", "Shape")), str(data.get("modifiers_text", "")), true)
-		button.pressed.connect(_on_shape_selected.bind(str(data.get("id", "circle"))))
+		var shape_available := bool(data.get("available", false))
+		var button := _create_option_button(str(data.get("display_name", "Shape")), str(data.get("modifiers_text", data.get("description", ""))), shape_available, not shape_available)
+		if not shape_available:
+			button.text = _get_locked_option_text(data)
+		else:
+			button.pressed.connect(_on_shape_selected.bind(str(data.get("id", "circle"))))
 		shape_list.add_child(button)
 		_shape_buttons[str(data.get("id", "circle"))] = button
 
 	for element in _run_config.call("get_spell_element_list"):
 		var data: Dictionary = element
-		var button := _create_option_button(str(data.get("display_name", "Element")), str(data.get("modifiers_text", "")), true)
+		var element_available := bool(data.get("available", false))
+		var button := _create_option_button(str(data.get("display_name", "Element")), str(data.get("modifiers_text", data.get("description", ""))), element_available, not element_available)
+		if not element_available:
+			button.text = _get_locked_option_text(data)
+		else:
+			button.pressed.connect(_on_element_selected.bind(str(data.get("id", "arcane"))))
 		var primary_color = data.get("primary_color", Color.WHITE)
 		if primary_color is Color:
 			button.add_theme_color_override("font_color", primary_color)
-		button.pressed.connect(_on_element_selected.bind(str(data.get("id", "arcane"))))
 		element_list.add_child(button)
 		_element_buttons[str(data.get("id", "arcane"))] = button
 
 	for delivery in _run_config.call("get_spell_delivery_list"):
 		var data: Dictionary = delivery
-		var available := bool(data.get("available", false))
-		var button := _create_option_button(str(data.get("display_name", "Delivery")), str(data.get("description", "")), available, not available)
-		if not available:
-			button.text = "%s (COMING SOON)" % str(data.get("display_name", "Delivery"))
+		var cast_type_available := bool(data.get("available", false))
+		var button := _create_option_button(str(data.get("display_name", "Cast Type")), str(data.get("description", "")), cast_type_available, not cast_type_available)
+		if not cast_type_available:
+			button.text = _get_locked_option_text(data)
 		else:
 			button.pressed.connect(_on_delivery_selected.bind(str(data.get("id", "simple_projectile"))))
 		delivery_list.add_child(button)
 		_delivery_buttons[str(data.get("id", "simple_projectile"))] = button
+
+
+func _get_locked_option_text(data: Dictionary) -> String:
+	var display_name := str(data.get("display_name", "Locked"))
+	if bool(data.get("future", false)):
+		return "%s (COMING SOON)" % display_name
+	return "%s (LOCKED IN ECHO TREE)" % display_name
 
 
 func _create_option_button(title: String, description: String, enabled: bool, compact: bool = false) -> Button:

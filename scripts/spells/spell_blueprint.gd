@@ -39,7 +39,7 @@ func get_initial_attributes() -> Dictionary:
 	var shape := get_shape_data()
 	var element := get_element_data()
 	return {
-		"damage_multiplier": float(shape.get("damage_multiplier", 1.0)),
+		"damage_multiplier": float(shape.get("damage_multiplier", 1.0)) * float(element.get("damage_multiplier", 1.0)),
 		"projectile_speed_multiplier": float(shape.get("projectile_speed_multiplier", 1.0)),
 		"fire_interval_multiplier": float(shape.get("fire_interval_multiplier", 1.0)),
 		"size_multiplier": float(shape.get("size_multiplier", 1.0)),

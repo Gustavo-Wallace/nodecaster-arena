@@ -44,6 +44,20 @@ const DELIVERIES := {
 		"available": false,
 		"tags": ["future", "echo"],
 	},
+	"orbitals": {
+		"id": "orbitals",
+		"display_name": "Orbitals",
+		"description": "Future Cast Type for persistent orbiting constructs.",
+		"available": false,
+		"tags": ["future", "orbitals"],
+	},
+	"dual_casting": {
+		"id": "dual_casting",
+		"display_name": "Dual Casting",
+		"description": "Late-game Cast Type that combines two cast patterns.",
+		"available": false,
+		"tags": ["future", "late game"],
+	},
 }
 
 

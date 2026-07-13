@@ -50,6 +50,19 @@ const ELEMENTS := {
 		"tags": ["direct", "electric"],
 		"modifiers_text": "+1 Chain Lightning jump and -16% Area Field pulse interval.",
 	},
+	"shadow": {
+		"id": "shadow",
+		"display_name": "Shadow",
+		"description": "Dark energy with a stronger direct impact.",
+		"primary_color": Color(0.16, 0.1, 0.28),
+		"secondary_color": Color(0.7, 0.36, 1.0),
+		"impact_color": Color(0.56, 0.24, 0.92),
+		"effect_id": "direct",
+		"effect_power": 0.0,
+		"damage_multiplier": 1.12,
+		"tags": ["direct", "shadow"],
+		"modifiers_text": "+12% direct damage with a violet signature.",
+	},
 }
 
 
@@ -60,6 +73,6 @@ static func get_data(element_id: String) -> Dictionary:
 
 static func get_available() -> Array[Dictionary]:
 	var elements: Array[Dictionary] = []
-	for element_id in ["arcane", "fire", "ice", "lightning"]:
+	for element_id in ["arcane", "fire", "ice", "lightning", "shadow"]:
 		elements.append(get_data(element_id))
 	return elements
