@@ -40,7 +40,7 @@ offset_left = 36.0
 offset_top = 28.0
 offset_right = 684.0
 offset_bottom = 76.0
-text = "Opcoes"
+text = "Options"
 horizontal_alignment = 1
 theme_override_font_sizes/font_size = 34
 
@@ -50,7 +50,7 @@ offset_left = 76.0
 offset_top = 112.0
 offset_right = 300.0
 offset_bottom = 142.0
-text = "Volume Geral"
+text = "Master Volume"
 theme_override_font_sizes/font_size = 20
 
 [node name="MasterValueLabel" type="Label" parent="Panel"]
@@ -106,7 +106,7 @@ offset_left = 76.0
 offset_top = 300.0
 offset_right = 340.0
 offset_bottom = 342.0
-text = "Tela cheia"
+text = "Fullscreen"
 
 [node name="StatusLabel" type="Label" parent="Panel"]
 layout_mode = 0
@@ -122,7 +122,7 @@ offset_left = 76.0
 offset_top = 402.0
 offset_right = 280.0
 offset_bottom = 446.0
-text = "Resetar Progresso"
+text = "Reset Progress"
 
 [node name="BackButton" type="Button" parent="Panel"]
 layout_mode = 0
@@ -130,7 +130,7 @@ offset_left = 440.0
 offset_top = 402.0
 offset_right = 644.0
 offset_bottom = 446.0
-text = "Voltar"
+text = "Back"
 
 [node name="ConfirmationPanel" type="Panel" parent="."]
 layout_mode = 1
@@ -152,7 +152,7 @@ offset_left = 32.0
 offset_top = 30.0
 offset_right = 528.0
 offset_bottom = 88.0
-text = "Tem certeza que deseja apagar todo o progresso?"
+text = "Are you sure you want to erase all progress?"
 horizontal_alignment = 1
 autowrap_mode = 3
 theme_override_font_sizes/font_size = 20
@@ -163,7 +163,7 @@ offset_left = 88.0
 offset_top = 132.0
 offset_right = 248.0
 offset_bottom = 176.0
-text = "Confirmar"
+text = "Confirm"
 
 [node name="CancelResetButton" type="Button" parent="ConfirmationPanel"]
 layout_mode = 0
@@ -171,4 +171,4 @@ offset_left = 312.0
 offset_top = 132.0
 offset_right = 472.0
 offset_bottom = 176.0
-text = "Cancelar"
+text = "Cancel"

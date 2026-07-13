@@ -33,7 +33,7 @@ offset_left = 32.0
 offset_top = 19.0
 offset_right = 410.0
 offset_bottom = 63.0
-text = "Arvore de Ecos"
+text = "Echo Tree"
 theme_override_font_sizes/font_size = 34
 
 [node name="EcosLabel" type="Label" parent="Header"]
@@ -42,7 +42,7 @@ offset_left = 462.0
 offset_top = 27.0
 offset_right = 700.0
 offset_bottom = 58.0
-text = "Ecos: 0"
+text = "Echoes: 0"
 theme_override_font_sizes/font_size = 22
 
 [node name="CenterButton" type="Button" parent="Header"]
@@ -51,7 +51,7 @@ offset_left = 874.0
 offset_top = 23.0
 offset_right = 1036.0
 offset_bottom = 61.0
-text = "Centralizar"
+text = "Center"
 
 [node name="BackButton" type="Button" parent="Header"]
 layout_mode = 0
@@ -59,7 +59,7 @@ offset_left = 1070.0
 offset_top = 23.0
 offset_right = 1238.0
 offset_bottom = 61.0
-text = "Voltar"
+text = "Back"
 
 [node name="TreeViewport" type="Panel" parent="."]
 clip_contents = true
@@ -82,7 +82,7 @@ offset_left = 18.0
 offset_top = 548.0
 offset_right = 520.0
 offset_bottom = 574.0
-text = "Arraste para mover. Use a roda do mouse para aproximar ou afastar."
+text = "Drag to pan. Use the mouse wheel to zoom."
 theme_override_colors/font_color = Color(0.62, 0.7, 0.78, 0.78)
 theme_override_font_sizes/font_size = 14
 
@@ -108,7 +108,7 @@ offset_left = 24.0
 offset_top = 74.0
 offset_right = 312.0
 offset_bottom = 102.0
-text = "Ramo"
+text = "Branch"
 theme_override_font_sizes/font_size = 16
 
 [node name="DescriptionLabel" type="Label" parent="DetailsPanel"]
@@ -117,7 +117,7 @@ offset_left = 24.0
 offset_top = 122.0
 offset_right = 312.0
 offset_bottom = 226.0
-text = "Descricao"
+text = "Description"
 autowrap_mode = 3
 theme_override_font_sizes/font_size = 18
 
@@ -127,7 +127,7 @@ offset_left = 24.0
 offset_top = 254.0
 offset_right = 312.0
 offset_bottom = 284.0
-text = "Custo"
+text = "Cost"
 theme_override_font_sizes/font_size = 18
 
 [node name="StatusLabel" type="Label" parent="DetailsPanel"]
@@ -146,7 +146,7 @@ offset_left = 24.0
 offset_top = 386.0
 offset_right = 312.0
 offset_bottom = 470.0
-text = "Requisitos"
+text = "Requirements"
 autowrap_mode = 3
 theme_override_font_sizes/font_size = 15
 
@@ -156,4 +156,4 @@ offset_left = 78.0
 offset_top = 514.0
 offset_right = 258.0
 offset_bottom = 560.0
-text = "Comprar"
+text = "Buy"

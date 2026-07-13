@@ -40,7 +40,7 @@ offset_left = 34.0
 offset_top = 24.0
 offset_right = 886.0
 offset_bottom = 68.0
-text = "Progresso"
+text = "Progress"
 horizontal_alignment = 1
 theme_override_font_sizes/font_size = 34
 
@@ -50,7 +50,7 @@ offset_left = 46.0
 offset_top = 84.0
 offset_right = 874.0
 offset_bottom = 114.0
-text = "Ecos: 0"
+text = "Echoes: 0"
 horizontal_alignment = 1
 theme_override_font_sizes/font_size = 22
 
@@ -60,7 +60,7 @@ offset_left = 46.0
 offset_top = 122.0
 offset_right = 874.0
 offset_bottom = 152.0
-text = "Maior pontuacao: 0    Maior onda: 0    Vitorias: 0"
+text = "Best Score: 0    Best Wave: 0    Victories: 0"
 horizontal_alignment = 1
 
 [node name="UnlocksList" type="VBoxContainer" parent="Panel"]
@@ -77,4 +77,4 @@ offset_left = 370.0
 offset_top = 498.0
 offset_right = 550.0
 offset_bottom = 540.0
-text = "Voltar"
+text = "Back"

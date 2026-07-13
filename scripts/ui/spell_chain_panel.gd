@@ -41,7 +41,7 @@ func set_synergies(synergies: Array) -> void:
 	if _synergies.is_empty():
 		synergy_label.text = ""
 	else:
-		synergy_label.text = "Sinergias: %s" % _format_synergies()
+		synergy_label.text = "Synergies: %s" % _format_synergies()
 
 
 func _format_synergies() -> String:

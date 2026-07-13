@@ -118,7 +118,7 @@ func show_upgrades(upgrades: Array[Dictionary], rerolls_left: int = 0) -> void:
 		button.show()
 		var category := str(upgrade.get("category", "projectile"))
 		var branch := str(upgrade.get("branch", _get_branch_for_category(category)))
-		option_category_labels[index].text = "RAMO: " + _format_branch(branch)
+		option_category_labels[index].text = "BRANCH: " + _format_branch(branch)
 		var current_stack := int(upgrade.get("current_stack", 0))
 		if current_stack > 0:
 			option_category_labels[index].text += "   STACK %d" % current_stack
@@ -178,15 +178,15 @@ func _on_option_hovered(button: Button, hovered: bool) -> void:
 func _format_category(category: String) -> String:
 	match category:
 		"power":
-			return "PODER"
+			return "POWER"
 		"rhythm":
-			return "RITMO"
+			return "RHYTHM"
 		"body":
-			return "NUCLEO"
+			return "CORE"
 		"area":
 			return "AREA"
 		"projectile":
-			return "PROJETIL"
+			return "PROJECTILE"
 		_:
 			return category.to_upper()
 
@@ -206,13 +206,13 @@ func _get_branch_for_category(category: String) -> String:
 func _format_branch(branch: String) -> String:
 	match branch:
 		"energy":
-			return "ENERGIA"
+			return "ENERGY"
 		"rhythm":
-			return "RITMO"
+			return "RHYTHM"
 		"core":
-			return "NUCLEO"
+			return "CORE"
 		_:
-			return "FORMA"
+			return "FORM"
 
 
 func _get_branch_color(branch: String) -> Color:
@@ -251,29 +251,29 @@ func _format_upgrade_impact(upgrade: Dictionary) -> String:
 	var values = upgrade.get("values", {})
 	match str(upgrade.get("id", "")):
 		"arcane_damage":
-			return "+%d dano" % int(values.get("damage_bonus", 5))
+			return "+%d damage" % int(values.get("damage_bonus", 5))
 		"unstable_cadence":
-			return "%d%% intervalo" % int(round((float(values.get("interval_multiplier", 0.84)) - 1.0) * 100.0))
+			return "%d%% interval" % int(round((float(values.get("interval_multiplier", 0.84)) - 1.0) * 100.0))
 		"light_core":
-			return "+%d velocidade" % int(values.get("speed_bonus", 35.0))
+			return "+%d speed" % int(values.get("speed_bonus", 35.0))
 		"energy_shell":
-			return "+%d vida, +%d cura" % [int(values.get("max_health_bonus", 22)), int(values.get("heal_amount", 16))]
+			return "+%d health, +%d healing" % [int(values.get("max_health_bonus", 22)), int(values.get("heal_amount", 16))]
 		"swift_projectile":
-			return "+%d vel. projetil" % int(values.get("projectile_speed_bonus", 80.0))
+			return "+%d projectile speed" % int(values.get("projectile_speed_bonus", 80.0))
 		"initial_fragmentation":
-			return "+%d projetil" % int(values.get("projectile_count_bonus", 1))
+			return "+%d projectile" % int(values.get("projectile_count_bonus", 1))
 		"piercing":
-			return "+%d perfuracao" % int(values.get("pierce_bonus", 1))
+			return "+%d pierce" % int(values.get("pierce_bonus", 1))
 		"ricochet":
-			return "+%d ricochete" % int(values.get("bounce_bonus", 1))
+			return "+%d ricochet" % int(values.get("bounce_bonus", 1))
 		"arcane_explosion":
-			return "+%d raio, +%d%% dano area" % [int(values.get("radius_bonus", 60.0)), int(round(float(values.get("damage_multiplier_bonus", 0.5)) * 100.0))]
+			return "+%d radius, +%d%% area damage" % [int(values.get("radius_bonus", 60.0)), int(round(float(values.get("damage_multiplier_bonus", 0.5)) * 100.0))]
 		"heavy_orb":
-			return "+40% dano, -15% velocidade"
+			return "+40% damage, -15% speed"
 		"cutting_echo":
-			return "Eco a cada %d disparos" % int(values.get("shot_interval", 4))
+			return "Echo every %d casts" % int(values.get("shot_interval", 4))
 		"unstable_field":
-			return "+%d raio, +%d dano/pulso" % [int(values.get("radius_bonus", 60.0)), int(values.get("damage_bonus", 6))]
+			return "+%d radius, +%d damage/pulse" % [int(values.get("radius_bonus", 60.0)), int(values.get("damage_bonus", 6))]
 
 	return str(upgrade.get("effect_type", ""))
 

@@ -103,16 +103,16 @@ func _rebuild_graph() -> void:
 		if nodes is Array:
 			node_count += nodes.size()
 	var base_text := "%s + %s + %s" % [
-		str(_base_spell.get("shape_name", "Circulo")),
-		str(_base_spell.get("element_name", "Arcano")),
-		str(_base_spell.get("delivery_name", "Projetil Simples")),
+		str(_base_spell.get("shape_name", "Circle")),
+		str(_base_spell.get("element_name", "Arcane")),
+		str(_base_spell.get("delivery_name", "Simple Projectile")),
 	]
-	summary_label.text = "Base: %s  |  Nos: %d  |  Ramos: %d" % [base_text, node_count, _get_active_branch_count()]
-	synergy_label.text = "Sinergias: " + (", ".join(_synergies) if not _synergies.is_empty() else "nenhuma")
+	summary_label.text = "Base: %s  |  Nodes: %d  |  Branches: %d" % [base_text, node_count, _get_active_branch_count()]
+	synergy_label.text = "Synergies: " + (", ".join(_synergies) if not _synergies.is_empty() else "none")
 
 
 func _create_root_node() -> void:
-	var root_label := str(_base_spell.get("shape_name", "Projetil")).to_upper()
+	var root_label := str(_base_spell.get("shape_name", "Projectile")).to_upper()
 	var root := _create_node_card(root_label, Color(0.2, 0.48, 0.68), ROOT_SIZE, 16)
 	root.position = ROOT_CENTER - ROOT_SIZE * 0.5
 	graph_canvas.add_child(root)
@@ -144,7 +144,7 @@ func _create_branch_nodes(branch: String) -> void:
 		var center := node_position + NODE_SIZE * 0.5
 		_create_connection(previous_center, center, branch_color)
 
-		var label := str(node.get("node_label", node.get("name", "No")))
+		var label := str(node.get("node_label", node.get("name", "Node")))
 		var stack := int(node.get("stack", 1))
 		if stack > 1:
 			label += " x%d" % stack

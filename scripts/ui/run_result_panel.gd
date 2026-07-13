@@ -31,22 +31,22 @@ func _ready() -> void:
 
 func show_result(victory: bool, stats: Dictionary, max_wave: int) -> void:
 	scroll_container.scroll_vertical = 0
-	title_label.text = "VITORIA" if victory else "DERROTA"
+	title_label.text = "VICTORY" if victory else "DEFEAT"
 	title_label.add_theme_color_override("font_color", Color(0.72, 1.0, 0.78) if victory else Color(1.0, 0.46, 0.46))
-	subtitle_label.text = "Simulacao concluida. Voce estabilizou o nucleo." if victory else "Nucleo desintegrado. A cadeia arcana entrou em colapso."
+	subtitle_label.text = "Simulation complete. You stabilized the core." if victory else "Core disintegrated. The arcane chain collapsed."
 
 	var wave_reached := int(stats.get("max_wave_reached", 0))
 	var final_score := int(stats.get("final_score", 0))
 	var run_time := float(stats.get("run_time_seconds", 0.0))
 	var total_enemies := int(stats.get("total_enemies_defeated", 0))
 	var upgrades_chosen := int(stats.get("upgrades_chosen", 0))
-	var character_name := str(stats.get("character_name", "Circulo"))
+	var character_name := str(stats.get("character_name", "Circle"))
 	var ecos_earned := int(stats.get("ecos_earned", 0))
 	var total_ecos := int(stats.get("total_ecos", 0))
-	var score_record := "Sim" if bool(stats.get("new_best_score", false)) else "Nao"
-	var wave_record := "Sim" if bool(stats.get("new_best_wave", false)) else "Nao"
+	var score_record := "Yes" if bool(stats.get("new_best_score", false)) else "No"
+	var wave_record := "Yes" if bool(stats.get("new_best_wave", false)) else "No"
 
-	stats_label.text = "Forma: %s\nOnda: %d/%d\nPontuacao: %d\nTempo: %s\n\nEcos: +%d / Total %d\nRecorde pontos: %s\nRecorde onda: %s\n\nInimigos: %d\nMutacoes: %d" % [
+	stats_label.text = "Form: %s\nWave: %d/%d\nScore: %d\nTime: %s\n\nEchoes: +%d / Total %d\nNew Score Record: %s\nNew Wave Record: %s\n\nEnemies Defeated: %d\nMutations: %d" % [
 		character_name,
 		wave_reached,
 		max_wave,
@@ -98,10 +98,10 @@ func _format_time(seconds: float) -> String:
 
 func _format_kill_breakdown(stats: Dictionary) -> String:
 	var kills = stats.get("enemy_kills", {})
-	var miniboss_text := "Derrotado" if bool(stats.get("miniboss_defeated", false)) else "Nao derrotado"
-	var boss_text := "Derrotado" if bool(stats.get("boss_defeated", false)) else "Nao derrotado"
+	var miniboss_text := "Defeated" if bool(stats.get("miniboss_defeated", false)) else "Not Defeated"
+	var boss_text := "Defeated" if bool(stats.get("boss_defeated", false)) else "Not Defeated"
 
-	return "Circulos: %d  Triangulos: %d  Quadrados: %d\nLosangos: %d  Bombers: %d  Snipers: %d\nMini-Boss: %s  Boss: %s" % [
+	return "Circles: %d  Triangles: %d  Squares: %d\nDiamonds: %d  Bombers: %d  Snipers: %d\nMini-Boss: %s  Boss: %s" % [
 		int(kills.get("circle_chaser", 0)),
 		int(kills.get("triangle_dasher", 0)),
 		int(kills.get("square_tank", 0)),
@@ -117,7 +117,7 @@ func _format_modifier_breakdown(stats: Dictionary) -> String:
 	var modifiers = stats.get("wave_modifiers", [])
 	var modifier_count := int(stats.get("modifier_wave_count", 0))
 	if not (modifiers is Array) or modifiers.is_empty():
-		return "Modificadores: nenhum"
+		return "Modifiers: none"
 
 	var unique_labels: Array[String] = []
 	for modifier in modifiers:
@@ -131,7 +131,7 @@ func _format_modifier_breakdown(stats: Dictionary) -> String:
 			text += ", "
 		text += unique_labels[index]
 
-	return "Modificadores: %d onda(s)\n%s" % [modifier_count, text]
+	return "Modifiers: %d wave(s)\n%s" % [modifier_count, text]
 
 
 func _format_build(stats: Dictionary) -> String:
@@ -139,31 +139,31 @@ func _format_build(stats: Dictionary) -> String:
 	var blueprint = stats.get("spell_blueprint", {})
 	var base_spell_line := ""
 	if blueprint is Dictionary and not blueprint.is_empty():
-		base_spell_line = "Feitico base: %s + %s + %s" % [
-			str(blueprint.get("shape_name", "Circulo")),
-			str(blueprint.get("element_name", "Arcano")),
-			str(blueprint.get("delivery_name", "Projetil Simples")),
+		base_spell_line = "Base spell: %s + %s + %s" % [
+			str(blueprint.get("shape_name", "Circle")),
+			str(blueprint.get("element_name", "Arcane")),
+			str(blueprint.get("delivery_name", "Simple Projectile")),
 		]
 	if graph is Dictionary and not graph.is_empty():
 		var branches = graph.get("branches", {})
-		var lines: Array[String] = [base_spell_line if not base_spell_line.is_empty() else "Build ramificada"]
+		var lines: Array[String] = [base_spell_line if not base_spell_line.is_empty() else "Branching build"]
 		for branch_data in [
-			{"id": "form", "name": "Forma"},
-			{"id": "energy", "name": "Energia"},
-			{"id": "rhythm", "name": "Ritmo"},
-			{"id": "core", "name": "Nucleo"},
+			{"id": "form", "name": "Form"},
+			{"id": "energy", "name": "Energy"},
+			{"id": "rhythm", "name": "Rhythm"},
+			{"id": "core", "name": "Core"},
 		]:
 			var labels = branches.get(str(branch_data["id"]), [])
 			if labels is Array and not labels.is_empty():
 				lines.append("%s: %s" % [str(branch_data["name"]), ", ".join(labels)])
 
 		var graph_synergies = graph.get("synergies", [])
-		lines.append("Sinergias: " + (", ".join(graph_synergies) if graph_synergies is Array and not graph_synergies.is_empty() else "Nenhuma"))
+		lines.append("Synergies: " + (", ".join(graph_synergies) if graph_synergies is Array and not graph_synergies.is_empty() else "None"))
 		return "\n".join(lines)
 
 	var build_nodes = stats.get("build_nodes", [])
 	if build_nodes.is_empty():
-		return base_spell_line if not base_spell_line.is_empty() else "Projetil"
+		return base_spell_line if not base_spell_line.is_empty() else "Projectile"
 
 	var labels: Array[String] = []
 	for node_label in build_nodes:
@@ -181,7 +181,7 @@ func _format_build(stats: Dictionary) -> String:
 func _format_synergies(stats: Dictionary) -> String:
 	var synergies = stats.get("active_synergies", [])
 	if not (synergies is Array) or synergies.is_empty():
-		return "Nenhuma"
+		return "None"
 
 	var labels: Array[String] = []
 	for synergy in synergies:

@@ -41,7 +41,7 @@ offset_left = 28.0
 offset_top = 22.0
 offset_right = 692.0
 offset_bottom = 70.0
-text = "RESULTADO"
+text = "RESULT"
 horizontal_alignment = 1
 
 [node name="SubtitleLabel" type="Label" parent="Panel"]
@@ -50,7 +50,7 @@ offset_left = 36.0
 offset_top = 74.0
 offset_right = 684.0
 offset_bottom = 104.0
-text = "Resumo da run"
+text = "Run Summary"
 horizontal_alignment = 1
 
 [node name="ScrollContainer" type="ScrollContainer" parent="Panel"]
@@ -74,13 +74,13 @@ theme_override_constants/separation = 28
 custom_minimum_size = Vector2(286, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Pontuacao"
+text = "Score"
 
 [node name="KillsLabel" type="Label" parent="Panel/ScrollContainer/Content/SummaryRow"]
 custom_minimum_size = Vector2(286, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Inimigos"
+text = "Enemies"
 
 [node name="BuildLabel" type="Label" parent="Panel/ScrollContainer/Content"]
 layout_mode = 2
@@ -93,7 +93,7 @@ offset_left = 170.0
 offset_top = 476.0
 offset_right = 340.0
 offset_bottom = 520.0
-text = "Reiniciar Run"
+text = "Restart Run"
 
 [node name="MenuButton" type="Button" parent="Panel"]
 layout_mode = 0
@@ -101,4 +101,4 @@ offset_left = 380.0
 offset_top = 476.0
 offset_right = 550.0
 offset_bottom = 520.0
-text = "Menu Principal"
+text = "Main Menu"

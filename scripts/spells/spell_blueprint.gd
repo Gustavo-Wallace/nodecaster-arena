@@ -73,9 +73,9 @@ func get_initial_attributes() -> Dictionary:
 func get_summary() -> Dictionary:
 	return {
 		"shape_id": selected_shape_id,
-		"shape_name": str(get_shape_data().get("display_name", "Circulo")),
+		"shape_name": str(get_shape_data().get("display_name", "Circle")),
 		"element_id": selected_element_id,
-		"element_name": str(get_element_data().get("display_name", "Arcano")),
+		"element_name": str(get_element_data().get("display_name", "Arcane")),
 		"delivery_id": selected_delivery_id,
-		"delivery_name": str(get_delivery_data().get("display_name", "Projetil Simples")),
+		"delivery_name": str(get_delivery_data().get("display_name", "Simple Projectile")),
 	}

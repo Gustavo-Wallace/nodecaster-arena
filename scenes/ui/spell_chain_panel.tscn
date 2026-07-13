@@ -30,7 +30,7 @@ offset_left = 16.0
 offset_top = 8.0
 offset_right = 250.0
 offset_bottom = 34.0
-text = "Grafo Arcano"
+text = "Arcane Graph"
 
 [node name="SynergyLabel" type="Label" parent="Panel"]
 layout_mode = 0

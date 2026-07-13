@@ -51,11 +51,11 @@ func _on_quit_pressed() -> void:
 func _update_meta_label() -> void:
 	var save_manager := get_node_or_null("/root/SaveManager")
 	if save_manager == null:
-		meta_label.text = "Ecos: 0"
+		meta_label.text = "Echoes: 0"
 		return
 
 	var summary: Dictionary = save_manager.call("get_summary")
-	meta_label.text = "Ecos: %d   Melhor onda: %d   Vitorias: %d" % [
+	meta_label.text = "Echoes: %d   Best Wave: %d   Victories: %d" % [
 		int(summary.get("ecos", 0)),
 		int(summary.get("best_wave", 0)),
 		int(summary.get("victories", 0)),

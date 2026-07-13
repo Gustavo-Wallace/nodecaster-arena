@@ -43,7 +43,7 @@ offset_left = 34.0
 offset_top = 24.0
 offset_right = 500.0
 offset_bottom = 64.0
-text = "Grafo Arcano"
+text = "Arcane Graph"
 
 [node name="SummaryLabel" type="Label" parent="Panel"]
 layout_mode = 0
@@ -51,7 +51,7 @@ offset_left = 34.0
 offset_top = 66.0
 offset_right = 980.0
 offset_bottom = 92.0
-text = "Nos ativos: 0"
+text = "Active Nodes: 0"
 
 [node name="CloseButton" type="Button" parent="Panel"]
 layout_mode = 0
@@ -59,7 +59,7 @@ offset_left = 1004.0
 offset_top = 26.0
 offset_right = 1126.0
 offset_bottom = 66.0
-text = "Fechar"
+text = "Close"
 
 [node name="GraphCanvas" type="Control" parent="Panel"]
 layout_mode = 0
@@ -76,4 +76,4 @@ offset_top = 486.0
 offset_right = 1126.0
 offset_bottom = 516.0
 horizontal_alignment = 1
-text = "Sinergias: nenhuma"
+text = "Synergies: none"

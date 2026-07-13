@@ -14,13 +14,13 @@ func _ready() -> void:
 func _refresh() -> void:
 	var save_manager := get_node_or_null("/root/SaveManager")
 	if save_manager == null:
-		ecos_label.text = "Ecos: 0"
-		records_label.text = "Sem save carregado."
+		ecos_label.text = "Echoes: 0"
+		records_label.text = "No save loaded."
 		return
 
 	var summary: Dictionary = save_manager.call("get_summary")
-	ecos_label.text = "Ecos: %d" % int(summary.get("ecos", 0))
-	records_label.text = "Maior pontuacao: %d    Maior onda: %d    Vitorias: %d" % [
+	ecos_label.text = "Echoes: %d" % int(summary.get("ecos", 0))
+	records_label.text = "Best Score: %d    Best Wave: %d    Victories: %d" % [
 		int(summary.get("best_score", 0)),
 		int(summary.get("best_wave", 0)),
 		int(summary.get("victories", 0)),
@@ -55,8 +55,8 @@ func _create_unlock_row(unlock_data: Dictionary) -> PanelContainer:
 	layout.add_child(text_box)
 
 	var title := Label.new()
-	title.text = "%s - %s Ecos" % [
-		str(unlock_data.get("display_name", "Desbloqueio")),
+	title.text = "%s - %s Echoes" % [
+		str(unlock_data.get("display_name", "Unlock")),
 		int(unlock_data.get("cost", 0)),
 	]
 	title.add_theme_font_size_override("font_size", 21)
@@ -72,13 +72,13 @@ func _create_unlock_row(unlock_data: Dictionary) -> PanelContainer:
 	var button := Button.new()
 	button.custom_minimum_size = Vector2(170.0, 42.0)
 	if bool(unlock_data.get("unlocked", false)):
-		button.text = "Desbloqueado"
+		button.text = "Unlocked"
 		button.disabled = true
 	elif bool(unlock_data.get("can_unlock", false)):
-		button.text = "Desbloquear"
+		button.text = "Unlock"
 		button.pressed.connect(_on_unlock_pressed.bind(str(unlock_data.get("id", ""))))
 	else:
-		button.text = "Ecos insuficientes"
+		button.text = "Not Enough Echoes"
 		button.disabled = true
 	layout.add_child(button)
 

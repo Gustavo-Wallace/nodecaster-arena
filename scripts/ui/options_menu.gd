@@ -77,9 +77,9 @@ func _on_fullscreen_toggled(enabled: bool) -> void:
 	if settings_manager != null:
 		settings_manager.call("set_fullscreen_enabled", enabled)
 		if enabled and settings_manager.has_method("can_apply_fullscreen") and not bool(settings_manager.call("can_apply_fullscreen")):
-			status_label.text = "Tela cheia sera aplicada fora da janela embutida do editor."
+			status_label.text = "Fullscreen will apply outside the embedded editor window."
 			return
-	status_label.text = "Tela cheia ativada." if enabled else "Modo janela ativado."
+	status_label.text = "Fullscreen enabled." if enabled else "Windowed mode enabled."
 
 
 func _on_reset_pressed() -> void:
@@ -98,13 +98,13 @@ func _on_confirm_reset_pressed() -> void:
 		run_config.set("selected_character_id", "circle")
 
 	confirmation_panel.hide()
-	status_label.text = "Progresso resetado."
+	status_label.text = "Progress reset."
 	_play_audio("play_unlock")
 
 
 func _on_cancel_reset_pressed() -> void:
 	confirmation_panel.hide()
-	status_label.text = "Reset cancelado."
+	status_label.text = "Reset cancelled."
 	_play_audio("play_error")
 
 

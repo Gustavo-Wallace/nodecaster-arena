@@ -41,7 +41,7 @@ offset_left = 32.0
 offset_top = 22.0
 offset_right = 1128.0
 offset_bottom = 62.0
-text = "Oficina Arcana"
+text = "Arcane Workshop"
 horizontal_alignment = 1
 theme_override_font_sizes/font_size = 32
 
@@ -51,7 +51,7 @@ offset_left = 80.0
 offset_top = 66.0
 offset_right = 1080.0
 offset_bottom = 94.0
-text = "Defina a matriz do seu feitico antes de entrar na arena."
+text = "Define your spell matrix before entering the arena."
 horizontal_alignment = 1
 theme_override_colors/font_color = Color(0.68, 0.84, 1, 1)
 theme_override_font_sizes/font_size = 17
@@ -71,7 +71,7 @@ theme_override_constants/separation = 8
 
 [node name="Title" type="Label" parent="Panel/Columns/ShapeColumn"]
 layout_mode = 2
-text = "FORMA DO FEITICO"
+text = "SPELL SHAPE"
 horizontal_alignment = 1
 theme_override_colors/font_color = Color(0.86, 0.7, 1, 1)
 theme_override_font_sizes/font_size = 16
@@ -87,7 +87,7 @@ theme_override_constants/separation = 8
 
 [node name="Title" type="Label" parent="Panel/Columns/ElementColumn"]
 layout_mode = 2
-text = "ELEMENTO"
+text = "ELEMENT"
 horizontal_alignment = 1
 theme_override_colors/font_color = Color(1, 0.72, 0.38, 1)
 theme_override_font_sizes/font_size = 16
@@ -103,7 +103,7 @@ theme_override_constants/separation = 8
 
 [node name="Title" type="Label" parent="Panel/Columns/DeliveryColumn"]
 layout_mode = 2
-text = "LANCAMENTO"
+text = "DELIVERY TYPE"
 horizontal_alignment = 1
 theme_override_colors/font_color = Color(0.42, 0.94, 1, 1)
 theme_override_font_sizes/font_size = 16
@@ -125,7 +125,7 @@ offset_left = 20.0
 offset_top = 18.0
 offset_right = 292.0
 offset_bottom = 44.0
-text = "MATRIZ ATUAL"
+text = "CURRENT MATRIX"
 horizontal_alignment = 1
 theme_override_font_sizes/font_size = 16
 
@@ -165,7 +165,7 @@ offset_left = 352.0
 offset_top = 548.0
 offset_right = 530.0
 offset_bottom = 596.0
-text = "Voltar"
+text = "Back"
 
 [node name="StartButton" type="Button" parent="Panel"]
 layout_mode = 0
@@ -173,4 +173,4 @@ offset_left = 630.0
 offset_top = 548.0
 offset_right = 808.0
 offset_bottom = 596.0
-text = "Iniciar Run"
+text = "Start Run"

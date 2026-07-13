@@ -25,16 +25,16 @@ var unlock_definitions := {
 		"id": "character_diamond",
 		"kind": "character",
 		"target_id": "diamond",
-		"display_name": "Losango",
-		"description": "Forma instavel especializada em poder arcano.",
+		"display_name": "Diamond",
+		"description": "An unstable form specialized in arcane power.",
 		"cost": 25,
 	},
 	"upgrade_piercing": {
 		"id": "upgrade_piercing",
 		"kind": "upgrade",
 		"target_id": "piercing",
-		"display_name": "Perfuracao",
-		"description": "Projeteis atravessam 1 inimigo adicional.",
+		"display_name": "Piercing",
+		"description": "Projectiles pass through 1 additional enemy.",
 		"cost": 20,
 	},
 }
@@ -42,8 +42,8 @@ var unlock_definitions := {
 var skill_definitions := {
 	"resonant_shell": {
 		"id": "resonant_shell",
-		"name": "Casca Ressonante",
-		"description": "No inicio de cada onda, ganha 1 escudo que absorve o proximo impacto.",
+		"name": "Resonant Shell",
+		"description": "At the start of each wave, gain 1 shield that absorbs the next hit.",
 		"branch": "core",
 		"cost": 14,
 		"prerequisites": [],
@@ -53,8 +53,8 @@ var skill_definitions := {
 	},
 	"stable_window": {
 		"id": "stable_window",
-		"name": "Janela Estavel",
-		"description": "Apos sofrer dano, fica invulneravel por um breve momento.",
+		"name": "Stable Window",
+		"description": "After taking damage, become invulnerable for a brief moment.",
 		"branch": "core",
 		"cost": 20,
 		"prerequisites": ["resonant_shell"],
@@ -64,8 +64,8 @@ var skill_definitions := {
 	},
 	"field_repair": {
 		"id": "field_repair",
-		"name": "Reparo de Campo",
-		"description": "Ao derrotar o mini-boss, recupera 18 de vida.",
+		"name": "Field Repair",
+		"description": "Defeating the mini-boss restores 18 health.",
 		"branch": "core",
 		"cost": 24,
 		"prerequisites": ["stable_window"],
@@ -75,8 +75,8 @@ var skill_definitions := {
 	},
 	"emergency_pulse": {
 		"id": "emergency_pulse",
-		"name": "Pulso de Emergencia",
-		"description": "Abaixo de 30% de vida, receber dano libera um pulso que fere inimigos proximos.",
+		"name": "Emergency Pulse",
+		"description": "Below 30% health, taking damage releases a pulse that hurts nearby enemies.",
 		"branch": "core",
 		"cost": 32,
 		"prerequisites": ["stable_window"],
@@ -86,8 +86,8 @@ var skill_definitions := {
 	},
 	"catalyzed_shot": {
 		"id": "catalyzed_shot",
-		"name": "Disparo Catalisado",
-		"description": "A cada 4 disparos, o proximo vira um prisma maior e muito mais forte.",
+		"name": "Catalyzed Shot",
+		"description": "Every 4 casts, the next becomes a larger and much stronger prism.",
 		"branch": "projectile",
 		"cost": 18,
 		"prerequisites": [],
@@ -97,8 +97,8 @@ var skill_definitions := {
 	},
 	"opening_charge": {
 		"id": "opening_charge",
-		"name": "Carga de Abertura",
-		"description": "Nos primeiros segundos de cada onda, seus projeteis recebem +1 perfuracao.",
+		"name": "Opening Charge",
+		"description": "For the first seconds of each wave, your projectiles gain +1 pierce.",
 		"branch": "projectile",
 		"cost": 22,
 		"prerequisites": ["catalyzed_shot"],
@@ -108,8 +108,8 @@ var skill_definitions := {
 	},
 	"initial_fragment": {
 		"id": "initial_fragment",
-		"name": "Fragmento Inicial",
-		"description": "Toda run comeca com Fragmentacao ja conectada ao seu feitico.",
+		"name": "Initial Fragment",
+		"description": "Every run starts with Fragmentation already connected to your spell.",
 		"branch": "projectile",
 		"cost": 26,
 		"prerequisites": ["catalyzed_shot"],
@@ -119,8 +119,8 @@ var skill_definitions := {
 	},
 	"unlock_piercing": {
 		"id": "unlock_piercing",
-		"name": "Perfuracao",
-		"description": "Libera o no Perfuracao nas runs.",
+		"name": "Piercing",
+		"description": "Unlocks the Piercing node in runs.",
 		"branch": "arcane",
 		"cost": 20,
 		"prerequisites": [],
@@ -131,8 +131,8 @@ var skill_definitions := {
 	},
 	"expanded_options": {
 		"id": "expanded_options",
-		"name": "Opcoes Ampliadas",
-		"description": "Mostra 4 mutacoes entre ondas. Voce ainda escolhe 1.",
+		"name": "Expanded Options",
+		"description": "Shows 4 mutations between waves. You still choose 1.",
 		"branch": "arcane",
 		"cost": 60,
 		"prerequisites": ["prepared_choice"],
@@ -142,8 +142,8 @@ var skill_definitions := {
 	},
 	"prepared_choice": {
 		"id": "prepared_choice",
-		"name": "Escolha Preparada",
-		"description": "Ganha 1 reroll por run no painel de mutacoes.",
+		"name": "Prepared Choice",
+		"description": "Gain 1 reroll per run in the mutation panel.",
 		"branch": "arcane",
 		"cost": 18,
 		"prerequisites": ["unlock_piercing"],
@@ -153,8 +153,8 @@ var skill_definitions := {
 	},
 	"arcane_memory": {
 		"id": "arcane_memory",
-		"name": "Memoria Arcana",
-		"description": "Toda run comeca com 1 mutacao basica aleatoria ja aplicada.",
+		"name": "Arcane Memory",
+		"description": "Every run starts with 1 random basic mutation already applied.",
 		"branch": "arcane",
 		"cost": 34,
 		"prerequisites": ["prepared_choice"],
@@ -164,8 +164,8 @@ var skill_definitions := {
 	},
 	"directed_affinity": {
 		"id": "directed_affinity",
-		"name": "Afinidade Dirigida",
-		"description": "O primeiro painel de mutacao sempre oferece ao menos 1 opcao ofensiva.",
+		"name": "Directed Affinity",
+		"description": "The first mutation panel always offers at least 1 offensive option.",
 		"branch": "arcane",
 		"cost": 28,
 		"prerequisites": ["expanded_options"],
@@ -175,8 +175,8 @@ var skill_definitions := {
 	},
 	"synergy_resonance": {
 		"id": "synergy_resonance",
-		"name": "Ressonancia de Sinergia",
-		"description": "Ao ja possuir parte de uma sinergia, favorece uma mutacao compativel nas recompensas.",
+		"name": "Synergy Resonance",
+		"description": "When you already own part of a synergy, rewards favor a compatible mutation.",
 		"branch": "arcane",
 		"cost": 42,
 		"prerequisites": ["directed_affinity"],
@@ -186,8 +186,8 @@ var skill_definitions := {
 	},
 	"unlock_diamond": {
 		"id": "unlock_diamond",
-		"name": "Losango",
-		"description": "Libera a forma Losango na selecao de personagem.",
+		"name": "Diamond",
+		"description": "Unlocks the Diamond form in character selection.",
 		"branch": "forms",
 		"cost": 25,
 		"prerequisites": [],
@@ -521,7 +521,7 @@ func _get_skill_purchase_status(skill_id: String) -> Dictionary:
 			"available": false,
 			"affordable": false,
 			"can_purchase": false,
-			"locked_reason": "Skill desconhecida.",
+			"locked_reason": "Unknown skill.",
 		}
 
 	var skill: Dictionary = skill_definitions.get(skill_id, {})
@@ -532,13 +532,13 @@ func _get_skill_purchase_status(skill_id: String) -> Dictionary:
 	var locked_reason := ""
 
 	if future:
-		locked_reason = "Em breve."
+		locked_reason = "Coming soon."
 	elif purchased:
-		locked_reason = "Comprada."
+		locked_reason = "Purchased."
 	elif not prerequisites_met:
-		locked_reason = "Requisitos pendentes."
+		locked_reason = "Requirements not met."
 	elif not affordable:
-		locked_reason = "Ecos insuficientes."
+		locked_reason = "Not enough Echoes."
 
 	return {
 		"purchased": purchased,

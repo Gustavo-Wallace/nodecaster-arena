@@ -82,10 +82,10 @@ func _clear_tree_content() -> void:
 
 func _create_branch_labels() -> void:
 	var labels := [
-		{"text": "NUCLEO", "position": Vector2(470.0, 30.0), "branch": "core"},
-		{"text": "PROJETEIS", "position": Vector2(780.0, 220.0), "branch": "projectile"},
-		{"text": "NOS ARCANOS", "position": Vector2(590.0, 615.0), "branch": "arcane"},
-		{"text": "FORMAS", "position": Vector2(150.0, 300.0), "branch": "forms"},
+		{"text": "CORE", "position": Vector2(470.0, 30.0), "branch": "core"},
+		{"text": "PROJECTILES", "position": Vector2(780.0, 220.0), "branch": "projectile"},
+		{"text": "ARCANE NODES", "position": Vector2(590.0, 615.0), "branch": "arcane"},
+		{"text": "FORMS", "position": Vector2(150.0, 300.0), "branch": "forms"},
 	]
 
 	for label_data in labels:
@@ -111,7 +111,7 @@ func _create_hub() -> void:
 
 	var label := Label.new()
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	label.text = "ECO"
+	label.text = "ECHO"
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", 20)
@@ -173,11 +173,11 @@ func _build_skill_buttons() -> void:
 func _update_ecos_label() -> void:
 	var save_manager := get_node_or_null("/root/SaveManager")
 	if save_manager == null:
-		ecos_label.text = "Ecos: 0"
+		ecos_label.text = "Echoes: 0"
 		return
 
 	var summary: Dictionary = save_manager.call("get_summary")
-	ecos_label.text = "Ecos: %d" % int(summary.get("ecos", 0))
+	ecos_label.text = "Echoes: %d" % int(summary.get("ecos", 0))
 
 
 func _select_skill(skill_id: String) -> void:
@@ -196,7 +196,7 @@ func _on_skill_button_pressed(skill_id: String) -> void:
 func _update_details() -> void:
 	var skill := _get_selected_skill()
 	if skill.is_empty():
-		name_label.text = "Nenhuma skill"
+		name_label.text = "No skill selected"
 		branch_label.text = ""
 		description_label.text = ""
 		cost_label.text = ""
@@ -208,24 +208,24 @@ func _update_details() -> void:
 	name_label.text = str(skill.get("name", "Skill"))
 	branch_label.text = _format_branch(str(skill.get("branch", "")))
 	description_label.text = str(skill.get("description", ""))
-	cost_label.text = "Custo: %d Ecos" % int(skill.get("cost", 0))
+	cost_label.text = "Cost: %d Echoes" % int(skill.get("cost", 0))
 	prerequisites_label.text = _format_prerequisites(skill)
 
 	if bool(skill.get("purchased", false)):
-		status_label.text = "Ja adquirida."
-		buy_button.text = "Adquirida"
+		status_label.text = "Already purchased."
+		buy_button.text = "Purchased"
 		buy_button.disabled = true
 	elif bool(skill.get("future", false)):
-		status_label.text = "Em breve."
-		buy_button.text = "Indisponivel"
+		status_label.text = "Coming soon."
+		buy_button.text = "Unavailable"
 		buy_button.disabled = true
 	elif bool(skill.get("can_purchase", false)):
-		status_label.text = "Disponivel para compra."
-		buy_button.text = "Comprar"
+		status_label.text = "Available to purchase."
+		buy_button.text = "Buy"
 		buy_button.disabled = false
 	else:
-		status_label.text = str(skill.get("locked_reason", "Bloqueada."))
-		buy_button.text = "Comprar"
+		status_label.text = str(skill.get("locked_reason", "Locked."))
+		buy_button.text = "Buy"
 		buy_button.disabled = true
 
 	var branch_color := _get_branch_color(str(skill.get("branch", "")))
@@ -265,33 +265,33 @@ func _get_skill_by_id(skill_id: String) -> Dictionary:
 func _get_short_node_label(skill: Dictionary) -> String:
 	match str(skill.get("id", "")):
 		"resonant_shell":
-			return "Casca"
+			return "Shell"
 		"stable_window":
-			return "Janela"
+			return "Window"
 		"field_repair":
-			return "Reparo"
+			return "Repair"
 		"emergency_pulse":
-			return "Pulso"
+			return "Pulse"
 		"catalyzed_shot":
-			return "Catalisa"
+			return "Catalyze"
 		"opening_charge":
-			return "Abertura"
+			return "Opening"
 		"initial_fragment":
-			return "Fragmento"
+			return "Fragment"
 		"unlock_piercing":
-			return "Perfura"
+			return "Pierce"
 		"prepared_choice":
 			return "Reroll"
 		"expanded_options":
-			return "+Opcoes"
+			return "+Options"
 		"arcane_memory":
-			return "Memoria"
+			return "Memory"
 		"directed_affinity":
-			return "Afinidade"
+			return "Affinity"
 		"synergy_resonance":
-			return "Sinergia"
+			return "Synergy"
 		"unlock_diamond":
-			return "Losango"
+			return "Diamond"
 		_:
 			return str(skill.get("name", "Skill"))
 
@@ -307,13 +307,13 @@ func _get_skill_name(skill_id: String) -> String:
 func _format_prerequisites(skill: Dictionary) -> String:
 	var prerequisites = skill.get("prerequisites", [])
 	if not (prerequisites is Array or prerequisites is PackedStringArray) or prerequisites.is_empty():
-		return "Requisitos: nenhum"
+		return "Requirements: none"
 
 	var names: Array[String] = []
 	for prerequisite in prerequisites:
 		names.append(_get_skill_name(str(prerequisite)))
 
-	return "Requisitos: %s" % ", ".join(names)
+	return "Requirements: %s" % ", ".join(names)
 
 
 func _refresh_button_styles() -> void:
@@ -404,15 +404,15 @@ func _get_branch_color(branch: String) -> Color:
 func _format_branch(branch: String) -> String:
 	match branch:
 		"core":
-			return "Ramo: Nucleo"
+			return "Branch: Core"
 		"projectile":
-			return "Ramo: Projeteis"
+			return "Branch: Projectiles"
 		"arcane":
-			return "Ramo: Nos Arcanos"
+			return "Branch: Arcane Nodes"
 		"forms":
-			return "Ramo: Formas"
+			return "Branch: Forms"
 		_:
-			return "Ramo: Geral"
+			return "Branch: General"
 
 
 func _on_tree_viewport_gui_input(event: InputEvent) -> void:

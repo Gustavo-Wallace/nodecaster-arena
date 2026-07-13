@@ -51,7 +51,7 @@ offset_left = 46.0
 offset_top = 102.0
 offset_right = 474.0
 offset_bottom = 152.0
-text = "Construa uma cadeia arcana e sobreviva a simulacao."
+text = "Build an arcane chain and survive the simulation."
 horizontal_alignment = 1
 autowrap_mode = 3
 theme_override_font_sizes/font_size = 18
@@ -62,7 +62,7 @@ offset_left = 38.0
 offset_top = 160.0
 offset_right = 482.0
 offset_bottom = 190.0
-text = "Ecos: 0"
+text = "Echoes: 0"
 horizontal_alignment = 1
 
 [node name="PlayButton" type="Button" parent="Panel"]
@@ -71,7 +71,7 @@ offset_left = 170.0
 offset_top = 204.0
 offset_right = 350.0
 offset_bottom = 246.0
-text = "Jogar"
+text = "Play"
 
 [node name="ProgressButton" type="Button" parent="Panel"]
 layout_mode = 0
@@ -79,7 +79,7 @@ offset_left = 150.0
 offset_top = 258.0
 offset_right = 370.0
 offset_bottom = 300.0
-text = "Arvore de Ecos"
+text = "Echo Tree"
 
 [node name="OptionsButton" type="Button" parent="Panel"]
 layout_mode = 0
@@ -87,7 +87,7 @@ offset_left = 170.0
 offset_top = 312.0
 offset_right = 350.0
 offset_bottom = 354.0
-text = "Opcoes"
+text = "Options"
 
 [node name="QuitButton" type="Button" parent="Panel"]
 layout_mode = 0
@@ -95,4 +95,4 @@ offset_left = 170.0
 offset_top = 366.0
 offset_right = 350.0
 offset_bottom = 408.0
-text = "Sair"
+text = "Quit"

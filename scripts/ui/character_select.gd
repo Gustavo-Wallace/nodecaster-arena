@@ -4,9 +4,9 @@ const SHAPE_PREVIEW_SCRIPT := preload("res://scripts/ui/shape_preview.gd")
 const FALLBACK_CHARACTERS := [
 	{
 		"id": "circle",
-		"display_name": "Circulo",
-		"profile": "Equilibrado",
-		"description": "Forma estavel e versatil.",
+		"display_name": "Circle",
+		"profile": "Balanced",
+		"description": "A stable and versatile form.",
 		"max_health": 100,
 		"move_speed": 320,
 		"projectile_damage": 12,
@@ -17,9 +17,9 @@ const FALLBACK_CHARACTERS := [
 	},
 	{
 		"id": "triangle",
-		"display_name": "Triangulo",
-		"profile": "Rapido e agressivo",
-		"description": "Forma veloz, fragil e ofensiva.",
+		"display_name": "Triangle",
+		"profile": "Fast and aggressive",
+		"description": "A fast, fragile, and offensive form.",
 		"max_health": 82,
 		"move_speed": 380,
 		"projectile_damage": 14,
@@ -30,9 +30,9 @@ const FALLBACK_CHARACTERS := [
 	},
 	{
 		"id": "square",
-		"display_name": "Quadrado",
-		"profile": "Resistente",
-		"description": "Forma solida, lenta e duravel.",
+		"display_name": "Square",
+		"profile": "Resilient",
+		"description": "A solid, slow, and durable form.",
 		"max_health": 135,
 		"move_speed": 270,
 		"projectile_damage": 12,
@@ -43,9 +43,9 @@ const FALLBACK_CHARACTERS := [
 	},
 	{
 		"id": "diamond",
-		"display_name": "Losango",
-		"profile": "Conjurador",
-		"description": "Forma instavel especializada em poder arcano.",
+		"display_name": "Diamond",
+		"profile": "Caster",
+		"description": "An unstable form specialized in arcane power.",
 		"max_health": 86,
 		"move_speed": 320,
 		"projectile_damage": 18,
@@ -97,7 +97,7 @@ func _create_character_card(character: Dictionary) -> PanelContainer:
 	margin.add_child(layout)
 
 	var title := Label.new()
-	title.text = str(character.get("display_name", "Forma"))
+	title.text = str(character.get("display_name", "Form"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 24)
 	title.add_theme_color_override("font_color", Color(0.88, 0.98, 1.0))
@@ -123,20 +123,20 @@ func _create_character_card(character: Dictionary) -> PanelContainer:
 	layout.add_child(description)
 
 	var stats := Label.new()
-	stats.text = "Vida %d\nVelocidade %d\nDano %d\nCadencia %.2fs" % [
+	stats.text = "Health %d\nSpeed %d\nDamage %d\nCadence %.2fs" % [
 		int(character.get("max_health", 100)),
 		int(character.get("move_speed", 320)),
 		int(character.get("projectile_damage", 12)),
 		float(character.get("fire_interval", 0.45)),
 	]
 	if not unlocked:
-		stats.text += "\nBloqueado: %d Ecos" % int(character.get("unlock_cost", 0))
+		stats.text += "\nLocked: %d Echoes" % int(character.get("unlock_cost", 0))
 	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	stats.add_theme_color_override("font_color", Color(0.86, 0.96, 1.0))
 	layout.add_child(stats)
 
 	var choose_button := Button.new()
-	choose_button.text = "Escolher" if unlocked else "Bloqueado"
+	choose_button.text = "Choose" if unlocked else "Locked"
 	choose_button.disabled = not unlocked
 	if unlocked:
 		choose_button.pressed.connect(_on_character_chosen.bind(str(character.get("id", "circle"))))

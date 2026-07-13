@@ -40,7 +40,7 @@ offset_left = 36.0
 offset_top = 24.0
 offset_right = 1084.0
 offset_bottom = 70.0
-text = "Escolha sua forma inicial"
+text = "Choose Your Form"
 horizontal_alignment = 1
 theme_override_font_sizes/font_size = 32
 
@@ -50,7 +50,7 @@ offset_left = 90.0
 offset_top = 76.0
 offset_right = 1030.0
 offset_bottom = 110.0
-text = "Cada forma altera atributos reais da run."
+text = "Each form changes real run attributes."
 horizontal_alignment = 1
 theme_override_font_sizes/font_size = 18
 
@@ -68,4 +68,4 @@ offset_left = 500.0
 offset_top = 582.0
 offset_right = 680.0
 offset_bottom = 622.0
-text = "Voltar"
+text = "Back"

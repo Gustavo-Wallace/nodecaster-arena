@@ -55,11 +55,11 @@ func _rebuild_graph() -> void:
 		_create_branch_nodes(branch)
 	_create_root_node()
 
-	synergy_label.text = "Sinergias: " + (", ".join(_synergies) if not _synergies.is_empty() else "nenhuma")
+	synergy_label.text = "Synergies: " + (", ".join(_synergies) if not _synergies.is_empty() else "none")
 
 
 func _create_root_node() -> void:
-	var root := _create_node_card("Projetil", Color(0.18, 0.42, 0.58), ROOT_SIZE)
+	var root := _create_node_card("Projectile", Color(0.18, 0.42, 0.58), ROOT_SIZE)
 	root.position = ROOT_CENTER - ROOT_SIZE * 0.5
 	graph_canvas.add_child(root)
 
@@ -90,7 +90,7 @@ func _create_branch_nodes(branch: String) -> void:
 		var center := node_position + NODE_SIZE * 0.5
 		_create_connection(previous_center, center, branch_color)
 
-		var label := str(node.get("node_label", node.get("name", "No")))
+		var label := str(node.get("node_label", node.get("name", "Node")))
 		var stack := int(node.get("stack", 1))
 		if stack > 1:
 			label += " x%d" % stack

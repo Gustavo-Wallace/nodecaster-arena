@@ -56,7 +56,7 @@ func _on_player_health_changed(current_health: int, max_health: int) -> void:
 
 
 func _set_health_text(current_health: int, max_health: int) -> void:
-	health_label.text = "VIDA %d / %d" % [current_health, max_health]
+	health_label.text = "HEALTH %d / %d" % [current_health, max_health]
 	var health_ratio := 0.0
 	if max_health > 0:
 		health_ratio = clampf(float(current_health) / float(max_health), 0.0, 1.0)
@@ -76,22 +76,22 @@ func _set_health_text(current_health: int, max_health: int) -> void:
 
 func set_wave_info(wave_number: int, enemies_remaining: int, score: int, max_wave: int = 0, wave_title: String = "") -> void:
 	if max_wave > 0:
-		wave_label.text = "ONDA %d/%d" % [wave_number, max_wave]
+		wave_label.text = "WAVE %d/%d" % [wave_number, max_wave]
 	else:
-		wave_label.text = "ONDA %d" % wave_number
+		wave_label.text = "WAVE %d" % wave_number
 
 	if not wave_title.is_empty():
 		wave_label.text += " - %s" % wave_title
 
-	enemies_label.text = "INIMIGOS %d" % enemies_remaining
-	score_label.text = "PONTOS %d" % score
+	enemies_label.text = "ENEMIES %d" % enemies_remaining
+	score_label.text = "SCORE %d" % score
 
 
 func set_run_time(seconds: float) -> void:
 	var total_seconds := int(seconds)
 	var minutes := int(total_seconds / 60)
 	var remaining_seconds := total_seconds % 60
-	time_label.text = "TEMPO %02d:%02d" % [minutes, remaining_seconds]
+	time_label.text = "TIME %02d:%02d" % [minutes, remaining_seconds]
 
 
 func set_meta_info(info: String) -> void:
@@ -99,7 +99,7 @@ func set_meta_info(info: String) -> void:
 
 
 func set_build_summary(node_count: int, synergy_count: int) -> void:
-	build_label.text = "NOS %d | SINERGIAS %d" % [node_count, synergy_count]
+	build_label.text = "NODES %d | SYNERGIES %d" % [node_count, synergy_count]
 
 
 func _on_graph_pressed() -> void:

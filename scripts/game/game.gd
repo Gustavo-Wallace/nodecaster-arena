@@ -9,6 +9,7 @@ const STAR_BOMBER_SCENE := preload("res://scenes/enemies/star_bomber.tscn")
 const LINE_SNIPER_SCENE := preload("res://scenes/enemies/line_sniper.tscn")
 const BASIC_PROJECTILE_SCENE := preload("res://scenes/projectiles/basic_projectile.tscn")
 const GAME_HUD_SCENE := preload("res://scenes/ui/game_hud.tscn")
+const PAUSE_MENU_SCENE := preload("res://scenes/ui/pause_menu.tscn")
 const UPGRADE_PANEL_SCENE := preload("res://scenes/ui/upgrade_panel.tscn")
 const SPELL_GRAPH_OVERLAY_SCENE := preload("res://scenes/ui/spell_graph_overlay.tscn")
 const SPELL_GRAPH_SCRIPT := preload("res://scripts/game/spell_graph.gd")
@@ -87,6 +88,7 @@ const UNSTABLE_FIELD_AURA_SCRIPT := preload("res://scripts/effects/unstable_fiel
 
 var player: Node2D
 var hud: Control
+var pause_menu: Control
 var upgrade_panel: Control
 var spell_graph_overlay: Control
 var result_panel: Control
@@ -132,6 +134,7 @@ var _has_shown_upgrade_panel: bool = false
 var _opening_charge_time_left: float = 0.0
 var _emergency_pulse_cooldown_left: float = 0.0
 var _graph_open: bool = false
+var _pause_open: bool = false
 var _chain_range_bonus: float = 0.0
 var _chain_jump_range_bonus: float = 0.0
 var _chain_bonus_hits: int = 0
@@ -189,6 +192,16 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	var key_event := event as InputEventKey
+	if key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_ESCAPE:
+		if _graph_open:
+			_close_spell_graph()
+			get_viewport().set_input_as_handled()
+			return
+		if not _run_finished and not _reward_open:
+			_open_pause_menu()
+			get_viewport().set_input_as_handled()
+			return
+
 	if not _run_finished and not _graph_open and key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_G:
 		_toggle_spell_graph()
 		get_viewport().set_input_as_handled()
@@ -268,6 +281,12 @@ func _spawn_hud() -> void:
 	hud_layer.add_child(hud)
 	hud.call("bind_player", player)
 
+	pause_menu = PAUSE_MENU_SCENE.instantiate() as Control
+	hud_layer.add_child(pause_menu)
+	pause_menu.connect("resume_requested", Callable(self, "_close_pause_menu"))
+	pause_menu.connect("restart_requested", Callable(self, "_restart_scene"))
+	pause_menu.connect("main_menu_requested", Callable(self, "_go_to_main_menu"))
+
 	spell_graph_overlay = SPELL_GRAPH_OVERLAY_SCENE.instantiate() as Control
 	hud_layer.add_child(spell_graph_overlay)
 	spell_graph_overlay.connect("close_requested", Callable(self, "_close_spell_graph"))
@@ -298,7 +317,7 @@ func _start_wave(wave_number: int) -> void:
 	current_wave_type = _get_wave_type(current_wave)
 	current_wave_modifier = _choose_wave_modifier(current_wave, current_wave_type)
 	if not current_wave_modifier.is_empty():
-		var modifier_name := str(current_wave_modifier.get("name", "Modificador"))
+		var modifier_name := str(current_wave_modifier.get("name", "Modifier"))
 		wave_modifiers_seen.append(modifier_name)
 	run_stats["max_wave_reached"] = maxi(int(run_stats.get("max_wave_reached", 0)), current_wave)
 	_wave_in_progress = true
@@ -347,7 +366,7 @@ func _create_wave_enemy_counts() -> Dictionary:
 func _create_run_stats() -> Dictionary:
 	return {
 		"character_id": str(selected_character_data.get("id", "circle")),
-		"character_name": str(selected_character_data.get("display_name", "Circulo")),
+		"character_name": str(selected_character_data.get("display_name", "Circle")),
 		"spell_blueprint": selected_spell_summary.duplicate(true),
 		"run_time_seconds": 0.0,
 		"max_wave_reached": 0,
@@ -376,7 +395,7 @@ func _get_selected_character_data() -> Dictionary:
 	if run_config == null:
 		return {
 			"id": "circle",
-			"display_name": "Circulo",
+			"display_name": "Circle",
 			"max_health": 100,
 			"move_speed": 320.0,
 			"projectile_damage": 12,
@@ -442,7 +461,7 @@ func _apply_meta_run_effects() -> void:
 	_add_active_meta_nodes_to_graph()
 
 	if _has_meta_skill("initial_fragment"):
-		_apply_starting_meta_upgrade("initial_fragmentation", "FRAGMENTO INICIAL")
+		_apply_starting_meta_upgrade("initial_fragmentation", "INITIAL FRAGMENT")
 	if _has_meta_skill("arcane_memory"):
 		_apply_random_memory_upgrade()
 
@@ -451,10 +470,10 @@ func _apply_meta_run_effects() -> void:
 
 func _add_active_meta_nodes_to_graph() -> void:
 	var meta_nodes := [
-		{"skill": "resonant_shell", "id": "meta_resonant_shell", "name": "Casca Ressonante", "label": "Escudo", "branch": "core"},
-		{"skill": "stable_window", "id": "meta_stable_window", "name": "Janela Estavel", "label": "Janela", "branch": "core"},
-		{"skill": "catalyzed_shot", "id": "meta_catalyzed_shot", "name": "Disparo Catalisado", "label": "Catalisa", "branch": "rhythm"},
-		{"skill": "opening_charge", "id": "meta_opening_charge", "name": "Carga de Abertura", "label": "Carga", "branch": "rhythm"},
+		{"skill": "resonant_shell", "id": "meta_resonant_shell", "name": "Resonant Shell", "label": "Shield", "branch": "core"},
+		{"skill": "stable_window", "id": "meta_stable_window", "name": "Stable Window", "label": "Window", "branch": "core"},
+		{"skill": "catalyzed_shot", "id": "meta_catalyzed_shot", "name": "Catalyzed Shot", "label": "Catalyze", "branch": "rhythm"},
+		{"skill": "opening_charge", "id": "meta_opening_charge", "name": "Opening Charge", "label": "Charge", "branch": "rhythm"},
 	]
 
 	for meta_node in meta_nodes:
@@ -475,11 +494,11 @@ func _activate_wave_meta_effects() -> void:
 	if is_instance_valid(player) and _has_meta_skill("resonant_shell") and player.has_method("set_shield_charges"):
 		var charges := maxi(int(_get_meta_effect_value("wave_shield_charges")), 1)
 		player.call("set_shield_charges", charges)
-		_spawn_floating_text("ESCUDO", player.global_position + Vector2(0.0, -34.0), Color(0.5, 0.94, 1.0), 0.58)
+		_spawn_floating_text("SHIELD", player.global_position + Vector2(0.0, -34.0), Color(0.5, 0.94, 1.0), 0.58)
 
 	_opening_charge_time_left = _get_meta_effect_value("opening_charge_duration") if _has_meta_skill("opening_charge") else 0.0
 	if _opening_charge_time_left > 0.0 and is_instance_valid(player):
-		_spawn_floating_text("CARGA", player.global_position + Vector2(0.0, -52.0), Color(1.0, 0.84, 0.34), 0.5)
+		_spawn_floating_text("CHARGE", player.global_position + Vector2(0.0, -52.0), Color(1.0, 0.84, 0.34), 0.5)
 
 
 func _apply_starting_meta_upgrade(upgrade_id: String, message: String) -> void:
@@ -504,7 +523,7 @@ func _apply_random_memory_upgrade() -> void:
 	if candidates.is_empty():
 		return
 
-	_apply_starting_meta_upgrade(candidates[_rng.randi_range(0, candidates.size() - 1)], "MEMORIA ARCANA")
+	_apply_starting_meta_upgrade(candidates[_rng.randi_range(0, candidates.size() - 1)], "ARCANE MEMORY")
 
 
 func _get_upgrade_by_id(upgrade_id: String) -> Dictionary:
@@ -766,7 +785,7 @@ func _cast_projectile_spell() -> void:
 			"fill_color": Color(1.0, 0.48, 0.9),
 			"outline_color": Color(1.0, 0.94, 0.68),
 		}
-		_spawn_floating_text("CATALISADO", player.global_position + Vector2(0.0, -42.0), Color(1.0, 0.66, 0.94), 0.46)
+		_spawn_floating_text("CATALYZED", player.global_position + Vector2(0.0, -42.0), Color(1.0, 0.66, 0.94), 0.46)
 
 	for index in range(count):
 		var angle_offset := 0.0
@@ -807,9 +826,9 @@ func _cast_chain_lightning_spell() -> void:
 	if echo_cast:
 		base_damage = maxi(1, int(round(float(base_damage) * _cutting_echo_damage_multiplier)))
 	if catalyzed:
-		_spawn_floating_text("CATALISADO", player.global_position + Vector2(0.0, -42.0), Color(1.0, 0.66, 0.94), 0.46)
+		_spawn_floating_text("CATALYZED", player.global_position + Vector2(0.0, -42.0), Color(1.0, 0.66, 0.94), 0.46)
 	if echo_cast:
-		_spawn_floating_text("ECO", player.global_position + Vector2(0.0, -64.0), Color(0.72, 1.0, 0.94), 0.42)
+		_spawn_floating_text("ECHO", player.global_position + Vector2(0.0, -64.0), Color(0.72, 1.0, 0.94), 0.42)
 
 	var chain_points: Array[Vector2] = [player.global_position]
 	var current_target := first_target
@@ -859,7 +878,7 @@ func _cast_slash_spell() -> void:
 	var first_target_position: Vector2 = targets[0].global_position
 
 	if catalyzed:
-		_spawn_floating_text("CATALISADO", player.global_position + Vector2(0.0, -42.0), Color(1.0, 0.66, 0.94), 0.46)
+		_spawn_floating_text("CATALYZED", player.global_position + Vector2(0.0, -42.0), Color(1.0, 0.66, 0.94), 0.46)
 
 	for target in targets:
 		_apply_slash_hit(target, hit_damage, parameters, false)
@@ -875,7 +894,7 @@ func _cast_slash_spell() -> void:
 		var echo_targets: Array[Node2D] = _get_closest_enemies_in_range(player.global_position, float(parameters["range"]), 1, targets)
 		if not echo_targets.is_empty():
 			_apply_slash_hit(echo_targets[0], maxi(1, int(round(float(hit_damage) * _cutting_echo_damage_multiplier))), parameters, true)
-			_spawn_floating_text("ECO", player.global_position + Vector2(0.0, -64.0), Color(0.72, 1.0, 0.94), 0.42)
+			_spawn_floating_text("ECHO", player.global_position + Vector2(0.0, -64.0), Color(0.72, 1.0, 0.94), 0.42)
 
 	_play_audio("play_slash_cast")
 
@@ -990,7 +1009,7 @@ func _cast_area_spell() -> void:
 	var catalyzed := _has_meta_skill("catalyzed_shot") and _shot_sequence % maxi(int(_get_meta_effect_value("catalyzed_shot_interval")), 1) == 0
 	var tick_damage := maxi(1, int(round(float(projectile_damage) * float(parameters["damage_multiplier"]) * (1.8 if catalyzed else 1.0))))
 	if catalyzed:
-		_spawn_floating_text("CATALISADO", player.global_position + Vector2(0.0, -42.0), Color(1.0, 0.66, 0.94), 0.46)
+		_spawn_floating_text("CATALYZED", player.global_position + Vector2(0.0, -42.0), Color(1.0, 0.66, 0.94), 0.46)
 
 	_remove_invalid_area_spells()
 	if _active_area_spells.size() >= area_max_active:
@@ -1186,9 +1205,9 @@ func _complete_wave() -> void:
 
 	if current_wave_type == "mini_boss":
 		_apply_miniboss_repair_bonus()
-		hud.call("set_wave_message", "Mini-Boss derrotado")
+		hud.call("set_wave_message", "Mini-Boss defeated")
 	else:
-		hud.call("set_wave_message", "Onda concluida")
+		hud.call("set_wave_message", "Wave complete")
 
 	_play_audio("play_wave_complete")
 	_show_upgrade_reward()
@@ -1304,9 +1323,9 @@ func _on_upgrade_selected(upgrade: Dictionary) -> void:
 	_add_spell_node_from_upgrade(upgrade)
 	_apply_upgrade(upgrade)
 	run_stats["upgrades_chosen"] = int(run_stats.get("upgrades_chosen", 0)) + 1
-	_spawn_floating_text("NO +1", arena_rect.position + Vector2(arena_rect.size.x * 0.5, arena_rect.size.y - 92.0), Color(0.72, 0.96, 1.0), 0.8)
+	_spawn_floating_text("NODE +1", arena_rect.position + Vector2(arena_rect.size.x * 0.5, arena_rect.size.y - 92.0), Color(0.72, 0.96, 1.0), 0.8)
 	_reward_open = false
-	hud.call("set_wave_message", "Proxima onda...")
+	hud.call("set_wave_message", "Next wave...")
 	get_tree().create_timer(wave_interval).timeout.connect(_start_next_wave)
 
 
@@ -1445,80 +1464,99 @@ func _close_spell_graph() -> void:
 	get_tree().paused = false
 
 
+func _open_pause_menu() -> void:
+	if _pause_open or _run_finished or _reward_open or not is_instance_valid(pause_menu):
+		return
+
+	_pause_open = true
+	pause_menu.call("open_menu")
+	get_tree().paused = true
+
+
+func _close_pause_menu() -> void:
+	if not _pause_open:
+		return
+
+	_pause_open = false
+	get_tree().paused = false
+	if is_instance_valid(pause_menu):
+		pause_menu.call("close_menu")
+
+
 func _create_upgrade_data() -> Array[Dictionary]:
 	return [
 		{
 			"id": "arcane_damage",
-			"name": "Dano Arcano",
-			"description": "+5 de dano nos projeteis.",
+			"name": "Arcane Damage",
+			"description": "+5 projectile damage.",
 			"category": "power",
 			"branch": "energy",
 			"effect_type": "projectile_damage",
-			"node_label": "Dano",
+			"node_label": "Damage",
 			"values": {
 				"damage_bonus": 5,
 			},
 			"delivery_effects": {
 				"chain_lightning": {
-					"description": "+5 de dano base por alvo da Cadeia.",
-					"impact_text": "+5 dano por alvo",
+					"description": "+5 base damage per Chain Lightning target.",
+					"impact_text": "+5 damage per target",
 				},
 				"area": {
-					"description": "+5 de dano por pulso da Area.",
-					"impact_text": "+5 dano por pulso",
+					"description": "+5 damage per Area Field pulse.",
+					"impact_text": "+5 damage per pulse",
 				},
 				"slash": {
-					"description": "+5 de dano por corte.",
-					"impact_text": "+5 dano por corte",
+					"description": "+5 damage per cut.",
+					"impact_text": "+5 damage per cut",
 				},
 			},
 		},
 		{
 			"id": "unstable_cadence",
-			"name": "Cadencia Instavel",
-			"description": "Disparos automaticos 16% mais rapidos.",
+			"name": "Unstable Cadence",
+			"description": "Automatic casts are 16% faster.",
 			"category": "rhythm",
 			"branch": "rhythm",
 			"effect_type": "fire_interval",
-			"node_label": "Cadencia",
+			"node_label": "Cadence",
 			"values": {
 				"interval_multiplier": 0.84,
 			},
 			"delivery_effects": {
 				"chain_lightning": {
-					"description": "Conjuracoes de Cadeia 16% mais rapidas, respeitando o limite minimo.",
-					"impact_text": "-16% intervalo da cadeia",
+					"description": "Chain Lightning casts are 16% faster, respecting the minimum interval.",
+					"impact_text": "-16% Chain interval",
 				},
 				"area": {
-					"description": "Areas sao conjuradas 16% mais rapido, respeitando o limite minimo.",
-					"impact_text": "-16% intervalo da area",
+					"description": "Area Fields cast 16% faster, respecting the minimum interval.",
+					"impact_text": "-16% Area interval",
 				},
 				"slash": {
-					"description": "Slashes sao executados 16% mais rapido, respeitando o limite minimo.",
-					"impact_text": "-16% intervalo do slash",
+					"description": "Slashes execute 16% faster, respecting the minimum interval.",
+					"impact_text": "-16% Slash interval",
 				},
 			},
 		},
 		{
 			"id": "light_core",
-			"name": "Nucleo Leve",
-			"description": "+35 de velocidade de movimento.",
+			"name": "Light Core",
+			"description": "+35 movement speed.",
 			"category": "body",
 			"branch": "core",
 			"effect_type": "player_speed",
-			"node_label": "Nucleo",
+			"node_label": "Core",
 			"values": {
 				"speed_bonus": 35.0,
 			},
 		},
 		{
 			"id": "energy_shell",
-			"name": "Casca Energetica",
-			"description": "+22 de vida maxima e cura 16.",
+			"name": "Energy Shell",
+			"description": "+22 maximum health and heal 16.",
 			"category": "body",
 			"branch": "core",
 			"effect_type": "player_health",
-			"node_label": "Casca",
+			"node_label": "Shell",
 			"values": {
 				"max_health_bonus": 22,
 				"heal_amount": 16,
@@ -1526,71 +1564,71 @@ func _create_upgrade_data() -> Array[Dictionary]:
 		},
 		{
 			"id": "swift_projectile",
-			"name": "Projetil Veloz",
-			"description": "+80 de velocidade dos projeteis.",
+			"name": "Swift Projectile",
+			"description": "+80 projectile speed.",
 			"category": "projectile",
 			"branch": "form",
 			"effect_type": "projectile_speed",
-			"node_label": "Velocidade",
+			"node_label": "Speed",
 			"values": {
 				"projectile_speed_bonus": 80.0,
 			},
 			"delivery_effects": {
 				"chain_lightning": {
-					"name": "Condutor Veloz",
-					"description": "Aumenta o alcance inicial e o alcance entre alvos da Cadeia.",
-					"impact_text": "+52 alcance, +24 salto",
+					"name": "Swift Conductor",
+					"description": "Increases Chain Lightning initial range and jump range.",
+					"impact_text": "+52 range, +24 jump",
 				},
 				"area": {
-					"name": "Alcance Expandido",
-					"description": "Permite criar Areas mais distantes do nucleo.",
-					"impact_text": "+56 alcance da area",
+					"name": "Expanded Range",
+					"description": "Lets you create Area Fields farther from the core.",
+					"impact_text": "+56 Area range",
 				},
 				"slash": {
-					"name": "Corte Alcancado",
-					"description": "Aumenta o alcance de busca do Slash.",
-					"impact_text": "+48 alcance do slash",
+					"name": "Extended Cut",
+					"description": "Increases Slash targeting range.",
+					"impact_text": "+48 Slash range",
 				},
 			},
 		},
 		{
 			"id": "initial_fragmentation",
-			"name": "Fragmentacao Inicial",
-			"description": "+1 projetil por disparo, em leque.",
+			"name": "Initial Fragmentation",
+			"description": "+1 projectile per cast in a spread.",
 			"category": "projectile",
 			"branch": "form",
 			"effect_type": "projectile_count",
-			"node_label": "Fragmenta",
+			"node_label": "Fragment",
 			"values": {
 				"projectile_count_bonus": 1,
 			},
 			"max_stacks_by_delivery": {"chain_lightning": 2, "area": 3, "slash": 3},
 			"delivery_effects": {
 				"chain_lightning": {
-					"name": "Fragmentacao em Cadeia",
-					"description": "Atinge +1 alvo total por cadeia. Limite de 2 stacks.",
-					"impact_text": "+1 alvo maximo",
+					"name": "Chain Fragmentation",
+					"description": "Hits +1 total target per chain. 2 stack limit.",
+					"impact_text": "+1 maximum target",
 				},
 				"area": {
-					"name": "Campo Fragmentado",
-					"description": "Aumenta o tamanho da Area. Limite de 3 stacks.",
-					"impact_text": "+18% tamanho da area",
+					"name": "Fragmented Field",
+					"description": "Increases Area Field size. 3 stack limit.",
+					"impact_text": "+18% Area size",
 				},
 				"slash": {
-					"name": "Cortes Fragmentados",
-					"description": "Atinge +1 alvo proximo por Slash. Limite de 3 stacks.",
-					"impact_text": "+1 alvo por corte",
+					"name": "Fragmented Cuts",
+					"description": "Hits +1 nearby target per Slash. 3 stack limit.",
+					"impact_text": "+1 target per cut",
 				},
 			},
 		},
 		{
 			"id": "piercing",
-			"name": "Perfuracao",
-			"description": "Projeteis atravessam +1 inimigo.",
+			"name": "Piercing",
+			"description": "Projectiles pass through +1 enemy.",
 			"category": "projectile",
 			"branch": "form",
 			"effect_type": "projectile_pierce",
-			"node_label": "Perfura",
+			"node_label": "Pierce",
 			"unlock_id": "upgrade_piercing",
 			"values": {
 				"pierce_bonus": 1,
@@ -1599,20 +1637,20 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"compatible_deliveries": ["simple_projectile", "chain_lightning"],
 			"delivery_effects": {
 				"chain_lightning": {
-					"name": "Condutor Perfurante",
-					"description": "Cada salto conserva mais dano. Limite de 3 stacks.",
-					"impact_text": "+5% dano retido por salto",
+					"name": "Piercing Conductor",
+					"description": "Each jump retains more damage. 3 stack limit.",
+					"impact_text": "+5% damage retained per jump",
 				},
 			},
 		},
 		{
 			"id": "ricochet",
-			"name": "Ricochete",
-			"description": "Projeteis ricocheteiam +1 vez nas bordas.",
+			"name": "Ricochet",
+			"description": "Projectiles ricochet +1 time from arena edges.",
 			"category": "projectile",
 			"branch": "form",
 			"effect_type": "projectile_bounce",
-			"node_label": "Ricochete",
+			"node_label": "Ricochet",
 			"values": {
 				"bounce_bonus": 1,
 			},
@@ -1620,8 +1658,8 @@ func _create_upgrade_data() -> Array[Dictionary]:
 		},
 		{
 			"id": "arcane_explosion",
-			"name": "Explosao Arcana",
-			"description": "Impactos causam dano em area.",
+			"name": "Arcane Explosion",
+			"description": "Impacts deal area damage.",
 			"category": "power",
 			"branch": "energy",
 			"effect_type": "area_explosion",
@@ -1632,27 +1670,27 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			},
 			"delivery_effects": {
 				"chain_lightning": {
-					"description": "Somente o primeiro alvo da Cadeia gera uma explosao arcana.",
-					"impact_text": "Explosao no primeiro alvo",
+					"description": "Only the first Chain Lightning target creates an arcane explosion.",
+					"impact_text": "Explosion on first target",
 				},
 				"area": {
-					"description": "A criacao da Area causa um impacto arcano inicial reduzido.",
-					"impact_text": "Impacto inicial da area",
+					"description": "Creating an Area Field causes a reduced initial arcane impact.",
+					"impact_text": "Initial Area impact",
 				},
 				"slash": {
-					"description": "O primeiro corte cria uma explosao arcana reduzida.",
-					"impact_text": "Explosao no primeiro corte",
+					"description": "The first cut creates a reduced arcane explosion.",
+					"impact_text": "Explosion on first cut",
 				},
 			},
 		},
 		{
 			"id": "heavy_orb",
-			"name": "Orbe Pesado",
-			"description": "+40% dano, -15% velocidade, projetil maior.",
+			"name": "Heavy Orb",
+			"description": "+40% damage, -15% speed, larger projectile.",
 			"category": "projectile",
 			"branch": "form",
 			"effect_type": "heavy_projectile",
-			"node_label": "Orbe",
+			"node_label": "Orb",
 			"values": {
 				"damage_multiplier": 1.4,
 				"speed_multiplier": 0.85,
@@ -1661,30 +1699,30 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"max_stacks_by_delivery": {"chain_lightning": 2, "area": 2, "slash": 2},
 			"delivery_effects": {
 				"chain_lightning": {
-					"name": "Descarga Pesada",
-					"description": "+40% dano da Cadeia, com -12% de alcance inicial.",
-					"impact_text": "+40% dano, -12% alcance",
+					"name": "Heavy Discharge",
+					"description": "+40% Chain Lightning damage with -12% initial range.",
+					"impact_text": "+40% damage, -12% range",
 				},
 				"area": {
-					"name": "Campo Denso",
-					"description": "+40% dano, Area maior e duracao levemente menor.",
-					"impact_text": "+40% dano, +20% tamanho",
+					"name": "Dense Field",
+					"description": "+40% damage, larger Area Field, and slightly shorter duration.",
+					"impact_text": "+40% damage, +20% size",
 				},
 				"slash": {
-					"name": "Corte Pesado",
-					"description": "+40% dano e corte maior, com cadencia mais lenta.",
-					"impact_text": "+40% dano, +20% tamanho",
+					"name": "Heavy Cut",
+					"description": "+40% damage and a larger cut with slower cadence.",
+					"impact_text": "+40% damage, +20% size",
 				},
 			},
 		},
 		{
 			"id": "cutting_echo",
-			"name": "Eco Cortante",
-			"description": "A cada 4 disparos, lanca um projetil extra forte.",
+			"name": "Cutting Echo",
+			"description": "Every 4 casts, launches an extra strong projectile.",
 			"category": "rhythm",
 			"branch": "rhythm",
 			"effect_type": "special_projectile",
-			"node_label": "Eco",
+			"node_label": "Echo",
 			"values": {
 				"shot_interval": 4,
 				"damage_multiplier_bonus": 0.25,
@@ -1693,25 +1731,25 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"compatible_deliveries": ["simple_projectile", "chain_lightning", "slash"],
 			"delivery_effects": {
 				"chain_lightning": {
-					"name": "Eco Ressonante",
-					"description": "A cada 4 cadeias, a proxima ganha dano extra e +1 alvo.",
-					"impact_text": "Eco: dano extra e +1 alvo",
+					"name": "Resonant Echo",
+					"description": "Every 4 chains, the next gains extra damage and +1 target.",
+					"impact_text": "Echo: extra damage and +1 target",
 				},
 				"slash": {
-					"name": "Eco Cortante",
-					"description": "A cada 4 Slashes, executa um corte extra forte em outro alvo proximo.",
-					"impact_text": "Eco: corte extra forte",
+					"name": "Cutting Echo",
+					"description": "Every 4 Slashes, performs an extra strong cut on another nearby target.",
+					"impact_text": "Echo: extra strong cut",
 				},
 			},
 		},
 		{
 			"id": "unstable_field",
-			"name": "Campo Instavel",
-			"description": "Aura fraca causa dano periodico em inimigos proximos.",
+			"name": "Unstable Field",
+			"description": "A weak aura deals periodic damage to nearby enemies.",
 			"category": "area",
 			"branch": "core",
 			"effect_type": "player_aura",
-			"node_label": "Campo",
+			"node_label": "Field",
 			"values": {
 				"radius_bonus": 60.0,
 				"damage_bonus": 6,
@@ -1841,11 +1879,11 @@ func _update_active_synergies() -> void:
 	active_synergies.clear()
 
 	if _has_upgrade("initial_fragmentation") and _has_upgrade("arcane_explosion"):
-		active_synergies.append("Fragmentacao Explosiva")
+		active_synergies.append("Explosive Fragmentation")
 	if _has_upgrade("ricochet") and _has_upgrade("piercing"):
-		active_synergies.append("Perfuracao Saltante")
+		active_synergies.append("Bouncing Pierce")
 	if _has_upgrade("unstable_field") and _has_upgrade("energy_shell"):
-		active_synergies.append("Campo Blindado")
+		active_synergies.append("Shielded Field")
 		_ensure_unstable_field_aura()
 
 	if spell_graph != null:
@@ -1870,11 +1908,11 @@ func _update_meta_hud() -> void:
 	if is_instance_valid(player):
 		var shield_charges := int(player.get("shield_charges"))
 		if shield_charges > 0:
-			details.append("ESCUDO %d" % shield_charges)
+			details.append("SHIELD %d" % shield_charges)
 	if _rerolls_left > 0:
 		details.append("REROLL %d" % _rerolls_left)
 	if _opening_charge_time_left > 0.0:
-		details.append("CARGA %.1fs" % _opening_charge_time_left)
+		details.append("CHARGE %.1fs" % _opening_charge_time_left)
 
 	hud.call("set_meta_info", " | ".join(details))
 
@@ -1911,7 +1949,7 @@ func _get_wave_title(wave_type: String) -> String:
 		"mini_boss":
 			return "Mini-Boss"
 		"boss":
-			return "Boss Final"
+			return "Final Boss"
 		_:
 			return ""
 
@@ -1923,13 +1961,13 @@ func _get_wave_hud_title() -> String:
 	if current_wave_modifier.is_empty():
 		return title
 
-	var modifier_name := str(current_wave_modifier.get("name", "Modificador"))
+	var modifier_name := str(current_wave_modifier.get("name", "Modifier"))
 	return "%s - %s" % [title, modifier_name]
 
 
 func _get_wave_message() -> String:
 	if not current_wave_modifier.is_empty():
-		return "Modificador: %s" % str(current_wave_modifier.get("name", "Modificador"))
+		return "Modifier: %s" % str(current_wave_modifier.get("name", "Modifier"))
 
 	return _get_wave_title(current_wave_type)
 
@@ -1943,24 +1981,24 @@ func _choose_wave_modifier(wave_number: int, wave_type: String) -> Dictionary:
 	var modifiers: Array[Dictionary] = [
 		{
 			"id": "swarm",
-			"name": "Enxame",
+			"name": "Swarm",
 			"count_multiplier": 1.35,
 			"health_multiplier": 0.82,
 		},
 		{
 			"id": "reinforced_shapes",
-			"name": "Formas Reforcadas",
+			"name": "Reinforced Forms",
 			"count_multiplier": 0.78,
 			"health_multiplier": 1.38,
 		},
 		{
 			"id": "unstable_field",
-			"name": "Campo Instavel",
+			"name": "Unstable Field",
 			"speed_multiplier": 1.12,
 		},
 		{
 			"id": "arcane_chaos",
-			"name": "Caos Arcano",
+			"name": "Arcane Chaos",
 			"count_multiplier": 1.1,
 			"score_multiplier": 1.2,
 			"special_weight_bonus": 8,
@@ -1989,7 +2027,7 @@ func _on_player_shield_changed(_charges: int) -> void:
 
 func _on_player_shield_absorbed(world_position: Vector2) -> void:
 	_play_audio("play_player_hit")
-	_spawn_floating_text("BLOQUEIO", world_position + Vector2(0.0, -32.0), Color(0.5, 0.94, 1.0), 0.6)
+	_spawn_floating_text("BLOCK", world_position + Vector2(0.0, -32.0), Color(0.5, 0.94, 1.0), 0.6)
 	_spawn_impact_ring(world_position, Color(0.48, 0.92, 1.0, 0.76), 14.0, 48.0, 0.3, 2.5)
 	_start_camera_shake(0.1, 3.0)
 
@@ -2023,7 +2061,7 @@ func _on_star_bomber_exploded(enemy: Node, world_position: Vector2, radius: floa
 	_spawn_burst(world_position, Color(1.0, 0.24, 0.12), 24)
 	_spawn_shatter(world_position, Color(1.0, 0.42, 0.12), "star", 1.45, 16, 2)
 	_spawn_impact_ring(world_position, Color(1.0, 0.25, 0.12, 0.86), radius * 0.18, radius, 0.5, 4.0)
-	_spawn_floating_text("EXPLOSAO", world_position + Vector2(0.0, -28.0), Color(1.0, 0.48, 0.24), 0.7)
+	_spawn_floating_text("EXPLOSION", world_position + Vector2(0.0, -28.0), Color(1.0, 0.48, 0.24), 0.7)
 	_start_camera_shake(0.16, 6.0)
 
 	if is_instance_valid(player) and player.global_position.distance_to(world_position) <= radius:
@@ -2282,6 +2320,8 @@ func _finish_run(victory: bool, result_delay: float = 0.0) -> void:
 
 	if _graph_open:
 		_close_spell_graph()
+	if _pause_open:
+		_close_pause_menu()
 	_run_finished = true
 	_wave_in_progress = false
 	_reward_open = false
@@ -2293,7 +2333,7 @@ func _finish_run(victory: bool, result_delay: float = 0.0) -> void:
 	if is_instance_valid(upgrade_panel):
 		upgrade_panel.hide()
 	if is_instance_valid(hud):
-		hud.call("set_wave_message", "Run concluida" if victory else "Run encerrada")
+		hud.call("set_wave_message", "Run complete" if victory else "Run ended")
 
 	if victory:
 		_play_audio("play_victory")
@@ -2353,7 +2393,7 @@ func _apply_meta_progress(victory: bool) -> void:
 
 func _get_spell_chain_labels() -> Array[String]:
 	if spell_graph == null:
-		return ["Projetil"]
+		return ["Projectile"]
 	return spell_graph.get_ordered_labels()
 
 

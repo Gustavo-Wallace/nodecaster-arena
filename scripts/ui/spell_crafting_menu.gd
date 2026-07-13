@@ -31,14 +31,14 @@ func _build_options() -> void:
 
 	for shape in _run_config.call("get_spell_shape_list"):
 		var data: Dictionary = shape
-		var button := _create_option_button(str(data.get("display_name", "Forma")), str(data.get("modifiers_text", "")), true)
+		var button := _create_option_button(str(data.get("display_name", "Shape")), str(data.get("modifiers_text", "")), true)
 		button.pressed.connect(_on_shape_selected.bind(str(data.get("id", "circle"))))
 		shape_list.add_child(button)
 		_shape_buttons[str(data.get("id", "circle"))] = button
 
 	for element in _run_config.call("get_spell_element_list"):
 		var data: Dictionary = element
-		var button := _create_option_button(str(data.get("display_name", "Elemento")), str(data.get("modifiers_text", "")), true)
+		var button := _create_option_button(str(data.get("display_name", "Element")), str(data.get("modifiers_text", "")), true)
 		var primary_color = data.get("primary_color", Color.WHITE)
 		if primary_color is Color:
 			button.add_theme_color_override("font_color", primary_color)
@@ -49,9 +49,9 @@ func _build_options() -> void:
 	for delivery in _run_config.call("get_spell_delivery_list"):
 		var data: Dictionary = delivery
 		var available := bool(data.get("available", false))
-		var button := _create_option_button(str(data.get("display_name", "Lancamento")), str(data.get("description", "")), available, not available)
+		var button := _create_option_button(str(data.get("display_name", "Delivery")), str(data.get("description", "")), available, not available)
 		if not available:
-			button.text = "%s (EM BREVE)" % str(data.get("display_name", "Lancamento"))
+			button.text = "%s (COMING SOON)" % str(data.get("display_name", "Delivery"))
 		else:
 			button.pressed.connect(_on_delivery_selected.bind(str(data.get("id", "simple_projectile"))))
 		delivery_list.add_child(button)
@@ -100,9 +100,9 @@ func _refresh_selection() -> void:
 	var element: Dictionary = blueprint.get_element_data()
 	var delivery: Dictionary = blueprint.get_delivery_data()
 	selection_label.text = "%s + %s + %s" % [
-		str(summary.get("shape_name", "Circulo")),
-		str(summary.get("element_name", "Arcano")),
-		str(summary.get("delivery_name", "Projetil Simples")),
+		str(summary.get("shape_name", "Circle")),
+		str(summary.get("element_name", "Arcane")),
+		str(summary.get("delivery_name", "Simple Projectile")),
 	]
 	detail_label.text = "%s\n%s\n%s\n\n%s" % [
 		str(shape.get("description", "")),

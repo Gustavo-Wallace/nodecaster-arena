@@ -4,10 +4,10 @@ extends RefCounted
 const BRANCH_ORDER: Array[String] = ["energy", "form", "rhythm", "core"]
 
 const BRANCH_DATA := {
-	"energy": {"name": "Energia", "color": Color(0.96, 0.46, 0.86)},
-	"form": {"name": "Forma", "color": Color(1.0, 0.78, 0.28)},
-	"rhythm": {"name": "Ritmo", "color": Color(0.68, 0.58, 1.0)},
-	"core": {"name": "Nucleo", "color": Color(0.42, 0.94, 0.72)},
+	"energy": {"name": "Energy", "color": Color(0.96, 0.46, 0.86)},
+	"form": {"name": "Form", "color": Color(1.0, 0.78, 0.28)},
+	"rhythm": {"name": "Rhythm", "color": Color(0.68, 0.58, 1.0)},
+	"core": {"name": "Core", "color": Color(0.42, 0.94, 0.72)},
 }
 
 var _nodes_by_id: Dictionary = {}
@@ -34,8 +34,8 @@ func add_upgrade(upgrade: Dictionary, stack_count: int) -> Dictionary:
 	var branch_data: Dictionary = BRANCH_DATA.get(branch, BRANCH_DATA["energy"])
 	var node := {
 		"id": upgrade_id,
-		"name": str(upgrade.get("name", "Mutacao")),
-		"node_label": str(upgrade.get("node_label", upgrade.get("name", "No"))),
+		"name": str(upgrade.get("name", "Mutation")),
+		"node_label": str(upgrade.get("node_label", upgrade.get("name", "Node"))),
 		"description": str(upgrade.get("description", "")),
 		"category": str(upgrade.get("category", "projectile")),
 		"branch": branch,
@@ -147,10 +147,10 @@ func get_summary() -> Dictionary:
 
 
 func get_ordered_labels() -> Array[String]:
-	var base_label := str(_base_spell.get("delivery_name", "Projetil"))
+	var base_label := str(_base_spell.get("delivery_name", "Projectile"))
 	var labels: Array[String] = [base_label]
 	for node in get_ordered_nodes():
-		var label := str(node.get("node_label", node.get("name", "No")))
+		var label := str(node.get("node_label", node.get("name", "Node")))
 		var stack := int(node.get("stack", 1))
 		if stack > 1:
 			label += " x%d" % stack
