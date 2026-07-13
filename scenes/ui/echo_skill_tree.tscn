@@ -82,7 +82,7 @@ offset_left = 18.0
 offset_top = 548.0
 offset_right = 520.0
 offset_bottom = 574.0
-text = "Arraste o mapa com o mouse. Use a roda para navegar na vertical."
+text = "Arraste para mover. Use a roda do mouse para aproximar ou afastar."
 theme_override_colors/font_color = Color(0.62, 0.7, 0.78, 0.78)
 theme_override_font_sizes/font_size = 14
 

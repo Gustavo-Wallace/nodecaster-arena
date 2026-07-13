@@ -5,9 +5,10 @@ signal main_menu_requested
 
 @onready var title_label: Label = $Panel/TitleLabel
 @onready var subtitle_label: Label = $Panel/SubtitleLabel
-@onready var stats_label: Label = $Panel/StatsLabel
-@onready var kills_label: Label = $Panel/KillsLabel
-@onready var build_label: Label = $Panel/BuildLabel
+@onready var scroll_container: ScrollContainer = $Panel/ScrollContainer
+@onready var stats_label: Label = $Panel/ScrollContainer/Content/SummaryRow/StatsLabel
+@onready var kills_label: Label = $Panel/ScrollContainer/Content/SummaryRow/KillsLabel
+@onready var build_label: Label = $Panel/ScrollContainer/Content/BuildLabel
 @onready var restart_button: Button = $Panel/RestartButton
 @onready var menu_button: Button = $Panel/MenuButton
 
@@ -20,15 +21,16 @@ func _ready() -> void:
 	title_label.add_theme_color_override("font_color", Color(0.9, 0.98, 1.0))
 
 	for label in [subtitle_label, stats_label, kills_label, build_label]:
-		label.add_theme_font_size_override("font_size", 18)
+		label.add_theme_font_size_override("font_size", 17)
 		label.add_theme_color_override("font_color", Color(0.82, 0.92, 1.0))
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
-	build_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	restart_button.pressed.connect(_on_restart_pressed)
 	menu_button.pressed.connect(_on_menu_pressed)
 
 
 func show_result(victory: bool, stats: Dictionary, max_wave: int) -> void:
+	scroll_container.scroll_vertical = 0
 	title_label.text = "VITORIA" if victory else "DERROTA"
 	title_label.add_theme_color_override("font_color", Color(0.72, 1.0, 0.78) if victory else Color(1.0, 0.46, 0.46))
 	subtitle_label.text = "Simulacao concluida. Voce estabilizou o nucleo." if victory else "Nucleo desintegrado. A cadeia arcana entrou em colapso."

@@ -3,6 +3,11 @@ extends Control
 const NODE_SIZE := Vector2(156.0, 62.0)
 const CONTENT_SIZE := Vector2(1220.0, 820.0)
 const HUB_CENTER := Vector2(560.0, 390.0)
+const MIN_ZOOM := 0.6
+const MAX_ZOOM := 1.5
+const DEFAULT_ZOOM := 1.0
+const ZOOM_STEP := 1.12
+const PAN_DRAG_THRESHOLD := 8.0
 
 @onready var ecos_label: Label = $Header/EcosLabel
 @onready var back_button: Button = $Header/BackButton
@@ -23,6 +28,9 @@ var _selected_skill_id := ""
 var _is_panning := false
 var _pan_start_mouse := Vector2.ZERO
 var _pan_start_position := Vector2.ZERO
+var _tree_zoom := DEFAULT_ZOOM
+var _pan_dragged := false
+var _suppress_skill_selection := false
 
 
 func _ready() -> void:
@@ -34,7 +42,7 @@ func _ready() -> void:
 	_setup_button_feedback(center_button)
 	_setup_button_feedback(buy_button)
 	_refresh_tree(false)
-	_center_tree()
+	call_deferred("_center_tree")
 
 
 func _refresh_tree(keep_selection: bool = true) -> void:
@@ -151,7 +159,8 @@ func _build_skill_buttons() -> void:
 		button.size = NODE_SIZE
 		button.focus_mode = Control.FOCUS_NONE
 		button.clip_contents = true
-		button.pressed.connect(_select_skill.bind(skill_id))
+		button.pressed.connect(_on_skill_button_pressed.bind(skill_id))
+		button.gui_input.connect(_on_skill_button_gui_input)
 		button.add_theme_font_size_override("font_size", 15)
 		button.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.65))
 		button.add_theme_constant_override("outline_size", 2)
@@ -176,6 +185,12 @@ func _select_skill(skill_id: String) -> void:
 	_play_audio("play_button_click")
 	_update_details()
 	_refresh_button_styles()
+
+
+func _on_skill_button_pressed(skill_id: String) -> void:
+	if _suppress_skill_selection or _pan_dragged:
+		return
+	_select_skill(skill_id)
 
 
 func _update_details() -> void:
@@ -403,44 +418,100 @@ func _format_branch(branch: String) -> String:
 func _on_tree_viewport_gui_input(event: InputEvent) -> void:
 	var mouse_button := event as InputEventMouseButton
 	if mouse_button != null:
-		if mouse_button.button_index == MOUSE_BUTTON_LEFT:
-			_is_panning = mouse_button.pressed
-			_pan_start_mouse = get_global_mouse_position()
-			_pan_start_position = tree_content.position
-		elif mouse_button.pressed and mouse_button.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_pan_by(Vector2(0.0, 72.0))
-		elif mouse_button.pressed and mouse_button.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_pan_by(Vector2(0.0, -72.0))
+		_handle_tree_mouse_button(mouse_button)
 		return
 
 	var mouse_motion := event as InputEventMouseMotion
 	if mouse_motion != null and _is_panning:
-		var delta := get_global_mouse_position() - _pan_start_mouse
-		_set_tree_position(_pan_start_position + delta)
+		_update_pan(get_global_mouse_position())
 
 
-func _pan_by(delta: Vector2) -> void:
-	_set_tree_position(tree_content.position + delta)
+func _on_skill_button_gui_input(event: InputEvent) -> void:
+	var mouse_button := event as InputEventMouseButton
+	if mouse_button != null:
+		_handle_tree_mouse_button(mouse_button)
+		return
+
+	var mouse_motion := event as InputEventMouseMotion
+	if mouse_motion != null and _is_panning:
+		_update_pan(get_global_mouse_position())
+
+
+func _handle_tree_mouse_button(event: InputEventMouseButton) -> void:
+	if event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			_begin_pan(get_global_mouse_position())
+		else:
+			_end_pan()
+		return
+
+	if not event.pressed:
+		return
+
+	if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+		_zoom_at_cursor(ZOOM_STEP)
+	elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+		_zoom_at_cursor(1.0 / ZOOM_STEP)
+
+
+func _begin_pan(mouse_position: Vector2) -> void:
+	_is_panning = true
+	_pan_dragged = false
+	_pan_start_mouse = mouse_position
+	_pan_start_position = tree_content.position
+
+
+func _update_pan(mouse_position: Vector2) -> void:
+	var delta := mouse_position - _pan_start_mouse
+	if delta.length() >= PAN_DRAG_THRESHOLD:
+		_pan_dragged = true
+	_set_tree_position(_pan_start_position + delta)
+
+
+func _end_pan() -> void:
+	if _pan_dragged:
+		_suppress_skill_selection = true
+		call_deferred("_clear_skill_selection_suppression")
+	_is_panning = false
+
+
+func _clear_skill_selection_suppression() -> void:
+	_suppress_skill_selection = false
+
+
+func _zoom_at_cursor(multiplier: float) -> void:
+	var focus_point := tree_viewport.get_local_mouse_position()
+	var content_point := (focus_point - tree_content.position) / maxf(_tree_zoom, 0.001)
+	var target_zoom := clampf(_tree_zoom * multiplier, MIN_ZOOM, MAX_ZOOM)
+	if is_equal_approx(target_zoom, _tree_zoom):
+		return
+
+	_tree_zoom = target_zoom
+	tree_content.scale = Vector2.ONE * _tree_zoom
+	_set_tree_position(focus_point - content_point * _tree_zoom)
 
 
 func _center_tree() -> void:
+	_tree_zoom = DEFAULT_ZOOM
+	tree_content.scale = Vector2.ONE * _tree_zoom
 	var bounds := _get_skill_bounds()
-	var centered_position := tree_viewport.size * 0.5 - bounds.get_center()
+	var centered_position := tree_viewport.size * 0.5 - bounds.get_center() * _tree_zoom
 	_set_tree_position(centered_position)
 
 
 func _set_tree_position(new_position: Vector2) -> void:
 	var viewport_size := tree_viewport.size
-	var min_position := viewport_size - CONTENT_SIZE
+	var scaled_content_size := CONTENT_SIZE * _tree_zoom
+	var min_position := viewport_size - scaled_content_size
 	var max_position := Vector2.ZERO
 
-	if CONTENT_SIZE.x <= viewport_size.x:
-		new_position.x = (viewport_size.x - CONTENT_SIZE.x) * 0.5
+	if scaled_content_size.x <= viewport_size.x:
+		new_position.x = (viewport_size.x - scaled_content_size.x) * 0.5
 	else:
 		new_position.x = clampf(new_position.x, min_position.x, max_position.x)
 
-	if CONTENT_SIZE.y <= viewport_size.y:
-		new_position.y = (viewport_size.y - CONTENT_SIZE.y) * 0.5
+	if scaled_content_size.y <= viewport_size.y:
+		new_position.y = (viewport_size.y - scaled_content_size.y) * 0.5
 	else:
 		new_position.y = clampf(new_position.y, min_position.y, max_position.y)
 
