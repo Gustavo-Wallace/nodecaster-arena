@@ -72,9 +72,9 @@ text = "Inimigos"
 [node name="BuildLabel" type="Label" parent="Panel"]
 layout_mode = 0
 offset_left = 46.0
-offset_top = 334.0
+offset_top = 314.0
 offset_right = 674.0
-offset_bottom = 438.0
+offset_bottom = 454.0
 text = "Build"
 
 [node name="RestartButton" type="Button" parent="Panel"]

@@ -10,7 +10,8 @@ const LINE_SNIPER_SCENE := preload("res://scenes/enemies/line_sniper.tscn")
 const BASIC_PROJECTILE_SCENE := preload("res://scenes/projectiles/basic_projectile.tscn")
 const GAME_HUD_SCENE := preload("res://scenes/ui/game_hud.tscn")
 const UPGRADE_PANEL_SCENE := preload("res://scenes/ui/upgrade_panel.tscn")
-const SPELL_CHAIN_PANEL_SCENE := preload("res://scenes/ui/spell_chain_panel.tscn")
+const SPELL_GRAPH_PANEL_SCENE := preload("res://scenes/ui/spell_chain_panel.tscn")
+const SPELL_GRAPH_SCRIPT := preload("res://scripts/game/spell_graph.gd")
 const FLOATING_TEXT_SCENE := preload("res://scenes/ui/floating_text.tscn")
 const BURST_EFFECT_SCENE := preload("res://scenes/effects/burst_effect.tscn")
 const GEOMETRIC_SHATTER_SCENE := preload("res://scenes/effects/geometric_shatter.tscn")
@@ -49,7 +50,7 @@ const UNSTABLE_FIELD_AURA_SCRIPT := preload("res://scripts/effects/unstable_fiel
 var player: Node2D
 var hud: Control
 var upgrade_panel: Control
-var spell_chain_panel: Control
+var spell_graph_panel: Control
 var result_panel: Control
 var enemies: Array[Node2D] = []
 var arena_rect: Rect2
@@ -57,7 +58,7 @@ var current_wave: int = 0
 var current_wave_type: String = "normal"
 var current_wave_modifier: Dictionary = {}
 var score: int = 0
-var spell_chain_nodes: Array[Dictionary] = []
+var spell_graph
 var run_time_seconds: float = 0.0
 var run_stats: Dictionary = {}
 var selected_character_data: Dictionary = {}
@@ -98,7 +99,8 @@ func _ready() -> void:
 	_available_upgrades = _filter_unlocked_upgrades(_create_upgrade_data())
 	_wave_enemy_counts = _create_wave_enemy_counts()
 	run_stats = _create_run_stats()
-	spell_chain_nodes = [_create_base_spell_node()]
+	spell_graph = SPELL_GRAPH_SCRIPT.new()
+	spell_graph.reset()
 	arena_rect = Rect2(arena_position, arena_size)
 
 	_setup_camera()
@@ -166,10 +168,9 @@ func _spawn_hud() -> void:
 	hud_layer.add_child(hud)
 	hud.call("bind_player", player)
 
-	spell_chain_panel = SPELL_CHAIN_PANEL_SCENE.instantiate() as Control
-	hud_layer.add_child(spell_chain_panel)
-	spell_chain_panel.call("set_chain_nodes", spell_chain_nodes)
-	spell_chain_panel.call("set_synergies", active_synergies)
+	spell_graph_panel = SPELL_GRAPH_PANEL_SCENE.instantiate() as Control
+	hud_layer.add_child(spell_graph_panel)
+	_refresh_spell_graph_panel()
 
 	upgrade_panel = UPGRADE_PANEL_SCENE.instantiate() as Control
 	hud_layer.add_child(upgrade_panel)
@@ -262,6 +263,7 @@ func _create_run_stats() -> Dictionary:
 		"boss_defeated": false,
 		"upgrades_chosen": 0,
 		"build_nodes": [],
+		"spell_graph": {},
 	}
 
 
@@ -308,12 +310,36 @@ func _apply_meta_run_effects() -> void:
 		var invulnerability := float(save_manager.call("get_skill_effect_value", "post_hit_invulnerability_duration"))
 		player.call("set_post_hit_invulnerability", invulnerability)
 
+	_add_active_meta_nodes_to_graph()
+
 	if _has_meta_skill("initial_fragment"):
 		_apply_starting_meta_upgrade("initial_fragmentation", "FRAGMENTO INICIAL")
 	if _has_meta_skill("arcane_memory"):
 		_apply_random_memory_upgrade()
 
 	_update_meta_hud()
+
+
+func _add_active_meta_nodes_to_graph() -> void:
+	var meta_nodes := [
+		{"skill": "resonant_shell", "id": "meta_resonant_shell", "name": "Casca Ressonante", "label": "Escudo", "branch": "core"},
+		{"skill": "stable_window", "id": "meta_stable_window", "name": "Janela Estavel", "label": "Janela", "branch": "core"},
+		{"skill": "catalyzed_shot", "id": "meta_catalyzed_shot", "name": "Disparo Catalisado", "label": "Catalisa", "branch": "rhythm"},
+		{"skill": "opening_charge", "id": "meta_opening_charge", "name": "Carga de Abertura", "label": "Carga", "branch": "rhythm"},
+	]
+
+	for meta_node in meta_nodes:
+		if not _has_meta_skill(str(meta_node["skill"])):
+			continue
+		spell_graph.add_upgrade({
+			"id": str(meta_node["id"]),
+			"name": str(meta_node["name"]),
+			"node_label": str(meta_node["label"]),
+			"branch": str(meta_node["branch"]),
+			"category": "rhythm" if str(meta_node["branch"]) == "rhythm" else "body",
+		}, 1)
+
+	_refresh_spell_graph_panel()
 
 
 func _activate_wave_meta_effects() -> void:
@@ -636,6 +662,9 @@ func _spawn_projectile(spawn_position: Vector2, direction: Vector2, overrides: D
 	projectile.set("explosion_damage", int(round(float(actual_damage) * projectile_explosion_damage_multiplier)))
 	projectile.set("size_multiplier", float(overrides.get("size_multiplier", projectile_size_multiplier)))
 	projectile.set("visual_shape", str(overrides.get("visual_shape", "circle")))
+	var visual_profile := _get_spell_visual_profile()
+	projectile.set("trail_style", str(visual_profile.get("trail_style", "standard")))
+	projectile.set("glow_strength", float(visual_profile.get("glow", 0.0)))
 	var projectile_colors := _get_projectile_visual_colors(overrides, opening_pierce > 0)
 	projectile.set("fill_color", projectile_colors["fill_color"])
 	projectile.set("outline_color", projectile_colors["outline_color"])
@@ -881,29 +910,14 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 func _add_spell_node_from_upgrade(upgrade: Dictionary) -> void:
 	var upgrade_id := str(upgrade.get("id", ""))
 	upgrade_stacks[upgrade_id] = int(upgrade_stacks.get(upgrade_id, 0)) + 1
-	var spell_node := {
-		"id": upgrade_id,
-		"name": str(upgrade.get("name", "Upgrade")),
-		"category": str(upgrade.get("category", "projectile")),
-		"node_label": str(upgrade.get("node_label", upgrade.get("name", "Upgrade"))),
-		"effect_type": str(upgrade.get("effect_type", "")),
-		"stack": int(upgrade_stacks.get(upgrade_id, 1)),
-	}
-
-	spell_chain_nodes.append(spell_node)
-
-	if is_instance_valid(spell_chain_panel):
-		spell_chain_panel.call("add_node", spell_node)
+	if spell_graph != null:
+		spell_graph.add_upgrade(upgrade, int(upgrade_stacks.get(upgrade_id, 1)))
+		_refresh_spell_graph_panel()
 
 
-func _create_base_spell_node() -> Dictionary:
-	return {
-		"id": "base_projectile",
-		"name": "Projetil",
-		"category": "base",
-		"node_label": "Projetil",
-		"effect_type": "base_projectile",
-	}
+func _refresh_spell_graph_panel() -> void:
+	if is_instance_valid(spell_graph_panel) and spell_graph != null:
+		spell_graph_panel.call("set_graph_data", spell_graph.get_branch_nodes(), spell_graph.get_synergies())
 
 
 func _create_upgrade_data() -> Array[Dictionary]:
@@ -913,6 +927,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"name": "Dano Arcano",
 			"description": "+5 de dano nos projeteis.",
 			"category": "power",
+			"branch": "energy",
 			"effect_type": "projectile_damage",
 			"node_label": "Dano",
 			"values": {
@@ -924,6 +939,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"name": "Cadencia Instavel",
 			"description": "Disparos automaticos 16% mais rapidos.",
 			"category": "rhythm",
+			"branch": "rhythm",
 			"effect_type": "fire_interval",
 			"node_label": "Cadencia",
 			"values": {
@@ -935,6 +951,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"name": "Nucleo Leve",
 			"description": "+35 de velocidade de movimento.",
 			"category": "body",
+			"branch": "core",
 			"effect_type": "player_speed",
 			"node_label": "Nucleo",
 			"values": {
@@ -946,6 +963,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"name": "Casca Energetica",
 			"description": "+22 de vida maxima e cura 16.",
 			"category": "body",
+			"branch": "core",
 			"effect_type": "player_health",
 			"node_label": "Casca",
 			"values": {
@@ -958,6 +976,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"name": "Projetil Veloz",
 			"description": "+80 de velocidade dos projeteis.",
 			"category": "projectile",
+			"branch": "form",
 			"effect_type": "projectile_speed",
 			"node_label": "Velocidade",
 			"values": {
@@ -969,6 +988,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"name": "Fragmentacao Inicial",
 			"description": "+1 projetil por disparo, em leque.",
 			"category": "projectile",
+			"branch": "form",
 			"effect_type": "projectile_count",
 			"node_label": "Fragmenta",
 			"values": {
@@ -980,6 +1000,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"name": "Perfuracao",
 			"description": "Projeteis atravessam +1 inimigo.",
 			"category": "projectile",
+			"branch": "form",
 			"effect_type": "projectile_pierce",
 			"node_label": "Perfura",
 			"unlock_id": "upgrade_piercing",
@@ -992,6 +1013,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"name": "Ricochete",
 			"description": "Projeteis ricocheteiam +1 vez nas bordas.",
 			"category": "projectile",
+			"branch": "form",
 			"effect_type": "projectile_bounce",
 			"node_label": "Ricochete",
 			"values": {
@@ -1003,6 +1025,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"name": "Explosao Arcana",
 			"description": "Impactos causam dano em area.",
 			"category": "power",
+			"branch": "energy",
 			"effect_type": "area_explosion",
 			"node_label": "Explode",
 			"values": {
@@ -1015,6 +1038,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"name": "Orbe Pesado",
 			"description": "+40% dano, -15% velocidade, projetil maior.",
 			"category": "projectile",
+			"branch": "form",
 			"effect_type": "heavy_projectile",
 			"node_label": "Orbe",
 			"values": {
@@ -1028,6 +1052,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"name": "Eco Cortante",
 			"description": "A cada 4 disparos, lanca um projetil extra forte.",
 			"category": "rhythm",
+			"branch": "rhythm",
 			"effect_type": "special_projectile",
 			"node_label": "Eco",
 			"values": {
@@ -1040,6 +1065,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"name": "Campo Instavel",
 			"description": "Aura fraca causa dano periodico em inimigos proximos.",
 			"category": "area",
+			"branch": "core",
 			"effect_type": "player_aura",
 			"node_label": "Campo",
 			"values": {
@@ -1082,14 +1108,18 @@ func _on_projectile_explosion_requested(world_position: Vector2, radius: float, 
 		if enemy.has_method("take_damage"):
 			enemy.call("take_damage", damage)
 
-	_spawn_burst(world_position, Color(0.92, 0.48, 1.0), 18)
-	_spawn_impact_ring(world_position, Color(1.0, 0.58, 0.22, 0.88), radius * 0.22, radius, 0.42, 3.6)
+	var visual_profile := _get_spell_visual_profile()
+	var impact_color: Color = visual_profile.get("impact_color", Color(1.0, 0.58, 0.22))
+	_spawn_burst(world_position, impact_color, 18)
+	_spawn_impact_ring(world_position, Color(impact_color.r, impact_color.g, impact_color.b, 0.88), radius * 0.22, radius, 0.42, 3.6)
 	_spawn_floating_text("BOOM", world_position + Vector2(0.0, -18.0), Color(1.0, 0.78, 1.0), 0.55)
 
 
 func _on_projectile_bounce_requested(world_position: Vector2) -> void:
-	_spawn_burst(world_position, Color(0.58, 0.9, 1.0), 5)
-	_spawn_impact_ring(world_position, Color(0.58, 0.9, 1.0, 0.72), 5.0, 26.0, 0.22, 2.0)
+	var visual_profile := _get_spell_visual_profile()
+	var bounce_color: Color = visual_profile.get("bounce_color", Color(0.58, 0.9, 1.0))
+	_spawn_burst(world_position, bounce_color, 7 if _has_upgrade("piercing") else 5)
+	_spawn_impact_ring(world_position, Color(bounce_color.r, bounce_color.g, bounce_color.b, 0.72), 5.0, 32.0 if _has_upgrade("piercing") else 26.0, 0.22, 2.0)
 
 
 func _update_unstable_field(delta: float) -> void:
@@ -1110,8 +1140,10 @@ func _update_unstable_field(delta: float) -> void:
 		if enemy.has_method("take_damage"):
 			enemy.call("take_damage", _unstable_field_damage)
 
-	_spawn_burst(player.global_position, Color(0.36, 0.95, 1.0), 8)
-	_spawn_impact_ring(player.global_position, Color(0.36, 0.95, 1.0, 0.42), pulse_radius * 0.35, pulse_radius, 0.36, 2.0)
+	var visual_profile := _get_spell_visual_profile()
+	var aura_color: Color = visual_profile.get("aura_color", Color(0.36, 0.95, 1.0))
+	_spawn_burst(player.global_position, aura_color, 8)
+	_spawn_impact_ring(player.global_position, Color(aura_color.r, aura_color.g, aura_color.b, 0.42), pulse_radius * 0.35, pulse_radius, 0.36, 2.0)
 
 
 func _ensure_unstable_field_aura() -> void:
@@ -1125,6 +1157,9 @@ func _ensure_unstable_field_aura() -> void:
 		player.add_child(_unstable_field_aura)
 
 	_unstable_field_aura.set("radius", _get_effective_unstable_field_radius())
+	var visual_profile := _get_spell_visual_profile()
+	var aura_color: Color = visual_profile.get("aura_color", Color(0.42, 0.95, 1.0))
+	_unstable_field_aura.set("color", Color(aura_color.r, aura_color.g, aura_color.b, 0.28))
 
 
 func _get_effective_unstable_field_radius() -> float:
@@ -1145,8 +1180,9 @@ func _update_active_synergies() -> void:
 		active_synergies.append("Campo Blindado")
 		_ensure_unstable_field_aura()
 
-	if is_instance_valid(spell_chain_panel):
-		spell_chain_panel.call("set_synergies", active_synergies)
+	if spell_graph != null:
+		spell_graph.set_synergies(active_synergies)
+		_refresh_spell_graph_panel()
 
 
 func _has_upgrade(upgrade_id: String) -> bool:
@@ -1475,37 +1511,39 @@ func _get_enemy_color(enemy: Node) -> Color:
 			return Color(1.0, 0.28, 0.34)
 
 
+func _get_spell_visual_profile() -> Dictionary:
+	if spell_graph == null:
+		return {
+			"primary_color": Color(1.0, 0.92, 0.28),
+			"secondary_color": Color(1.0, 1.0, 0.82),
+			"impact_color": Color(1.0, 0.58, 0.22),
+			"bounce_color": Color(0.58, 0.9, 1.0),
+			"aura_color": Color(0.36, 0.95, 1.0),
+			"glow": 0.0,
+			"trail_style": "standard",
+		}
+	return spell_graph.get_visual_profile()
+
+
 func _get_projectile_visual_colors(overrides: Dictionary, opening_charged: bool = false) -> Dictionary:
+	var visual_profile := _get_spell_visual_profile()
+	var primary: Color = visual_profile.get("primary_color", Color(1.0, 0.92, 0.28))
+	var secondary: Color = visual_profile.get("secondary_color", Color(1.0, 1.0, 0.82))
 	if overrides.has("fill_color") or overrides.has("outline_color"):
 		return {
-			"fill_color": overrides.get("fill_color", Color(1.0, 0.92, 0.28)),
-			"outline_color": overrides.get("outline_color", Color(1.0, 1.0, 0.82)),
+			"fill_color": primary.lerp(overrides.get("fill_color", primary), 0.78),
+			"outline_color": secondary.lerp(overrides.get("outline_color", secondary), 0.78),
 		}
 
 	if opening_charged:
 		return {
-			"fill_color": Color(1.0, 0.72, 0.24),
-			"outline_color": Color(1.0, 0.98, 0.72),
-		}
-	if projectile_explosion_radius > 0.0:
-		return {
-			"fill_color": Color(0.92, 0.48, 1.0),
-			"outline_color": Color(1.0, 0.78, 1.0),
-		}
-	if projectile_pierce > 0:
-		return {
-			"fill_color": Color(0.72, 0.94, 1.0),
-			"outline_color": Color(1.0, 1.0, 1.0),
-		}
-	if projectile_bounce > 0:
-		return {
-			"fill_color": Color(0.58, 0.9, 1.0),
-			"outline_color": Color(0.88, 1.0, 1.0),
+			"fill_color": primary.lerp(Color(1.0, 0.72, 0.24), 0.58),
+			"outline_color": secondary.lerp(Color(1.0, 0.98, 0.72), 0.58),
 		}
 
 	return {
-		"fill_color": Color(1.0, 0.92, 0.28),
-		"outline_color": Color(1.0, 1.0, 0.82),
+		"fill_color": primary,
+		"outline_color": secondary,
 	}
 
 
@@ -1626,6 +1664,7 @@ func _finalize_run_stats() -> void:
 	run_stats["max_wave_reached"] = maxi(int(run_stats.get("max_wave_reached", 0)), current_wave)
 	run_stats["final_score"] = score
 	run_stats["build_nodes"] = _get_spell_chain_labels()
+	run_stats["spell_graph"] = spell_graph.get_summary() if spell_graph != null else {}
 	run_stats["victory"] = bool(run_stats.get("boss_defeated", false))
 	run_stats["active_synergies"] = active_synergies.duplicate()
 	run_stats["wave_modifiers"] = wave_modifiers_seen.duplicate()
@@ -1644,12 +1683,9 @@ func _apply_meta_progress(victory: bool) -> void:
 
 
 func _get_spell_chain_labels() -> Array[String]:
-	var labels: Array[String] = []
-
-	for node_data in spell_chain_nodes:
-		labels.append(str(node_data.get("node_label", node_data.get("name", "No"))))
-
-	return labels
+	if spell_graph == null:
+		return ["Projetil"]
+	return spell_graph.get_ordered_labels()
 
 
 func _clear_active_threats() -> void:

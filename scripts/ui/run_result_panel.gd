@@ -59,7 +59,7 @@ func show_result(victory: bool, stats: Dictionary, max_wave: int) -> void:
 	]
 
 	kills_label.text = "%s\n%s" % [_format_kill_breakdown(stats), _format_modifier_breakdown(stats)]
-	build_label.text = "Build: %s\nSinergias: %s" % [_format_build(stats), _format_synergies(stats)]
+	build_label.text = _format_build(stats)
 	show()
 	_play_open_animation()
 
@@ -133,6 +133,24 @@ func _format_modifier_breakdown(stats: Dictionary) -> String:
 
 
 func _format_build(stats: Dictionary) -> String:
+	var graph = stats.get("spell_graph", {})
+	if graph is Dictionary and not graph.is_empty():
+		var branches = graph.get("branches", {})
+		var lines: Array[String] = ["Build ramificada"]
+		for branch_data in [
+			{"id": "form", "name": "Forma"},
+			{"id": "energy", "name": "Energia"},
+			{"id": "rhythm", "name": "Ritmo"},
+			{"id": "core", "name": "Nucleo"},
+		]:
+			var labels = branches.get(str(branch_data["id"]), [])
+			if labels is Array and not labels.is_empty():
+				lines.append("%s: %s" % [str(branch_data["name"]), ", ".join(labels)])
+
+		var graph_synergies = graph.get("synergies", [])
+		lines.append("Sinergias: " + (", ".join(graph_synergies) if graph_synergies is Array and not graph_synergies.is_empty() else "Nenhuma"))
+		return "\n".join(lines)
+
 	var build_nodes = stats.get("build_nodes", [])
 	if build_nodes.is_empty():
 		return "Projetil"

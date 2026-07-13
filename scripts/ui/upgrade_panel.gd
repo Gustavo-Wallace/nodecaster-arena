@@ -117,11 +117,12 @@ func show_upgrades(upgrades: Array[Dictionary], rerolls_left: int = 0) -> void:
 		var upgrade := _upgrades[index]
 		button.show()
 		var category := str(upgrade.get("category", "projectile"))
-		option_category_labels[index].text = _format_category(category)
+		var branch := str(upgrade.get("branch", _get_branch_for_category(category)))
+		option_category_labels[index].text = "RAMO: " + _format_branch(branch)
 		var current_stack := int(upgrade.get("current_stack", 0))
 		if current_stack > 0:
 			option_category_labels[index].text += "   STACK %d" % current_stack
-		option_category_labels[index].add_theme_color_override("font_color", _get_category_color(category))
+		option_category_labels[index].add_theme_color_override("font_color", _get_branch_color(branch))
 		option_title_labels[index].text = str(upgrade.get("name", "Upgrade"))
 		option_description_labels[index].text = str(upgrade.get("description", ""))
 		option_impact_labels[index].text = _format_upgrade_impact(upgrade)
@@ -188,6 +189,42 @@ func _format_category(category: String) -> String:
 			return "PROJETIL"
 		_:
 			return category.to_upper()
+
+
+func _get_branch_for_category(category: String) -> String:
+	match category:
+		"power":
+			return "energy"
+		"rhythm":
+			return "rhythm"
+		"body", "area":
+			return "core"
+		_:
+			return "form"
+
+
+func _format_branch(branch: String) -> String:
+	match branch:
+		"energy":
+			return "ENERGIA"
+		"rhythm":
+			return "RITMO"
+		"core":
+			return "NUCLEO"
+		_:
+			return "FORMA"
+
+
+func _get_branch_color(branch: String) -> Color:
+	match branch:
+		"energy":
+			return Color(1.0, 0.52, 0.88)
+		"rhythm":
+			return Color(0.82, 0.62, 1.0)
+		"core":
+			return Color(0.56, 1.0, 0.72)
+		_:
+			return Color(1.0, 0.86, 0.42)
 
 
 func _get_category_color(category: String) -> Color:

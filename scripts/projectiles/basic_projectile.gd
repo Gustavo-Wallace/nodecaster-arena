@@ -15,6 +15,8 @@ signal bounce_requested(world_position: Vector2)
 @export var radius: float = 6.0
 @export var fill_color: Color = Color(1.0, 0.92, 0.28)
 @export var outline_color: Color = Color(1.0, 1.0, 0.82)
+@export var trail_style: String = "standard"
+@export var glow_strength: float = 0.0
 
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
@@ -107,8 +109,22 @@ func _draw() -> void:
 	var trail_length := clampf(speed * 0.075, 28.0, 74.0) * maxf(size_multiplier, 0.85)
 	var trail_width := maxf(2.0, draw_radius * 0.62)
 	var trail_color := Color(fill_color.r, fill_color.g, fill_color.b, 0.34)
-	draw_line(Vector2(-trail_length, 0.0), Vector2(-draw_radius * 0.5, 0.0), trail_color, trail_width)
-	draw_line(Vector2(-trail_length * 0.62, 0.0), Vector2(-draw_radius * 0.2, 0.0), Color(outline_color.r, outline_color.g, outline_color.b, 0.22), maxf(1.0, trail_width * 0.42))
+	match trail_style:
+		"cutting":
+			draw_line(Vector2(-trail_length, -trail_width * 0.42), Vector2(-draw_radius * 0.2, 0.0), trail_color, maxf(1.5, trail_width * 0.62))
+			draw_line(Vector2(-trail_length * 0.82, trail_width * 0.42), Vector2(-draw_radius * 0.2, 0.0), Color(outline_color.r, outline_color.g, outline_color.b, 0.3), maxf(1.0, trail_width * 0.34))
+		"piercing":
+			draw_line(Vector2(-trail_length * 1.15, 0.0), Vector2(-draw_radius * 0.2, 0.0), Color(outline_color.r, outline_color.g, outline_color.b, 0.5), maxf(1.2, trail_width * 0.46))
+		"spark":
+			draw_line(Vector2(-trail_length, 0.0), Vector2(-draw_radius * 0.5, 0.0), trail_color, trail_width)
+			draw_circle(Vector2(-trail_length * 0.45, -trail_width), maxf(1.5, draw_radius * 0.22), outline_color)
+			draw_circle(Vector2(-trail_length * 0.72, trail_width * 0.7), maxf(1.2, draw_radius * 0.16), outline_color)
+		_:
+			draw_line(Vector2(-trail_length, 0.0), Vector2(-draw_radius * 0.5, 0.0), trail_color, trail_width)
+			draw_line(Vector2(-trail_length * 0.62, 0.0), Vector2(-draw_radius * 0.2, 0.0), Color(outline_color.r, outline_color.g, outline_color.b, 0.22), maxf(1.0, trail_width * 0.42))
+
+	if glow_strength > 0.0:
+		draw_circle(Vector2.ZERO, draw_radius * (1.45 + glow_strength * 0.3), Color(fill_color.r, fill_color.g, fill_color.b, 0.09 + glow_strength * 0.08))
 
 	match visual_shape:
 		"diamond":
