@@ -48,7 +48,7 @@ var skill_definitions := {
 		"prerequisites": [],
 		"effect_type": "starting_max_health_bonus",
 		"effect_value": 5,
-		"position": Vector2(40.0, 60.0),
+		"position": Vector2(482.0, 225.0),
 	},
 	"core_health_2": {
 		"id": "core_health_2",
@@ -59,7 +59,7 @@ var skill_definitions := {
 		"prerequisites": ["core_health_1"],
 		"effect_type": "starting_max_health_bonus",
 		"effect_value": 5,
-		"position": Vector2(210.0, 60.0),
+		"position": Vector2(482.0, 115.0),
 	},
 	"core_repair_miniboss": {
 		"id": "core_repair_miniboss",
@@ -70,7 +70,7 @@ var skill_definitions := {
 		"prerequisites": ["core_health_2"],
 		"effect_type": "miniboss_heal_bonus",
 		"effect_value": 10,
-		"position": Vector2(380.0, 60.0),
+		"position": Vector2(312.0, 35.0),
 	},
 	"core_stability_1": {
 		"id": "core_stability_1",
@@ -81,7 +81,7 @@ var skill_definitions := {
 		"prerequisites": ["core_health_1"],
 		"effect_type": "incoming_damage_reduction",
 		"effect_value": 0.06,
-		"position": Vector2(210.0, 140.0),
+		"position": Vector2(652.0, 35.0),
 	},
 	"projectile_damage_1": {
 		"id": "projectile_damage_1",
@@ -92,7 +92,7 @@ var skill_definitions := {
 		"prerequisites": [],
 		"effect_type": "starting_projectile_damage_bonus",
 		"effect_value": 1,
-		"position": Vector2(40.0, 250.0),
+		"position": Vector2(725.0, 360.0),
 	},
 	"projectile_damage_2": {
 		"id": "projectile_damage_2",
@@ -103,7 +103,7 @@ var skill_definitions := {
 		"prerequisites": ["projectile_damage_1"],
 		"effect_type": "starting_projectile_damage_bonus",
 		"effect_value": 1,
-		"position": Vector2(210.0, 250.0),
+		"position": Vector2(890.0, 360.0),
 	},
 	"projectile_speed_1": {
 		"id": "projectile_speed_1",
@@ -114,7 +114,7 @@ var skill_definitions := {
 		"prerequisites": ["projectile_damage_2"],
 		"effect_type": "starting_projectile_speed_bonus_multiplier",
 		"effect_value": 0.1,
-		"position": Vector2(380.0, 250.0),
+		"position": Vector2(1040.0, 275.0),
 	},
 	"initial_rhythm": {
 		"id": "initial_rhythm",
@@ -125,7 +125,7 @@ var skill_definitions := {
 		"prerequisites": ["projectile_speed_1"],
 		"effect_type": "starting_fire_interval_reduction_multiplier",
 		"effect_value": 0.07,
-		"position": Vector2(550.0, 250.0),
+		"position": Vector2(1040.0, 445.0),
 	},
 	"unlock_piercing": {
 		"id": "unlock_piercing",
@@ -137,7 +137,7 @@ var skill_definitions := {
 		"effect_type": "unlock_upgrade",
 		"target_id": "piercing",
 		"effect_value": 1,
-		"position": Vector2(40.0, 430.0),
+		"position": Vector2(482.0, 525.0),
 	},
 	"expanded_options": {
 		"id": "expanded_options",
@@ -148,7 +148,7 @@ var skill_definitions := {
 		"prerequisites": ["unlock_piercing", "projectile_damage_2"],
 		"effect_type": "upgrade_option_bonus",
 		"effect_value": 1,
-		"position": Vector2(380.0, 430.0),
+		"position": Vector2(650.0, 650.0),
 	},
 	"unlock_diamond": {
 		"id": "unlock_diamond",
@@ -160,7 +160,7 @@ var skill_definitions := {
 		"effect_type": "unlock_character",
 		"target_id": "diamond",
 		"effect_value": 1,
-		"position": Vector2(40.0, 570.0),
+		"position": Vector2(300.0, 360.0),
 	},
 	"future_star": {
 		"id": "future_star",
@@ -171,7 +171,7 @@ var skill_definitions := {
 		"prerequisites": ["unlock_diamond"],
 		"effect_type": "future",
 		"effect_value": 0,
-		"position": Vector2(220.0, 570.0),
+		"position": Vector2(115.0, 360.0),
 		"future": true,
 	},
 }
