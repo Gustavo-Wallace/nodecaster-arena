@@ -10,7 +10,7 @@ const LINE_SNIPER_SCENE := preload("res://scenes/enemies/line_sniper.tscn")
 const BASIC_PROJECTILE_SCENE := preload("res://scenes/projectiles/basic_projectile.tscn")
 const GAME_HUD_SCENE := preload("res://scenes/ui/game_hud.tscn")
 const UPGRADE_PANEL_SCENE := preload("res://scenes/ui/upgrade_panel.tscn")
-const SPELL_GRAPH_PANEL_SCENE := preload("res://scenes/ui/spell_chain_panel.tscn")
+const SPELL_GRAPH_OVERLAY_SCENE := preload("res://scenes/ui/spell_graph_overlay.tscn")
 const SPELL_GRAPH_SCRIPT := preload("res://scripts/game/spell_graph.gd")
 const FLOATING_TEXT_SCENE := preload("res://scenes/ui/floating_text.tscn")
 const BURST_EFFECT_SCENE := preload("res://scenes/effects/burst_effect.tscn")
@@ -23,6 +23,7 @@ const UNSTABLE_FIELD_AURA_SCRIPT := preload("res://scripts/effects/unstable_fiel
 
 @export var arena_position: Vector2 = Vector2(96.0, 72.0)
 @export var arena_size: Vector2 = Vector2(1088.0, 576.0)
+@export var arena_padding: Vector2 = Vector2(22.0, 18.0)
 @export var auto_fire_interval: float = 0.45
 @export var min_auto_fire_interval: float = 0.16
 @export var projectile_damage: int = 12
@@ -50,7 +51,7 @@ const UNSTABLE_FIELD_AURA_SCRIPT := preload("res://scripts/effects/unstable_fiel
 var player: Node2D
 var hud: Control
 var upgrade_panel: Control
-var spell_graph_panel: Control
+var spell_graph_overlay: Control
 var result_panel: Control
 var enemies: Array[Node2D] = []
 var arena_rect: Rect2
@@ -90,6 +91,7 @@ var _rerolls_left: int = 0
 var _has_shown_upgrade_panel: bool = false
 var _opening_charge_time_left: float = 0.0
 var _emergency_pulse_cooldown_left: float = 0.0
+var _graph_open: bool = false
 
 
 func _ready() -> void:
@@ -101,7 +103,8 @@ func _ready() -> void:
 	run_stats = _create_run_stats()
 	spell_graph = SPELL_GRAPH_SCRIPT.new()
 	spell_graph.reset()
-	arena_rect = Rect2(arena_position, arena_size)
+	_configure_arena_to_viewport()
+	get_viewport().size_changed.connect(_on_viewport_size_changed)
 
 	_setup_camera()
 	_spawn_player()
@@ -128,10 +131,15 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	var key_event := event as InputEventKey
+	if not _run_finished and not _graph_open and key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_G:
+		_toggle_spell_graph()
+		get_viewport().set_input_as_handled()
+		return
+
 	if not _run_finished:
 		return
 
-	var key_event := event as InputEventKey
 	if key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_R:
 		_restart_scene()
 
@@ -142,6 +150,36 @@ func _draw() -> void:
 
 	var inner_rect := arena_rect.grow(-8.0)
 	draw_rect(inner_rect, Color(0.09, 0.13, 0.16), false, 1.0)
+
+
+func _configure_arena_to_viewport() -> void:
+	var viewport_size := get_viewport_rect().size
+	var safe_size := Vector2(
+		maxf(viewport_size.x - arena_padding.x * 2.0, 320.0),
+		maxf(viewport_size.y - arena_padding.y * 2.0, 240.0)
+	)
+	arena_position = arena_padding
+	arena_size = safe_size
+	arena_rect = Rect2(arena_position, arena_size)
+
+
+func _on_viewport_size_changed() -> void:
+	_configure_arena_to_viewport()
+	if is_instance_valid(camera):
+		camera.position = arena_rect.get_center()
+	if is_instance_valid(player):
+		player.call("set_arena_rect", arena_rect)
+
+	for enemy in enemies:
+		if not is_instance_valid(enemy):
+			continue
+		var enemy_radius := float(enemy.get("radius"))
+		enemy.global_position = Vector2(
+			clampf(enemy.global_position.x, arena_rect.position.x + enemy_radius, arena_rect.end.x - enemy_radius),
+			clampf(enemy.global_position.y, arena_rect.position.y + enemy_radius, arena_rect.end.y - enemy_radius)
+		)
+
+	queue_redraw()
 
 
 func _spawn_player() -> void:
@@ -168,9 +206,12 @@ func _spawn_hud() -> void:
 	hud_layer.add_child(hud)
 	hud.call("bind_player", player)
 
-	spell_graph_panel = SPELL_GRAPH_PANEL_SCENE.instantiate() as Control
-	hud_layer.add_child(spell_graph_panel)
+	spell_graph_overlay = SPELL_GRAPH_OVERLAY_SCENE.instantiate() as Control
+	hud_layer.add_child(spell_graph_overlay)
+	spell_graph_overlay.connect("close_requested", Callable(self, "_close_spell_graph"))
 	_refresh_spell_graph_panel()
+	if hud.has_signal("graph_requested"):
+		hud.connect("graph_requested", Callable(self, "_toggle_spell_graph"))
 
 	upgrade_panel = UPGRADE_PANEL_SCENE.instantiate() as Control
 	hud_layer.add_child(upgrade_panel)
@@ -916,8 +957,39 @@ func _add_spell_node_from_upgrade(upgrade: Dictionary) -> void:
 
 
 func _refresh_spell_graph_panel() -> void:
-	if is_instance_valid(spell_graph_panel) and spell_graph != null:
-		spell_graph_panel.call("set_graph_data", spell_graph.get_branch_nodes(), spell_graph.get_synergies())
+	if spell_graph == null:
+		return
+
+	var branch_nodes: Dictionary = spell_graph.get_branch_nodes()
+	var synergies: Array = spell_graph.get_synergies()
+	if is_instance_valid(spell_graph_overlay):
+		spell_graph_overlay.call("set_graph_data", branch_nodes, synergies)
+	if is_instance_valid(hud):
+		var node_count: int = spell_graph.get_ordered_nodes().size()
+		hud.call("set_build_summary", node_count, synergies.size())
+
+
+func _toggle_spell_graph() -> void:
+	if _graph_open:
+		_close_spell_graph()
+		return
+
+	if _run_finished or _reward_open or not is_instance_valid(spell_graph_overlay) or spell_graph == null:
+		return
+
+	_graph_open = true
+	spell_graph_overlay.call("open_graph", spell_graph.get_branch_nodes(), spell_graph.get_synergies())
+	get_tree().paused = true
+
+
+func _close_spell_graph() -> void:
+	if not _graph_open:
+		return
+
+	_graph_open = false
+	if is_instance_valid(spell_graph_overlay):
+		spell_graph_overlay.call("close_graph")
+	get_tree().paused = false
 
 
 func _create_upgrade_data() -> Array[Dictionary]:
@@ -1614,6 +1686,8 @@ func _finish_run(victory: bool, result_delay: float = 0.0) -> void:
 	if _run_finished:
 		return
 
+	if _graph_open:
+		_close_spell_graph()
 	_run_finished = true
 	_wave_in_progress = false
 	_reward_open = false
@@ -1714,9 +1788,11 @@ func _play_audio(method_name: String) -> void:
 
 func _restart_scene() -> void:
 	_is_restarting = true
+	get_tree().paused = false
 	get_tree().reload_current_scene()
 
 
 func _go_to_main_menu() -> void:
 	_is_restarting = true
+	get_tree().paused = false
 	get_tree().change_scene_to_file("res://scenes/ui/main_menu.tscn")

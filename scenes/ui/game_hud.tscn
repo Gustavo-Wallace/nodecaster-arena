@@ -9,22 +9,23 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 2
+mouse_filter = 1
 script = ExtResource("1_pkyfi")
 
 [node name="HudBack" type="ColorRect" parent="."]
 layout_mode = 0
 offset_left = 16.0
 offset_top = 14.0
-offset_right = 304.0
-offset_bottom = 182.0
+offset_right = 332.0
+offset_bottom = 206.0
 color = Color(0.012, 0.018, 0.026, 0.78)
+mouse_filter = 2
 
 [node name="HealthLabel" type="Label" parent="."]
 layout_mode = 0
 offset_left = 24.0
 offset_top = 20.0
-offset_right = 292.0
+offset_right = 320.0
 offset_bottom = 48.0
 text = "VIDA 0 / 0"
 
@@ -48,7 +49,7 @@ color = Color(0.32, 0.95, 0.62, 1)
 layout_mode = 0
 offset_left = 24.0
 offset_top = 70.0
-offset_right = 292.0
+offset_right = 320.0
 offset_bottom = 98.0
 text = "ONDA 0"
 
@@ -64,7 +65,7 @@ text = "INIMIGOS 0"
 layout_mode = 0
 offset_left = 164.0
 offset_top = 100.0
-offset_right = 292.0
+offset_right = 320.0
 offset_bottom = 128.0
 text = "PONTOS 0"
 
@@ -72,7 +73,7 @@ text = "PONTOS 0"
 layout_mode = 0
 offset_left = 24.0
 offset_top = 128.0
-offset_right = 292.0
+offset_right = 320.0
 offset_bottom = 148.0
 text = "TEMPO 00:00"
 
@@ -80,9 +81,25 @@ text = "TEMPO 00:00"
 layout_mode = 0
 offset_left = 24.0
 offset_top = 150.0
-offset_right = 292.0
+offset_right = 320.0
 offset_bottom = 174.0
 text = ""
+
+[node name="BuildLabel" type="Label" parent="."]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 176.0
+offset_right = 320.0
+offset_bottom = 198.0
+text = "NOS 0 | SINERGIAS 0"
+
+[node name="GraphButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 1050.0
+offset_top = 16.0
+offset_right = 1160.0
+offset_bottom = 50.0
+text = "Grafo [G]"
 
 [node name="MessageLabel" type="Label" parent="."]
 layout_mode = 0

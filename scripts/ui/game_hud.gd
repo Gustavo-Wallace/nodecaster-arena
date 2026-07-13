@@ -1,5 +1,7 @@
 extends Control
 
+signal graph_requested
+
 @onready var health_label: Label = $HealthLabel
 @onready var health_bar_fill: ColorRect = $HealthBarFill
 @onready var wave_label: Label = $WaveLabel
@@ -7,6 +9,8 @@ extends Control
 @onready var score_label: Label = $ScoreLabel
 @onready var time_label: Label = $TimeLabel
 @onready var meta_label: Label = $MetaLabel
+@onready var build_label: Label = $BuildLabel
+@onready var graph_button: Button = $GraphButton
 @onready var message_label: Label = $MessageLabel
 
 const HEALTH_BAR_WIDTH := 264.0
@@ -17,7 +21,7 @@ var _message_tween: Tween
 
 
 func _ready() -> void:
-	for label in [health_label, wave_label, enemies_label, score_label, time_label, meta_label, message_label]:
+	for label in [health_label, wave_label, enemies_label, score_label, time_label, meta_label, build_label, message_label]:
 		label.add_theme_color_override("font_color", Color(0.86, 0.96, 1.0))
 		label.add_theme_font_size_override("font_size", 20)
 
@@ -26,9 +30,14 @@ func _ready() -> void:
 	message_label.add_theme_font_size_override("font_size", 24)
 	meta_label.add_theme_color_override("font_color", Color(0.56, 0.9, 1.0))
 	meta_label.add_theme_font_size_override("font_size", 15)
+	build_label.add_theme_color_override("font_color", Color(0.76, 0.76, 1.0))
+	build_label.add_theme_font_size_override("font_size", 14)
+	graph_button.pressed.connect(_on_graph_pressed)
+	graph_button.focus_mode = Control.FOCUS_NONE
 	set_wave_info(0, 0, 0)
 	set_wave_message("")
 	set_meta_info("")
+	set_build_summary(0, 0)
 	set_run_time(0.0)
 
 
@@ -87,6 +96,14 @@ func set_run_time(seconds: float) -> void:
 
 func set_meta_info(info: String) -> void:
 	meta_label.text = info
+
+
+func set_build_summary(node_count: int, synergy_count: int) -> void:
+	build_label.text = "NOS %d | SINERGIAS %d" % [node_count, synergy_count]
+
+
+func _on_graph_pressed() -> void:
+	graph_requested.emit()
 
 
 func set_wave_message(message: String) -> void:
