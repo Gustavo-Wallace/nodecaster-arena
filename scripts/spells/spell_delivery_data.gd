@@ -19,9 +19,9 @@ const DELIVERIES := {
 	"area": {
 		"id": "area",
 		"display_name": "Area de Acao",
-		"description": "Cria uma area no formato da forma escolhida.",
-		"available": false,
-		"tags": ["futuro", "area"],
+		"description": "Cria uma zona temporaria com dano periodico. Forte contra grupos lentos.",
+		"available": true,
+		"tags": ["area", "controle"],
 	},
 	"slash": {
 		"id": "slash",

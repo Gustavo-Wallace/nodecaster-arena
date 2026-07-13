@@ -41,14 +41,14 @@ const ELEMENTS := {
 	"lightning": {
 		"id": "lightning",
 		"display_name": "Raio",
-		"description": "Matriz experimental preparada para cadeias futuras.",
+		"description": "Favorece a propagacao da Cadeia e acelera os pulsos de Areas.",
 		"primary_color": Color(0.36, 0.94, 1.0),
 		"secondary_color": Color(1.0, 0.94, 0.34),
 		"impact_color": Color(0.72, 1.0, 0.88),
 		"effect_id": "direct",
 		"effect_power": 0.0,
 		"tags": ["direto", "eletrico"],
-		"modifiers_text": "Visual eletrico; cadeia sera adicionada depois.",
+		"modifiers_text": "+1 salto na Cadeia e -16% intervalo dos pulsos de Area.",
 	},
 }
 

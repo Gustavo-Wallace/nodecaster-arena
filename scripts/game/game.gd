@@ -18,6 +18,7 @@ const BURST_EFFECT_SCENE := preload("res://scenes/effects/burst_effect.tscn")
 const GEOMETRIC_SHATTER_SCENE := preload("res://scenes/effects/geometric_shatter.tscn")
 const IMPACT_RING_SCENE := preload("res://scenes/effects/impact_ring.tscn")
 const CHAIN_LIGHTNING_EFFECT_SCENE := preload("res://scenes/effects/chain_lightning_effect.tscn")
+const AREA_SPELL_SCENE := preload("res://scenes/spells/area_spell.tscn")
 const PENTAGON_MINIBOSS_SCENE := preload("res://scenes/enemies/pentagon_miniboss.tscn")
 const HEXAGON_BOSS_SCENE := preload("res://scenes/enemies/hexagon_boss.tscn")
 const RUN_RESULT_PANEL_SCENE := preload("res://scenes/ui/run_result_panel.tscn")
@@ -49,6 +50,17 @@ const UNSTABLE_FIELD_AURA_SCRIPT := preload("res://scripts/effects/unstable_fiel
 @export var chain_damage_falloff: float = 0.65
 @export var chain_base_damage_multiplier: float = 0.68
 @export var chain_visual_duration: float = 0.18
+@export var area_range: float = 420.0
+@export var area_radius: float = 78.0
+@export var area_duration: float = 2.5
+@export var area_tick_interval: float = 0.5
+@export var area_tick_damage_multiplier: float = 0.35
+@export var area_cast_interval_multiplier: float = 1.6
+@export var area_min_cast_interval: float = 0.8
+@export var area_max_active: int = 4
+@export var area_max_duration: float = 5.0
+@export var area_min_tick_interval: float = 0.25
+@export var area_max_size_multiplier: float = 2.5
 @export var base_enemies_per_wave: int = 1
 @export var enemies_added_per_wave: int = 2
 @export var wave_interval: float = 2.0
@@ -113,6 +125,11 @@ var _chain_jump_range_bonus: float = 0.0
 var _chain_bonus_hits: int = 0
 var _chain_falloff_bonus: float = 0.0
 var _chain_range_multiplier: float = 1.0
+var _active_area_spells: Array[Node2D] = []
+var _area_range_bonus: float = 0.0
+var _area_size_multiplier: float = 1.0
+var _area_duration_multiplier: float = 1.0
+var _area_damage_multiplier: float = 1.0
 
 
 func _ready() -> void:
@@ -384,6 +401,8 @@ func _apply_spell_blueprint_to_run() -> void:
 	auto_fire_interval = maxf(auto_fire_interval * float(_spell_attributes.get("fire_interval_multiplier", 1.0)), min_auto_fire_interval)
 	if _is_chain_lightning_delivery():
 		auto_fire_interval = maxf(auto_fire_interval * chain_cast_interval_multiplier, chain_min_cast_interval)
+	elif _is_area_delivery():
+		auto_fire_interval = maxf(auto_fire_interval * area_cast_interval_multiplier, area_min_cast_interval)
 	projectile_size_multiplier *= float(_spell_attributes.get("size_multiplier", 1.0))
 	projectile_pierce += int(_spell_attributes.get("pierce_bonus", 0))
 
@@ -697,6 +716,9 @@ func _fire_at_nearest_enemy() -> void:
 	if _is_chain_lightning_delivery():
 		_cast_chain_lightning_spell()
 		return
+	if _is_area_delivery():
+		_cast_area_spell()
+		return
 
 	_cast_projectile_spell()
 
@@ -753,7 +775,7 @@ func _cast_projectile_spell() -> void:
 func _cast_chain_lightning_spell() -> void:
 	var parameters := _get_chain_parameters()
 	var visited: Array[Node2D] = []
-	var first_target := _get_chain_target(player.global_position, float(parameters["range"]), visited)
+	var first_target := _get_nearest_enemy_in_range(player.global_position, float(parameters["range"]), visited)
 	if first_target == null:
 		return
 
@@ -784,7 +806,7 @@ func _cast_chain_lightning_spell() -> void:
 		if hit_index == 0 and projectile_explosion_radius > 0.0 and projectile_explosion_damage_multiplier > 0.0:
 			_on_projectile_explosion_requested(target_position, projectile_explosion_radius, int(round(float(hit_damage) * projectile_explosion_damage_multiplier)))
 
-		current_target = _get_chain_target(target_position, float(parameters["jump_range"]), visited)
+		current_target = _get_nearest_enemy_in_range(target_position, float(parameters["jump_range"]), visited)
 
 	_spawn_chain_lightning_effect(chain_points, float(parameters["visual_width"]))
 	_play_chain_audio(chain_points.size() - 1)
@@ -792,6 +814,10 @@ func _cast_chain_lightning_spell() -> void:
 
 func _is_chain_lightning_delivery() -> bool:
 	return str(selected_spell_summary.get("delivery_id", "simple_projectile")) == "chain_lightning"
+
+
+func _is_area_delivery() -> bool:
+	return str(selected_spell_summary.get("delivery_id", "simple_projectile")) == "area"
 
 
 func _get_chain_parameters() -> Dictionary:
@@ -808,7 +834,7 @@ func _get_chain_parameters() -> Dictionary:
 	}
 
 
-func _get_chain_target(origin: Vector2, max_range: float, excluded: Array[Node2D]) -> Node2D:
+func _get_nearest_enemy_in_range(origin: Vector2, max_range: float, excluded: Array[Node2D]) -> Node2D:
 	var nearest_enemy: Node2D = null
 	var nearest_distance := max_range * max_range
 
@@ -822,6 +848,88 @@ func _get_chain_target(origin: Vector2, max_range: float, excluded: Array[Node2D
 			nearest_enemy = enemy
 
 	return nearest_enemy
+
+
+func _cast_area_spell() -> void:
+	var parameters := _get_area_parameters()
+	var target := _get_nearest_enemy_in_range(player.global_position, float(parameters["range"]), [])
+	if target == null:
+		return
+
+	_shot_sequence += 1
+	var catalyzed := _has_meta_skill("catalyzed_shot") and _shot_sequence % maxi(int(_get_meta_effect_value("catalyzed_shot_interval")), 1) == 0
+	var tick_damage := maxi(1, int(round(float(projectile_damage) * float(parameters["damage_multiplier"]) * (1.8 if catalyzed else 1.0))))
+	if catalyzed:
+		_spawn_floating_text("CATALISADO", player.global_position + Vector2(0.0, -42.0), Color(1.0, 0.66, 0.94), 0.46)
+
+	_remove_invalid_area_spells()
+	if _active_area_spells.size() >= area_max_active:
+		var oldest_area: Node2D = _active_area_spells[0]
+		_active_area_spells.remove_at(0)
+		if is_instance_valid(oldest_area):
+			oldest_area.queue_free()
+
+	var area_spell := AREA_SPELL_SCENE.instantiate() as Node2D
+	add_child(area_spell)
+	area_spell.connect("pulse_requested", Callable(self, "_on_area_spell_pulse"))
+	area_spell.call(
+		"setup",
+		target.global_position,
+		float(parameters["radius"]),
+		float(parameters["duration"]),
+		float(parameters["tick_interval"]),
+		tick_damage,
+		str(_spell_attributes.get("visual_shape", "circle")),
+		_spell_attributes.get("fill_color", Color(0.74, 0.36, 1.0)),
+		_spell_attributes.get("outline_color", Color(1.0, 0.78, 1.0)),
+		str(_spell_attributes.get("element_effect_id", "direct")),
+		float(_spell_attributes.get("element_effect_power", 0.0))
+	)
+	_active_area_spells.append(area_spell)
+	_play_audio("play_area_cast")
+
+	if projectile_explosion_radius > 0.0 and projectile_explosion_damage_multiplier > 0.0:
+		_on_area_spell_pulse(
+			target.global_position,
+			float(parameters["radius"]) * 0.52,
+			maxi(1, int(round(float(tick_damage) * 0.65))),
+			str(_spell_attributes.get("element_effect_id", "direct")),
+			float(_spell_attributes.get("element_effect_power", 0.0))
+		)
+
+
+func _get_area_parameters() -> Dictionary:
+	var size_multiplier := float(_spell_attributes.get("area_size_multiplier", 1.0)) * _area_size_multiplier
+	return {
+		"range": minf(area_range + _area_range_bonus, 540.0),
+		"radius": area_radius * clampf(size_multiplier, 0.5, area_max_size_multiplier),
+		"duration": minf(area_duration * float(_spell_attributes.get("area_duration_multiplier", 1.0)) * _area_duration_multiplier, area_max_duration),
+		"tick_interval": maxf(area_tick_interval * float(_spell_attributes.get("area_tick_interval_multiplier", 1.0)), area_min_tick_interval),
+		"damage_multiplier": area_tick_damage_multiplier * float(_spell_attributes.get("area_damage_multiplier", 1.0)) * _area_damage_multiplier,
+	}
+
+
+func _on_area_spell_pulse(world_position: Vector2, pulse_radius: float, damage: int, effect_id: String, effect_power: float) -> void:
+	var enemies_hit := 0
+	for enemy in enemies.duplicate():
+		if not is_instance_valid(enemy) or enemy.global_position.distance_to(world_position) > pulse_radius:
+			continue
+		if enemy.has_method("take_damage"):
+			enemy.call("take_damage", damage)
+		if enemy.has_method("apply_elemental_effect") and effect_id != "direct":
+			enemy.call("apply_elemental_effect", effect_id, effect_power, damage)
+		enemies_hit += 1
+
+	if enemies_hit > 0:
+		var visual_profile := _get_spell_visual_profile()
+		var impact_color: Color = visual_profile.get("impact_color", Color(0.74, 0.36, 1.0))
+		_spawn_impact_ring(world_position, Color(impact_color.r, impact_color.g, impact_color.b, 0.35), pulse_radius * 0.28, pulse_radius * 0.52, 0.24, 1.6)
+
+
+func _remove_invalid_area_spells() -> void:
+	for index in range(_active_area_spells.size() - 1, -1, -1):
+		if not is_instance_valid(_active_area_spells[index]):
+			_active_area_spells.remove_at(index)
 
 
 func _apply_chain_hit(enemy: Node2D, damage: int) -> void:
@@ -941,6 +1049,7 @@ func _complete_wave() -> void:
 
 	_reward_open = true
 	_clear_projectiles()
+	_clear_area_spells()
 
 	if is_instance_valid(_auto_fire_timer):
 		_auto_fire_timer.stop()
@@ -1088,7 +1197,11 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 		"arcane_damage":
 			projectile_damage += int(values.get("damage_bonus", 4))
 		"unstable_cadence":
-			var minimum_interval := chain_min_cast_interval if _is_chain_lightning_delivery() else min_auto_fire_interval
+			var minimum_interval := min_auto_fire_interval
+			if _is_chain_lightning_delivery():
+				minimum_interval = chain_min_cast_interval
+			elif _is_area_delivery():
+				minimum_interval = area_min_cast_interval
 			auto_fire_interval = maxf(auto_fire_interval * float(values.get("interval_multiplier", 0.88)), minimum_interval)
 			if is_instance_valid(_auto_fire_timer):
 				_auto_fire_timer.wait_time = auto_fire_interval
@@ -1105,9 +1218,13 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 			if _is_chain_lightning_delivery():
 				_chain_range_bonus += 52.0
 				_chain_jump_range_bonus += 24.0
+			elif _is_area_delivery():
+				_area_range_bonus += 56.0
 		"initial_fragmentation":
 			if _is_chain_lightning_delivery():
 				_chain_bonus_hits = mini(_chain_bonus_hits + int(values.get("projectile_count_bonus", 1)), chain_max_hits_cap - chain_max_hits)
+			elif _is_area_delivery():
+				_area_size_multiplier = minf(_area_size_multiplier * 1.18, area_max_size_multiplier)
 			else:
 				projectile_count = mini(projectile_count + int(values.get("projectile_count_bonus", 1)), max_projectile_count)
 		"piercing":
@@ -1126,6 +1243,9 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 			projectile_size_multiplier += float(values.get("size_bonus", 0.2))
 			if _is_chain_lightning_delivery():
 				_chain_range_multiplier *= 0.88
+			elif _is_area_delivery():
+				_area_size_multiplier = minf(_area_size_multiplier * 1.2, area_max_size_multiplier)
+				_area_duration_multiplier = maxf(_area_duration_multiplier * 0.9, 0.55)
 		"cutting_echo":
 			_cutting_echo_interval = int(values.get("shot_interval", 4))
 			_cutting_echo_damage_multiplier += float(values.get("damage_multiplier_bonus", 0.25))
@@ -1201,6 +1321,10 @@ func _create_upgrade_data() -> Array[Dictionary]:
 					"description": "+5 de dano base por alvo da Cadeia.",
 					"impact_text": "+5 dano por alvo",
 				},
+				"area": {
+					"description": "+5 de dano por pulso da Area.",
+					"impact_text": "+5 dano por pulso",
+				},
 			},
 		},
 		{
@@ -1218,6 +1342,10 @@ func _create_upgrade_data() -> Array[Dictionary]:
 				"chain_lightning": {
 					"description": "Conjuracoes de Cadeia 16% mais rapidas, respeitando o limite minimo.",
 					"impact_text": "-16% intervalo da cadeia",
+				},
+				"area": {
+					"description": "Areas sao conjuradas 16% mais rapido, respeitando o limite minimo.",
+					"impact_text": "-16% intervalo da area",
 				},
 			},
 		},
@@ -1263,6 +1391,11 @@ func _create_upgrade_data() -> Array[Dictionary]:
 					"description": "Aumenta o alcance inicial e o alcance entre alvos da Cadeia.",
 					"impact_text": "+52 alcance, +24 salto",
 				},
+				"area": {
+					"name": "Alcance Expandido",
+					"description": "Permite criar Areas mais distantes do nucleo.",
+					"impact_text": "+56 alcance da area",
+				},
 			},
 		},
 		{
@@ -1276,12 +1409,17 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"values": {
 				"projectile_count_bonus": 1,
 			},
-			"max_stacks_by_delivery": {"chain_lightning": 2},
+			"max_stacks_by_delivery": {"chain_lightning": 2, "area": 3},
 			"delivery_effects": {
 				"chain_lightning": {
 					"name": "Fragmentacao em Cadeia",
 					"description": "Atinge +1 alvo total por cadeia. Limite de 2 stacks.",
 					"impact_text": "+1 alvo maximo",
+				},
+				"area": {
+					"name": "Campo Fragmentado",
+					"description": "Aumenta o tamanho da Area. Limite de 3 stacks.",
+					"impact_text": "+18% tamanho da area",
 				},
 			},
 		},
@@ -1298,6 +1436,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 				"pierce_bonus": 1,
 			},
 			"max_stacks_by_delivery": {"chain_lightning": 3},
+			"compatible_deliveries": ["simple_projectile", "chain_lightning"],
 			"delivery_effects": {
 				"chain_lightning": {
 					"name": "Condutor Perfurante",
@@ -1336,6 +1475,10 @@ func _create_upgrade_data() -> Array[Dictionary]:
 					"description": "Somente o primeiro alvo da Cadeia gera uma explosao arcana.",
 					"impact_text": "Explosao no primeiro alvo",
 				},
+				"area": {
+					"description": "A criacao da Area causa um impacto arcano inicial reduzido.",
+					"impact_text": "Impacto inicial da area",
+				},
 			},
 		},
 		{
@@ -1351,12 +1494,17 @@ func _create_upgrade_data() -> Array[Dictionary]:
 				"speed_multiplier": 0.85,
 				"size_bonus": 0.2,
 			},
-			"max_stacks_by_delivery": {"chain_lightning": 2},
+			"max_stacks_by_delivery": {"chain_lightning": 2, "area": 2},
 			"delivery_effects": {
 				"chain_lightning": {
 					"name": "Descarga Pesada",
 					"description": "+40% dano da Cadeia, com -12% de alcance inicial.",
 					"impact_text": "+40% dano, -12% alcance",
+				},
+				"area": {
+					"name": "Campo Denso",
+					"description": "+40% dano, Area maior e duracao levemente menor.",
+					"impact_text": "+40% dano, +20% tamanho",
 				},
 			},
 		},
@@ -1373,6 +1521,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 				"damage_multiplier_bonus": 0.25,
 			},
 			"max_stacks_by_delivery": {"chain_lightning": 2},
+			"compatible_deliveries": ["simple_projectile", "chain_lightning"],
 			"delivery_effects": {
 				"chain_lightning": {
 					"name": "Eco Ressonante",
@@ -2041,6 +2190,7 @@ func _clear_active_threats() -> void:
 	enemies.clear()
 
 	_clear_projectiles()
+	_clear_area_spells()
 
 
 func _clear_projectiles() -> void:
@@ -2050,6 +2200,13 @@ func _clear_projectiles() -> void:
 	for projectile in get_tree().get_nodes_in_group("player_projectiles"):
 		if is_instance_valid(projectile):
 			projectile.queue_free()
+
+
+func _clear_area_spells() -> void:
+	for area_spell in _active_area_spells:
+		if is_instance_valid(area_spell):
+			area_spell.queue_free()
+	_active_area_spells.clear()
 
 
 func _play_audio(method_name: String) -> void:

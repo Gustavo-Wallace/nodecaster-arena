@@ -18,6 +18,10 @@ const SHAPES := {
 		"chain_range_multiplier": 1.0,
 		"chain_jump_range_multiplier": 1.0,
 		"chain_visual_width_multiplier": 1.0,
+		"area_size_multiplier": 1.0,
+		"area_duration_multiplier": 1.0,
+		"area_tick_interval_multiplier": 1.0,
+		"area_damage_multiplier": 1.0,
 		"modifiers_text": "Equilibrado em dano, velocidade e tamanho.",
 	},
 	"triangle": {
@@ -36,6 +40,10 @@ const SHAPES := {
 		"chain_range_multiplier": 1.16,
 		"chain_jump_range_multiplier": 1.08,
 		"chain_visual_width_multiplier": 0.82,
+		"area_size_multiplier": 0.84,
+		"area_duration_multiplier": 0.9,
+		"area_tick_interval_multiplier": 0.82,
+		"area_damage_multiplier": 1.16,
 		"modifiers_text": "+28% velocidade, -8% dano, projeteis menores.",
 	},
 	"square": {
@@ -54,6 +62,10 @@ const SHAPES := {
 		"chain_range_multiplier": 0.9,
 		"chain_jump_range_multiplier": 0.84,
 		"chain_visual_width_multiplier": 1.3,
+		"area_size_multiplier": 1.26,
+		"area_duration_multiplier": 1.16,
+		"area_tick_interval_multiplier": 1.12,
+		"area_damage_multiplier": 1.1,
 		"modifiers_text": "+28% dano, projeteis maiores e mais lentos.",
 	},
 	"star": {

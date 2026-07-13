@@ -31,6 +31,10 @@ func play_chain_cast(jump_count: int = 1) -> void:
 	_play("chain_cast", -12.0, pitch, 0.08)
 
 
+func play_area_cast() -> void:
+	_play("area_cast", -13.0, _random_pitch(0.96, 1.04), 0.12)
+
+
 func play_enemy_hit() -> void:
 	_play("enemy_hit", -17.0, _random_pitch(0.9, 1.12), 0.035)
 
@@ -137,6 +141,7 @@ func _build_streams() -> void:
 	_streams = {
 		"shoot": _make_tone(880.0, 0.055, 0.42, "square", 220.0),
 		"chain_cast": _make_sequence([620.0, 930.0, 1340.0], 0.04, 0.32, "sine"),
+		"area_cast": _make_sequence([280.0, 420.0, 560.0], 0.055, 0.3, "sine"),
 		"enemy_hit": _make_noise(0.055, 0.34),
 		"enemy_death": _make_tone(440.0, 0.18, 0.42, "saw", -260.0),
 		"player_hit": _make_tone(145.0, 0.16, 0.52, "square", -55.0),
