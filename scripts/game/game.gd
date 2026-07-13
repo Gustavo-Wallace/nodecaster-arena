@@ -17,6 +17,7 @@ const FLOATING_TEXT_SCENE := preload("res://scenes/ui/floating_text.tscn")
 const BURST_EFFECT_SCENE := preload("res://scenes/effects/burst_effect.tscn")
 const GEOMETRIC_SHATTER_SCENE := preload("res://scenes/effects/geometric_shatter.tscn")
 const IMPACT_RING_SCENE := preload("res://scenes/effects/impact_ring.tscn")
+const CHAIN_LIGHTNING_EFFECT_SCENE := preload("res://scenes/effects/chain_lightning_effect.tscn")
 const PENTAGON_MINIBOSS_SCENE := preload("res://scenes/enemies/pentagon_miniboss.tscn")
 const HEXAGON_BOSS_SCENE := preload("res://scenes/enemies/hexagon_boss.tscn")
 const RUN_RESULT_PANEL_SCENE := preload("res://scenes/ui/run_result_panel.tscn")
@@ -37,6 +38,12 @@ const UNSTABLE_FIELD_AURA_SCRIPT := preload("res://scripts/effects/unstable_fiel
 @export var projectile_size_multiplier: float = 1.0
 @export var projectile_explosion_radius: float = 0.0
 @export var projectile_explosion_damage_multiplier: float = 0.0
+@export var chain_range: float = 450.0
+@export var chain_jump_range: float = 220.0
+@export var chain_max_jumps: int = 3
+@export var chain_damage_falloff: float = 0.75
+@export var chain_base_damage_multiplier: float = 0.85
+@export var chain_visual_duration: float = 0.18
 @export var base_enemies_per_wave: int = 1
 @export var enemies_added_per_wave: int = 2
 @export var wave_interval: float = 2.0
@@ -96,6 +103,11 @@ var _has_shown_upgrade_panel: bool = false
 var _opening_charge_time_left: float = 0.0
 var _emergency_pulse_cooldown_left: float = 0.0
 var _graph_open: bool = false
+var _chain_range_bonus: float = 0.0
+var _chain_jump_range_bonus: float = 0.0
+var _chain_bonus_jumps: int = 0
+var _chain_falloff_bonus: float = 0.0
+var _chain_range_multiplier: float = 1.0
 
 
 func _ready() -> void:
@@ -670,6 +682,14 @@ func _fire_at_nearest_enemy() -> void:
 	if _is_restarting or _run_finished or _reward_open or not is_instance_valid(player):
 		return
 
+	if _is_chain_lightning_delivery():
+		_cast_chain_lightning_spell()
+		return
+
+	_cast_projectile_spell()
+
+
+func _cast_projectile_spell() -> void:
 	var target := _get_nearest_enemy()
 	if target == null:
 		return
@@ -716,6 +736,115 @@ func _fire_at_nearest_enemy() -> void:
 				"outline_color": Color(1.0, 1.0, 1.0),
 			}
 		)
+
+
+func _cast_chain_lightning_spell() -> void:
+	var parameters := _get_chain_parameters()
+	var visited: Array[Node2D] = []
+	var first_target := _get_chain_target(player.global_position, float(parameters["range"]), visited)
+	if first_target == null:
+		return
+
+	_shot_sequence += 1
+	var catalyzed := _has_meta_skill("catalyzed_shot") and _shot_sequence % maxi(int(_get_meta_effect_value("catalyzed_shot_interval")), 1) == 0
+	var echo_cast := _cutting_echo_interval > 0 and _shot_sequence % _cutting_echo_interval == 0
+	var base_damage := maxi(1, int(round(float(projectile_damage) * float(parameters["damage_multiplier"]) * (1.8 if catalyzed else 1.0))))
+	var max_jumps := int(parameters["max_jumps"]) + (1 if echo_cast else 0)
+	if echo_cast:
+		base_damage = maxi(1, int(round(float(base_damage) * _cutting_echo_damage_multiplier)))
+	if catalyzed:
+		_spawn_floating_text("CATALISADO", player.global_position + Vector2(0.0, -42.0), Color(1.0, 0.66, 0.94), 0.46)
+	if echo_cast:
+		_spawn_floating_text("ECO", player.global_position + Vector2(0.0, -64.0), Color(0.72, 1.0, 0.94), 0.42)
+
+	var chain_points: Array[Vector2] = [player.global_position]
+	var current_target := first_target
+	for hit_index in range(max_jumps + 1):
+		if not is_instance_valid(current_target):
+			break
+
+		var target_position := current_target.global_position
+		var hit_damage := maxi(1, int(round(float(base_damage) * pow(float(parameters["falloff"]), float(hit_index)))))
+		chain_points.append(target_position)
+		visited.append(current_target)
+		_apply_chain_hit(current_target, hit_damage)
+
+		if hit_index == 0 and projectile_explosion_radius > 0.0 and projectile_explosion_damage_multiplier > 0.0:
+			_on_projectile_explosion_requested(target_position, projectile_explosion_radius, int(round(float(hit_damage) * projectile_explosion_damage_multiplier)))
+
+		current_target = _get_chain_target(target_position, float(parameters["jump_range"]), visited)
+
+	_spawn_chain_lightning_effect(chain_points, float(parameters["visual_width"]))
+	_play_chain_audio(chain_points.size() - 1)
+
+
+func _is_chain_lightning_delivery() -> bool:
+	return str(selected_spell_summary.get("delivery_id", "simple_projectile")) == "chain_lightning"
+
+
+func _get_chain_parameters() -> Dictionary:
+	var range_multiplier := float(_spell_attributes.get("chain_range_multiplier", 1.0)) * _chain_range_multiplier
+	var jump_range_multiplier := float(_spell_attributes.get("chain_jump_range_multiplier", 1.0))
+	var falloff_multiplier := float(_spell_attributes.get("chain_falloff_multiplier", 1.0))
+	return {
+		"range": (chain_range * range_multiplier) + _chain_range_bonus,
+		"jump_range": (chain_jump_range * jump_range_multiplier) + _chain_jump_range_bonus,
+		"max_jumps": chain_max_jumps + _chain_bonus_jumps + int(_spell_attributes.get("chain_bonus_jumps", 0)),
+		"falloff": clampf(chain_damage_falloff * falloff_multiplier + _chain_falloff_bonus, 0.45, 0.95),
+		"damage_multiplier": chain_base_damage_multiplier,
+		"visual_width": 4.0 * float(_spell_attributes.get("chain_visual_width_multiplier", 1.0)),
+	}
+
+
+func _get_chain_target(origin: Vector2, max_range: float, excluded: Array[Node2D]) -> Node2D:
+	var nearest_enemy: Node2D = null
+	var nearest_distance := max_range * max_range
+
+	for enemy in enemies.duplicate():
+		if not is_instance_valid(enemy) or excluded.has(enemy):
+			continue
+
+		var distance := origin.distance_squared_to(enemy.global_position)
+		if distance <= nearest_distance:
+			nearest_distance = distance
+			nearest_enemy = enemy
+
+	return nearest_enemy
+
+
+func _apply_chain_hit(enemy: Node2D, damage: int) -> void:
+	if enemy.has_method("take_damage"):
+		enemy.call("take_damage", damage)
+	if enemy.has_method("apply_elemental_effect"):
+		enemy.call(
+			"apply_elemental_effect",
+			str(_spell_attributes.get("element_effect_id", "direct")),
+			float(_spell_attributes.get("element_effect_power", 0.0)),
+			damage
+		)
+
+
+func _spawn_chain_lightning_effect(chain_points: Array[Vector2], visual_width: float) -> void:
+	if chain_points.size() < 2:
+		return
+
+	var visual_profile := _get_spell_visual_profile()
+	var effect := CHAIN_LIGHTNING_EFFECT_SCENE.instantiate() as Node2D
+	add_child(effect)
+	effect.call(
+		"setup",
+		chain_points,
+		visual_profile.get("primary_color", Color(0.4, 0.9, 1.0)),
+		visual_profile.get("secondary_color", Color(0.9, 0.98, 1.0)),
+		visual_width,
+		chain_visual_duration
+	)
+
+
+func _play_chain_audio(hit_count: int) -> void:
+	var audio_manager := get_node_or_null("/root/AudioManager")
+	if audio_manager != null and audio_manager.has_method("play_chain_cast"):
+		audio_manager.call("play_chain_cast", hit_count)
 
 
 func _spawn_projectile(spawn_position: Vector2, direction: Vector2, overrides: Dictionary = {}) -> void:
@@ -953,12 +1082,24 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 				player.call("increase_max_health", int(values.get("max_health_bonus", 20)), int(values.get("heal_amount", 12)))
 		"swift_projectile":
 			projectile_speed += float(values.get("projectile_speed_bonus", 80.0))
+			if _is_chain_lightning_delivery():
+				_chain_range_bonus += 52.0
+				_chain_jump_range_bonus += 24.0
 		"initial_fragmentation":
-			projectile_count = mini(projectile_count + int(values.get("projectile_count_bonus", 1)), max_projectile_count)
+			if _is_chain_lightning_delivery():
+				_chain_bonus_jumps += int(values.get("projectile_count_bonus", 1))
+			else:
+				projectile_count = mini(projectile_count + int(values.get("projectile_count_bonus", 1)), max_projectile_count)
 		"piercing":
-			projectile_pierce += int(values.get("pierce_bonus", 1))
+			if _is_chain_lightning_delivery():
+				_chain_falloff_bonus += 0.08 * float(values.get("pierce_bonus", 1))
+			else:
+				projectile_pierce += int(values.get("pierce_bonus", 1))
 		"ricochet":
-			projectile_bounce += int(values.get("bounce_bonus", 1))
+			if _is_chain_lightning_delivery():
+				_chain_bonus_jumps += int(values.get("bounce_bonus", 1))
+			else:
+				projectile_bounce += int(values.get("bounce_bonus", 1))
 		"arcane_explosion":
 			projectile_explosion_radius += float(values.get("radius_bonus", 60.0))
 			projectile_explosion_damage_multiplier += float(values.get("damage_multiplier_bonus", 0.5))
@@ -966,6 +1107,8 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 			projectile_damage = int(round(float(projectile_damage) * float(values.get("damage_multiplier", 1.4))))
 			projectile_speed *= float(values.get("speed_multiplier", 0.85))
 			projectile_size_multiplier += float(values.get("size_bonus", 0.2))
+			if _is_chain_lightning_delivery():
+				_chain_range_multiplier *= 0.88
 		"cutting_echo":
 			_cutting_echo_interval = int(values.get("shot_interval", 4))
 			_cutting_echo_damage_multiplier += float(values.get("damage_multiplier_bonus", 0.25))

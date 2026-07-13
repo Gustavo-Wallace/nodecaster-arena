@@ -12,9 +12,9 @@ const DELIVERIES := {
 	"chain_lightning": {
 		"id": "chain_lightning",
 		"display_name": "Cadeia de Raio",
-		"description": "Salta entre inimigos proximos, reduzindo dano a cada salto.",
-		"available": false,
-		"tags": ["futuro", "cadeia"],
+		"description": "Salta entre inimigos proximos, perde dano a cada salto e domina grupos.",
+		"available": true,
+		"tags": ["cadeia", "grupos"],
 	},
 	"area": {
 		"id": "area",

@@ -49,7 +49,7 @@ func _build_options() -> void:
 	for delivery in _run_config.call("get_spell_delivery_list"):
 		var data: Dictionary = delivery
 		var available := bool(data.get("available", false))
-		var button := _create_option_button(str(data.get("display_name", "Lancamento")), str(data.get("description", "")), available, true)
+		var button := _create_option_button(str(data.get("display_name", "Lancamento")), str(data.get("description", "")), available, not available)
 		if not available:
 			button.text = "%s (EM BREVE)" % str(data.get("display_name", "Lancamento"))
 		else:

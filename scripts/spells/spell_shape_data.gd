@@ -15,6 +15,9 @@ const SHAPES := {
 		"pierce_bonus": 0,
 		"duration_multiplier": 1.0,
 		"area_multiplier": 1.0,
+		"chain_range_multiplier": 1.0,
+		"chain_jump_range_multiplier": 1.0,
+		"chain_visual_width_multiplier": 1.0,
 		"modifiers_text": "Equilibrado em dano, velocidade e tamanho.",
 	},
 	"triangle": {
@@ -30,6 +33,9 @@ const SHAPES := {
 		"pierce_bonus": 0,
 		"duration_multiplier": 1.0,
 		"area_multiplier": 0.9,
+		"chain_range_multiplier": 1.16,
+		"chain_jump_range_multiplier": 1.08,
+		"chain_visual_width_multiplier": 0.82,
 		"modifiers_text": "+28% velocidade, -8% dano, projeteis menores.",
 	},
 	"square": {
@@ -45,6 +51,9 @@ const SHAPES := {
 		"pierce_bonus": 0,
 		"duration_multiplier": 1.12,
 		"area_multiplier": 1.2,
+		"chain_range_multiplier": 0.9,
+		"chain_jump_range_multiplier": 0.84,
+		"chain_visual_width_multiplier": 1.3,
 		"modifiers_text": "+28% dano, projeteis maiores e mais lentos.",
 	},
 	"star": {
