@@ -19,6 +19,7 @@ const GEOMETRIC_SHATTER_SCENE := preload("res://scenes/effects/geometric_shatter
 const IMPACT_RING_SCENE := preload("res://scenes/effects/impact_ring.tscn")
 const CHAIN_LIGHTNING_EFFECT_SCENE := preload("res://scenes/effects/chain_lightning_effect.tscn")
 const AREA_SPELL_SCENE := preload("res://scenes/spells/area_spell.tscn")
+const SLASH_EFFECT_SCENE := preload("res://scenes/effects/slash_effect.tscn")
 const PENTAGON_MINIBOSS_SCENE := preload("res://scenes/enemies/pentagon_miniboss.tscn")
 const HEXAGON_BOSS_SCENE := preload("res://scenes/enemies/hexagon_boss.tscn")
 const RUN_RESULT_PANEL_SCENE := preload("res://scenes/ui/run_result_panel.tscn")
@@ -61,6 +62,17 @@ const UNSTABLE_FIELD_AURA_SCRIPT := preload("res://scripts/effects/unstable_fiel
 @export var area_max_duration: float = 5.0
 @export var area_min_tick_interval: float = 0.25
 @export var area_max_size_multiplier: float = 2.5
+@export var slash_range: float = 260.0
+@export var slash_damage_multiplier: float = 1.15
+@export var slash_cast_interval_multiplier: float = 1.45
+@export var slash_size_multiplier: float = 1.0
+@export var slash_width: float = 10.0
+@export var slash_targets: int = 1
+@export var slash_visual_duration: float = 0.16
+@export var slash_min_cast_interval: float = 0.45
+@export var slash_max_targets: int = 6
+@export var slash_max_range: float = 520.0
+@export var slash_max_size_multiplier: float = 2.5
 @export var base_enemies_per_wave: int = 1
 @export var enemies_added_per_wave: int = 2
 @export var wave_interval: float = 2.0
@@ -130,6 +142,9 @@ var _area_range_bonus: float = 0.0
 var _area_size_multiplier: float = 1.0
 var _area_duration_multiplier: float = 1.0
 var _area_damage_multiplier: float = 1.0
+var _slash_range_bonus: float = 0.0
+var _slash_size_multiplier: float = 1.0
+var _slash_targets_bonus: int = 0
 
 
 func _ready() -> void:
@@ -403,6 +418,8 @@ func _apply_spell_blueprint_to_run() -> void:
 		auto_fire_interval = maxf(auto_fire_interval * chain_cast_interval_multiplier, chain_min_cast_interval)
 	elif _is_area_delivery():
 		auto_fire_interval = maxf(auto_fire_interval * area_cast_interval_multiplier, area_min_cast_interval)
+	elif _is_slash_delivery():
+		auto_fire_interval = maxf(auto_fire_interval * slash_cast_interval_multiplier, slash_min_cast_interval)
 	projectile_size_multiplier *= float(_spell_attributes.get("size_multiplier", 1.0))
 	projectile_pierce += int(_spell_attributes.get("pierce_bonus", 0))
 
@@ -719,6 +736,9 @@ func _fire_at_nearest_enemy() -> void:
 	if _is_area_delivery():
 		_cast_area_spell()
 		return
+	if _is_slash_delivery():
+		_cast_slash_spell()
+		return
 
 	_cast_projectile_spell()
 
@@ -818,6 +838,116 @@ func _is_chain_lightning_delivery() -> bool:
 
 func _is_area_delivery() -> bool:
 	return str(selected_spell_summary.get("delivery_id", "simple_projectile")) == "area"
+
+
+func _is_slash_delivery() -> bool:
+	return str(selected_spell_summary.get("delivery_id", "simple_projectile")) == "slash"
+
+
+func _cast_slash_spell() -> void:
+	var parameters: Dictionary = _get_slash_parameters()
+	var target_count := int(parameters["targets"])
+	var targets: Array[Node2D] = _get_closest_enemies_in_range(player.global_position, float(parameters["range"]), target_count)
+	if targets.is_empty():
+		return
+
+	_shot_sequence += 1
+	var catalyzed := _has_meta_skill("catalyzed_shot") and _shot_sequence % maxi(int(_get_meta_effect_value("catalyzed_shot_interval")), 1) == 0
+	var echo_cast := _cutting_echo_interval > 0 and _shot_sequence % _cutting_echo_interval == 0
+	var damage_multiplier := float(parameters["damage_multiplier"]) * (1.8 if catalyzed else 1.0)
+	var hit_damage := maxi(1, int(round(float(projectile_damage) * damage_multiplier)))
+	var first_target_position: Vector2 = targets[0].global_position
+
+	if catalyzed:
+		_spawn_floating_text("CATALISADO", player.global_position + Vector2(0.0, -42.0), Color(1.0, 0.66, 0.94), 0.46)
+
+	for target in targets:
+		_apply_slash_hit(target, hit_damage, parameters, false)
+
+	if projectile_explosion_radius > 0.0 and projectile_explosion_damage_multiplier > 0.0:
+		_on_projectile_explosion_requested(
+			first_target_position,
+			projectile_explosion_radius * 0.78,
+			maxi(1, int(round(float(hit_damage) * projectile_explosion_damage_multiplier * 0.7)))
+		)
+
+	if echo_cast:
+		var echo_targets: Array[Node2D] = _get_closest_enemies_in_range(player.global_position, float(parameters["range"]), 1, targets)
+		if not echo_targets.is_empty():
+			_apply_slash_hit(echo_targets[0], maxi(1, int(round(float(hit_damage) * _cutting_echo_damage_multiplier))), parameters, true)
+			_spawn_floating_text("ECO", player.global_position + Vector2(0.0, -64.0), Color(0.72, 1.0, 0.94), 0.42)
+
+	_play_audio("play_slash_cast")
+
+
+func _get_slash_parameters() -> Dictionary:
+	var size_multiplier := slash_size_multiplier * float(_spell_attributes.get("slash_size_multiplier", 1.0)) * _slash_size_multiplier
+	return {
+		"range": minf(slash_range * float(_spell_attributes.get("slash_range_multiplier", 1.0)) + _slash_range_bonus, slash_max_range),
+		"damage_multiplier": slash_damage_multiplier * float(_spell_attributes.get("slash_damage_multiplier", 1.0)),
+		"size_multiplier": clampf(size_multiplier, 0.5, slash_max_size_multiplier),
+		"width": slash_width * float(_spell_attributes.get("slash_width_multiplier", 1.0)) * clampf(size_multiplier, 0.5, slash_max_size_multiplier),
+		"targets": clampi(slash_targets + _slash_targets_bonus, 1, slash_max_targets),
+		"arc_multiplier": float(_spell_attributes.get("slash_arc_multiplier", 1.0)),
+	}
+
+
+func _get_closest_enemies_in_range(origin: Vector2, max_range: float, count: int, excluded: Array[Node2D] = []) -> Array[Node2D]:
+	var targets: Array[Node2D] = []
+	var ignored: Array[Node2D] = []
+	ignored.append_array(excluded)
+	for _target_index in range(maxi(count, 0)):
+		var target: Node2D = _get_nearest_enemy_in_range(origin, max_range, ignored)
+		if target == null:
+			break
+		targets.append(target)
+		ignored.append(target)
+
+	return targets
+
+
+func _apply_slash_hit(target: Node2D, damage: int, parameters: Dictionary, is_echo: bool) -> void:
+	if not is_instance_valid(target):
+		return
+
+	var target_position: Vector2 = target.global_position
+	if target.has_method("take_damage"):
+		target.call("take_damage", damage)
+	if target.has_method("apply_elemental_effect"):
+		target.call(
+			"apply_elemental_effect",
+			str(_spell_attributes.get("element_effect_id", "direct")),
+			float(_spell_attributes.get("element_effect_power", 0.0)),
+			damage
+		)
+
+	_spawn_slash_effect(target_position, parameters, is_echo)
+	var visual_profile: Dictionary = _get_spell_visual_profile()
+	var impact_color: Color = visual_profile.get("impact_color", Color(0.74, 0.36, 1.0))
+	_spawn_burst(target_position, impact_color, 9 if is_echo else 6)
+
+
+func _spawn_slash_effect(target_position: Vector2, parameters: Dictionary, is_echo: bool) -> void:
+	var visual_profile: Dictionary = _get_spell_visual_profile()
+	var primary_color: Color = visual_profile.get("primary_color", Color(0.74, 0.36, 1.0))
+	var secondary_color: Color = visual_profile.get("secondary_color", Color(1.0, 0.78, 1.0))
+	if is_echo:
+		secondary_color = secondary_color.lerp(Color.WHITE, 0.34)
+
+	var effect := SLASH_EFFECT_SCENE.instantiate() as Node2D
+	effect.call(
+		"setup",
+		player.global_position,
+		target_position,
+		72.0 * float(parameters["size_multiplier"]),
+		float(parameters["width"]),
+		str(_spell_attributes.get("visual_shape", "circle")),
+		primary_color,
+		secondary_color,
+		slash_visual_duration,
+		float(parameters["arc_multiplier"])
+	)
+	add_child(effect)
 
 
 func _get_chain_parameters() -> Dictionary:
@@ -1202,6 +1332,8 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 				minimum_interval = chain_min_cast_interval
 			elif _is_area_delivery():
 				minimum_interval = area_min_cast_interval
+			elif _is_slash_delivery():
+				minimum_interval = slash_min_cast_interval
 			auto_fire_interval = maxf(auto_fire_interval * float(values.get("interval_multiplier", 0.88)), minimum_interval)
 			if is_instance_valid(_auto_fire_timer):
 				_auto_fire_timer.wait_time = auto_fire_interval
@@ -1220,11 +1352,16 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 				_chain_jump_range_bonus += 24.0
 			elif _is_area_delivery():
 				_area_range_bonus += 56.0
+			elif _is_slash_delivery():
+				_slash_range_bonus = minf(_slash_range_bonus + 48.0, slash_max_range - slash_range * 0.5)
 		"initial_fragmentation":
 			if _is_chain_lightning_delivery():
 				_chain_bonus_hits = mini(_chain_bonus_hits + int(values.get("projectile_count_bonus", 1)), chain_max_hits_cap - chain_max_hits)
 			elif _is_area_delivery():
 				_area_size_multiplier = minf(_area_size_multiplier * 1.18, area_max_size_multiplier)
+			elif _is_slash_delivery():
+				var slash_target_bonus_cap := maxi(slash_max_targets - slash_targets, 0)
+				_slash_targets_bonus = mini(_slash_targets_bonus + int(values.get("projectile_count_bonus", 1)), slash_target_bonus_cap)
 			else:
 				projectile_count = mini(projectile_count + int(values.get("projectile_count_bonus", 1)), max_projectile_count)
 		"piercing":
@@ -1246,6 +1383,11 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 			elif _is_area_delivery():
 				_area_size_multiplier = minf(_area_size_multiplier * 1.2, area_max_size_multiplier)
 				_area_duration_multiplier = maxf(_area_duration_multiplier * 0.9, 0.55)
+			elif _is_slash_delivery():
+				_slash_size_multiplier = minf(_slash_size_multiplier * 1.2, slash_max_size_multiplier)
+				auto_fire_interval *= 1.1
+				if is_instance_valid(_auto_fire_timer):
+					_auto_fire_timer.wait_time = auto_fire_interval
 		"cutting_echo":
 			_cutting_echo_interval = int(values.get("shot_interval", 4))
 			_cutting_echo_damage_multiplier += float(values.get("damage_multiplier_bonus", 0.25))
@@ -1325,6 +1467,10 @@ func _create_upgrade_data() -> Array[Dictionary]:
 					"description": "+5 de dano por pulso da Area.",
 					"impact_text": "+5 dano por pulso",
 				},
+				"slash": {
+					"description": "+5 de dano por corte.",
+					"impact_text": "+5 dano por corte",
+				},
 			},
 		},
 		{
@@ -1346,6 +1492,10 @@ func _create_upgrade_data() -> Array[Dictionary]:
 				"area": {
 					"description": "Areas sao conjuradas 16% mais rapido, respeitando o limite minimo.",
 					"impact_text": "-16% intervalo da area",
+				},
+				"slash": {
+					"description": "Slashes sao executados 16% mais rapido, respeitando o limite minimo.",
+					"impact_text": "-16% intervalo do slash",
 				},
 			},
 		},
@@ -1396,6 +1546,11 @@ func _create_upgrade_data() -> Array[Dictionary]:
 					"description": "Permite criar Areas mais distantes do nucleo.",
 					"impact_text": "+56 alcance da area",
 				},
+				"slash": {
+					"name": "Corte Alcancado",
+					"description": "Aumenta o alcance de busca do Slash.",
+					"impact_text": "+48 alcance do slash",
+				},
 			},
 		},
 		{
@@ -1409,7 +1564,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"values": {
 				"projectile_count_bonus": 1,
 			},
-			"max_stacks_by_delivery": {"chain_lightning": 2, "area": 3},
+			"max_stacks_by_delivery": {"chain_lightning": 2, "area": 3, "slash": 3},
 			"delivery_effects": {
 				"chain_lightning": {
 					"name": "Fragmentacao em Cadeia",
@@ -1420,6 +1575,11 @@ func _create_upgrade_data() -> Array[Dictionary]:
 					"name": "Campo Fragmentado",
 					"description": "Aumenta o tamanho da Area. Limite de 3 stacks.",
 					"impact_text": "+18% tamanho da area",
+				},
+				"slash": {
+					"name": "Cortes Fragmentados",
+					"description": "Atinge +1 alvo proximo por Slash. Limite de 3 stacks.",
+					"impact_text": "+1 alvo por corte",
 				},
 			},
 		},
@@ -1479,6 +1639,10 @@ func _create_upgrade_data() -> Array[Dictionary]:
 					"description": "A criacao da Area causa um impacto arcano inicial reduzido.",
 					"impact_text": "Impacto inicial da area",
 				},
+				"slash": {
+					"description": "O primeiro corte cria uma explosao arcana reduzida.",
+					"impact_text": "Explosao no primeiro corte",
+				},
 			},
 		},
 		{
@@ -1494,7 +1658,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 				"speed_multiplier": 0.85,
 				"size_bonus": 0.2,
 			},
-			"max_stacks_by_delivery": {"chain_lightning": 2, "area": 2},
+			"max_stacks_by_delivery": {"chain_lightning": 2, "area": 2, "slash": 2},
 			"delivery_effects": {
 				"chain_lightning": {
 					"name": "Descarga Pesada",
@@ -1504,6 +1668,11 @@ func _create_upgrade_data() -> Array[Dictionary]:
 				"area": {
 					"name": "Campo Denso",
 					"description": "+40% dano, Area maior e duracao levemente menor.",
+					"impact_text": "+40% dano, +20% tamanho",
+				},
+				"slash": {
+					"name": "Corte Pesado",
+					"description": "+40% dano e corte maior, com cadencia mais lenta.",
 					"impact_text": "+40% dano, +20% tamanho",
 				},
 			},
@@ -1520,13 +1689,18 @@ func _create_upgrade_data() -> Array[Dictionary]:
 				"shot_interval": 4,
 				"damage_multiplier_bonus": 0.25,
 			},
-			"max_stacks_by_delivery": {"chain_lightning": 2},
-			"compatible_deliveries": ["simple_projectile", "chain_lightning"],
+			"max_stacks_by_delivery": {"chain_lightning": 2, "slash": 2},
+			"compatible_deliveries": ["simple_projectile", "chain_lightning", "slash"],
 			"delivery_effects": {
 				"chain_lightning": {
 					"name": "Eco Ressonante",
 					"description": "A cada 4 cadeias, a proxima ganha dano extra e +1 alvo.",
 					"impact_text": "Eco: dano extra e +1 alvo",
+				},
+				"slash": {
+					"name": "Eco Cortante",
+					"description": "A cada 4 Slashes, executa um corte extra forte em outro alvo proximo.",
+					"impact_text": "Eco: corte extra forte",
 				},
 			},
 		},

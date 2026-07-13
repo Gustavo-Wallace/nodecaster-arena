@@ -147,7 +147,8 @@ func get_summary() -> Dictionary:
 
 
 func get_ordered_labels() -> Array[String]:
-	var labels: Array[String] = ["Projetil"]
+	var base_label := str(_base_spell.get("delivery_name", "Projetil"))
+	var labels: Array[String] = [base_label]
 	for node in get_ordered_nodes():
 		var label := str(node.get("node_label", node.get("name", "No")))
 		var stack := int(node.get("stack", 1))

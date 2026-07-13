@@ -26,9 +26,9 @@ const DELIVERIES := {
 	"slash": {
 		"id": "slash",
 		"display_name": "Slash",
-		"description": "Atinge instantaneamente o inimigo mais proximo.",
-		"available": false,
-		"tags": ["futuro", "instantaneo"],
+		"description": "Executa um corte rapido no inimigo mais proximo. Comeca limitado, mas escala com alcance, cadencia e multiplos cortes.",
+		"available": true,
+		"tags": ["instantaneo", "alvo proximo"],
 	},
 	"persistent_waves": {
 		"id": "persistent_waves",

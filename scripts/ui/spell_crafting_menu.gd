@@ -98,14 +98,16 @@ func _refresh_selection() -> void:
 	var summary: Dictionary = blueprint.get_summary()
 	var shape: Dictionary = blueprint.get_shape_data()
 	var element: Dictionary = blueprint.get_element_data()
+	var delivery: Dictionary = blueprint.get_delivery_data()
 	selection_label.text = "%s + %s + %s" % [
 		str(summary.get("shape_name", "Circulo")),
 		str(summary.get("element_name", "Arcano")),
 		str(summary.get("delivery_name", "Projetil Simples")),
 	]
-	detail_label.text = "%s\n%s\n\n%s" % [
+	detail_label.text = "%s\n%s\n%s\n\n%s" % [
 		str(shape.get("description", "")),
 		str(element.get("description", "")),
+		str(delivery.get("description", "")),
 		str(shape.get("modifiers_text", "")),
 	]
 	preview.call("setup", str(shape.get("visual_shape", "circle")), element.get("primary_color", Color.WHITE), element.get("secondary_color", Color.WHITE))
