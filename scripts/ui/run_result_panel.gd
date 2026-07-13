@@ -136,9 +136,17 @@ func _format_modifier_breakdown(stats: Dictionary) -> String:
 
 func _format_build(stats: Dictionary) -> String:
 	var graph = stats.get("spell_graph", {})
+	var blueprint = stats.get("spell_blueprint", {})
+	var base_spell_line := ""
+	if blueprint is Dictionary and not blueprint.is_empty():
+		base_spell_line = "Feitico base: %s + %s + %s" % [
+			str(blueprint.get("shape_name", "Circulo")),
+			str(blueprint.get("element_name", "Arcano")),
+			str(blueprint.get("delivery_name", "Projetil Simples")),
+		]
 	if graph is Dictionary and not graph.is_empty():
 		var branches = graph.get("branches", {})
-		var lines: Array[String] = ["Build ramificada"]
+		var lines: Array[String] = [base_spell_line if not base_spell_line.is_empty() else "Build ramificada"]
 		for branch_data in [
 			{"id": "form", "name": "Forma"},
 			{"id": "energy", "name": "Energia"},
@@ -155,7 +163,7 @@ func _format_build(stats: Dictionary) -> String:
 
 	var build_nodes = stats.get("build_nodes", [])
 	if build_nodes.is_empty():
-		return "Projetil"
+		return base_spell_line if not base_spell_line.is_empty() else "Projetil"
 
 	var labels: Array[String] = []
 	for node_label in build_nodes:
@@ -167,7 +175,7 @@ func _format_build(stats: Dictionary) -> String:
 			build_text += " -> "
 		build_text += labels[index]
 
-	return build_text
+	return base_spell_line + "\n" + build_text if not base_spell_line.is_empty() else build_text
 
 
 func _format_synergies(stats: Dictionary) -> String:

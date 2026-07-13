@@ -12,6 +12,7 @@ const GAME_HUD_SCENE := preload("res://scenes/ui/game_hud.tscn")
 const UPGRADE_PANEL_SCENE := preload("res://scenes/ui/upgrade_panel.tscn")
 const SPELL_GRAPH_OVERLAY_SCENE := preload("res://scenes/ui/spell_graph_overlay.tscn")
 const SPELL_GRAPH_SCRIPT := preload("res://scripts/game/spell_graph.gd")
+const SPELL_BLUEPRINT_SCRIPT := preload("res://scripts/spells/spell_blueprint.gd")
 const FLOATING_TEXT_SCENE := preload("res://scenes/ui/floating_text.tscn")
 const BURST_EFFECT_SCENE := preload("res://scenes/effects/burst_effect.tscn")
 const GEOMETRIC_SHATTER_SCENE := preload("res://scenes/effects/geometric_shatter.tscn")
@@ -63,6 +64,9 @@ var spell_graph
 var run_time_seconds: float = 0.0
 var run_stats: Dictionary = {}
 var selected_character_data: Dictionary = {}
+var spell_blueprint
+var selected_spell_summary: Dictionary = {}
+var _spell_attributes: Dictionary = {}
 var upgrade_stacks: Dictionary = {}
 var active_synergies: Array[String] = []
 var wave_modifiers_seen: Array[String] = []
@@ -97,12 +101,16 @@ var _graph_open: bool = false
 func _ready() -> void:
 	_rng.randomize()
 	selected_character_data = _get_selected_character_data()
+	spell_blueprint = _get_selected_spell_blueprint()
+	selected_spell_summary = spell_blueprint.get_summary()
 	_apply_selected_character_to_run()
+	_apply_spell_blueprint_to_run()
 	_available_upgrades = _filter_unlocked_upgrades(_create_upgrade_data())
 	_wave_enemy_counts = _create_wave_enemy_counts()
 	run_stats = _create_run_stats()
 	spell_graph = SPELL_GRAPH_SCRIPT.new()
 	spell_graph.reset()
+	spell_graph.set_base_spell(selected_spell_summary)
 	_configure_arena_to_viewport()
 	get_viewport().size_changed.connect(_on_viewport_size_changed)
 
@@ -286,6 +294,7 @@ func _create_run_stats() -> Dictionary:
 	return {
 		"character_id": str(selected_character_data.get("id", "circle")),
 		"character_name": str(selected_character_data.get("display_name", "Circulo")),
+		"spell_blueprint": selected_spell_summary.duplicate(true),
 		"run_time_seconds": 0.0,
 		"max_wave_reached": 0,
 		"final_score": 0,
@@ -334,6 +343,25 @@ func _apply_selected_character_to_run() -> void:
 	projectile_speed = float(selected_character_data.get("projectile_speed", projectile_speed))
 	projectile_count = int(selected_character_data.get("projectile_count", projectile_count))
 	auto_fire_interval = float(selected_character_data.get("fire_interval", auto_fire_interval))
+
+
+func _get_selected_spell_blueprint():
+	var run_config := get_node_or_null("/root/RunConfig")
+	if run_config != null and run_config.has_method("get_spell_blueprint"):
+		return run_config.call("get_spell_blueprint")
+	return SPELL_BLUEPRINT_SCRIPT.new()
+
+
+func _apply_spell_blueprint_to_run() -> void:
+	if spell_blueprint == null:
+		return
+
+	_spell_attributes = spell_blueprint.get_initial_attributes()
+	projectile_damage = maxi(1, int(round(float(projectile_damage) * float(_spell_attributes.get("damage_multiplier", 1.0)))))
+	projectile_speed *= float(_spell_attributes.get("projectile_speed_multiplier", 1.0))
+	auto_fire_interval = maxf(auto_fire_interval * float(_spell_attributes.get("fire_interval_multiplier", 1.0)), min_auto_fire_interval)
+	projectile_size_multiplier *= float(_spell_attributes.get("size_multiplier", 1.0))
+	projectile_pierce += int(_spell_attributes.get("pierce_bonus", 0))
 
 
 func _apply_meta_skill_bonuses_to_selected_character() -> void:
@@ -702,7 +730,10 @@ func _spawn_projectile(spawn_position: Vector2, direction: Vector2, overrides: D
 	projectile.set("explosion_radius", projectile_explosion_radius)
 	projectile.set("explosion_damage", int(round(float(actual_damage) * projectile_explosion_damage_multiplier)))
 	projectile.set("size_multiplier", float(overrides.get("size_multiplier", projectile_size_multiplier)))
-	projectile.set("visual_shape", str(overrides.get("visual_shape", "circle")))
+	projectile.set("lifetime", float(projectile.get("lifetime")) * float(_spell_attributes.get("duration_multiplier", 1.0)))
+	projectile.set("visual_shape", str(overrides.get("visual_shape", _spell_attributes.get("visual_shape", "circle"))))
+	projectile.set("element_effect_id", str(_spell_attributes.get("element_effect_id", "direct")))
+	projectile.set("element_effect_power", float(_spell_attributes.get("element_effect_power", 0.0)))
 	var visual_profile := _get_spell_visual_profile()
 	projectile.set("trail_style", str(visual_profile.get("trail_style", "standard")))
 	projectile.set("glow_strength", float(visual_profile.get("glow", 0.0)))
@@ -963,7 +994,7 @@ func _refresh_spell_graph_panel() -> void:
 	var branch_nodes: Dictionary = spell_graph.get_branch_nodes()
 	var synergies: Array = spell_graph.get_synergies()
 	if is_instance_valid(spell_graph_overlay):
-		spell_graph_overlay.call("set_graph_data", branch_nodes, synergies)
+		spell_graph_overlay.call("set_graph_data", branch_nodes, synergies, selected_spell_summary)
 	if is_instance_valid(hud):
 		var node_count: int = spell_graph.get_ordered_nodes().size()
 		hud.call("set_build_summary", node_count, synergies.size())
@@ -978,7 +1009,7 @@ func _toggle_spell_graph() -> void:
 		return
 
 	_graph_open = true
-	spell_graph_overlay.call("open_graph", spell_graph.get_branch_nodes(), spell_graph.get_synergies())
+	spell_graph_overlay.call("open_graph", spell_graph.get_branch_nodes(), spell_graph.get_synergies(), selected_spell_summary)
 	get_tree().paused = true
 
 
@@ -1584,17 +1615,15 @@ func _get_enemy_color(enemy: Node) -> Color:
 
 
 func _get_spell_visual_profile() -> Dictionary:
+	var base_profile := {
+		"primary_color": _spell_attributes.get("fill_color", Color(1.0, 0.92, 0.28)),
+		"secondary_color": _spell_attributes.get("outline_color", Color(1.0, 1.0, 0.82)),
+		"impact_color": _spell_attributes.get("impact_color", Color(1.0, 0.58, 0.22)),
+		"aura_color": _spell_attributes.get("outline_color", Color(0.36, 0.95, 1.0)),
+	}
 	if spell_graph == null:
-		return {
-			"primary_color": Color(1.0, 0.92, 0.28),
-			"secondary_color": Color(1.0, 1.0, 0.82),
-			"impact_color": Color(1.0, 0.58, 0.22),
-			"bounce_color": Color(0.58, 0.9, 1.0),
-			"aura_color": Color(0.36, 0.95, 1.0),
-			"glow": 0.0,
-			"trail_style": "standard",
-		}
-	return spell_graph.get_visual_profile()
+		return base_profile
+	return spell_graph.get_visual_profile(base_profile)
 
 
 func _get_projectile_visual_colors(overrides: Dictionary, opening_charged: bool = false) -> Dictionary:
@@ -1739,6 +1768,7 @@ func _finalize_run_stats() -> void:
 	run_stats["final_score"] = score
 	run_stats["build_nodes"] = _get_spell_chain_labels()
 	run_stats["spell_graph"] = spell_graph.get_summary() if spell_graph != null else {}
+	run_stats["spell_blueprint"] = selected_spell_summary.duplicate(true)
 	run_stats["victory"] = bool(run_stats.get("boss_defeated", false))
 	run_stats["active_synergies"] = active_synergies.duplicate()
 	run_stats["wave_modifiers"] = wave_modifiers_seen.duplicate()

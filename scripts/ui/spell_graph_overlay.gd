@@ -28,6 +28,7 @@ const BRANCH_COLORS := {
 
 var _branch_nodes: Dictionary = {}
 var _synergies: Array[String] = []
+var _base_spell: Dictionary = {}
 var _open_tween: Tween
 
 
@@ -38,15 +39,15 @@ func _ready() -> void:
 	close_button.focus_mode = Control.FOCUS_NONE
 	title_label.add_theme_font_size_override("font_size", 28)
 	title_label.add_theme_color_override("font_color", Color(0.9, 0.98, 1.0))
-	summary_label.add_theme_font_size_override("font_size", 16)
+	summary_label.add_theme_font_size_override("font_size", 14)
 	summary_label.add_theme_color_override("font_color", Color(0.68, 0.84, 1.0))
 	synergy_label.add_theme_font_size_override("font_size", 16)
 	synergy_label.add_theme_color_override("font_color", Color(1.0, 0.88, 0.48))
 	set_graph_data({}, [])
 
 
-func open_graph(branch_nodes: Dictionary, synergies: Array) -> void:
-	set_graph_data(branch_nodes, synergies)
+func open_graph(branch_nodes: Dictionary, synergies: Array, base_spell: Dictionary = {}) -> void:
+	set_graph_data(branch_nodes, synergies, base_spell)
 	show()
 	if is_instance_valid(_open_tween):
 		_open_tween.kill()
@@ -64,8 +65,9 @@ func close_graph() -> void:
 	hide()
 
 
-func set_graph_data(branch_nodes: Dictionary, synergies: Array) -> void:
+func set_graph_data(branch_nodes: Dictionary, synergies: Array, base_spell: Dictionary = {}) -> void:
 	_branch_nodes = branch_nodes.duplicate(true)
+	_base_spell = base_spell.duplicate(true)
 	_synergies.clear()
 	for synergy in synergies:
 		_synergies.append(str(synergy))
@@ -100,12 +102,18 @@ func _rebuild_graph() -> void:
 	for nodes in _branch_nodes.values():
 		if nodes is Array:
 			node_count += nodes.size()
-	summary_label.text = "Nos ativos: %d  |  Ramos: %d" % [node_count, _get_active_branch_count()]
+	var base_text := "%s + %s + %s" % [
+		str(_base_spell.get("shape_name", "Circulo")),
+		str(_base_spell.get("element_name", "Arcano")),
+		str(_base_spell.get("delivery_name", "Projetil Simples")),
+	]
+	summary_label.text = "Base: %s  |  Nos: %d  |  Ramos: %d" % [base_text, node_count, _get_active_branch_count()]
 	synergy_label.text = "Sinergias: " + (", ".join(_synergies) if not _synergies.is_empty() else "nenhuma")
 
 
 func _create_root_node() -> void:
-	var root := _create_node_card("PROJETIL", Color(0.2, 0.48, 0.68), ROOT_SIZE, 16)
+	var root_label := str(_base_spell.get("shape_name", "Projetil")).to_upper()
+	var root := _create_node_card(root_label, Color(0.2, 0.48, 0.68), ROOT_SIZE, 16)
 	root.position = ROOT_CENTER - ROOT_SIZE * 0.5
 	graph_canvas.add_child(root)
 

@@ -151,7 +151,7 @@ func _on_character_chosen(character_id: String) -> void:
 	var run_config := get_node_or_null("/root/RunConfig")
 	if run_config != null:
 		run_config.call("select_character", character_id)
-	get_tree().change_scene_to_file("res://scenes/game/game.tscn")
+	get_tree().change_scene_to_file("res://scenes/ui/spell_crafting_menu.tscn")
 
 
 func _on_back_pressed() -> void:

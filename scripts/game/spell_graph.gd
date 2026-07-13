@@ -12,11 +12,17 @@ const BRANCH_DATA := {
 
 var _nodes_by_id: Dictionary = {}
 var _synergies: Array[String] = []
+var _base_spell: Dictionary = {}
 
 
 func reset() -> void:
 	_nodes_by_id.clear()
 	_synergies.clear()
+	_base_spell.clear()
+
+
+func set_base_spell(base_spell: Dictionary) -> void:
+	_base_spell = base_spell.duplicate(true)
 
 
 func add_upgrade(upgrade: Dictionary, stack_count: int) -> Dictionary:
@@ -79,11 +85,11 @@ func get_synergies() -> Array[String]:
 	return _synergies.duplicate()
 
 
-func get_visual_profile() -> Dictionary:
-	var primary := Color(1.0, 0.9, 0.3)
-	var secondary := Color(1.0, 0.98, 0.78)
-	var impact_color := primary
-	var aura_color := Color(0.36, 0.95, 1.0)
+func get_visual_profile(base_profile: Dictionary = {}) -> Dictionary:
+	var primary: Color = base_profile.get("primary_color", Color(1.0, 0.9, 0.3))
+	var secondary: Color = base_profile.get("secondary_color", Color(1.0, 0.98, 0.78))
+	var impact_color: Color = base_profile.get("impact_color", primary)
+	var aura_color: Color = base_profile.get("aura_color", Color(0.36, 0.95, 1.0))
 	var glow := 0.0
 	var trail_style := "standard"
 
@@ -138,6 +144,7 @@ func get_summary() -> Dictionary:
 	return {
 		"branches": branches,
 		"synergies": get_synergies(),
+		"base_spell": _base_spell.duplicate(true),
 	}
 
 

@@ -20,6 +20,11 @@ var player: Node2D
 var _contact_cooldown_left: float = 0.0
 var _is_dead: bool = false
 var _hit_tween: Tween
+var _burn_time_left: float = 0.0
+var _burn_tick_left: float = 0.0
+var _burn_damage: int = 0
+var _slow_time_left: float = 0.0
+var _slow_multiplier: float = 1.0
 
 
 func _ready() -> void:
@@ -38,7 +43,9 @@ func _physics_process(delta: float) -> void:
 		return
 
 	_contact_cooldown_left = maxf(_contact_cooldown_left - delta, 0.0)
+	_update_elemental_effects(delta)
 	_update_behavior(delta)
+	velocity *= _slow_multiplier
 	move_and_slide()
 	_try_damage_player()
 
@@ -54,6 +61,36 @@ func take_damage(amount: int) -> void:
 
 	if current_health == 0:
 		_die()
+
+
+func apply_elemental_effect(effect_id: String, effect_power: float, source_damage: int) -> void:
+	match effect_id:
+		"burn":
+			_burn_time_left = maxf(_burn_time_left, 1.8)
+			_burn_tick_left = minf(_burn_tick_left, 0.22)
+			_burn_damage = maxi(_burn_damage, maxi(1, int(round(float(source_damage) * effect_power))))
+		"slow":
+			_slow_time_left = maxf(_slow_time_left, 1.4)
+			_slow_multiplier = minf(_slow_multiplier, clampf(effect_power, 0.35, 0.92))
+	queue_redraw()
+
+
+func _update_elemental_effects(delta: float) -> void:
+	if _burn_time_left > 0.0:
+		_burn_time_left = maxf(_burn_time_left - delta, 0.0)
+		_burn_tick_left = maxf(_burn_tick_left - delta, 0.0)
+		if _burn_tick_left <= 0.0 and _burn_damage > 0:
+			_burn_tick_left = 0.6
+			take_damage(_burn_damage)
+			if _is_dead:
+				return
+
+	if _slow_time_left > 0.0:
+		_slow_time_left = maxf(_slow_time_left - delta, 0.0)
+		if _slow_time_left <= 0.0:
+			_slow_multiplier = 1.0
+
+	queue_redraw()
 
 
 func _update_behavior(_delta: float) -> void:
@@ -109,7 +146,16 @@ func _draw() -> void:
 		health_ratio = float(current_health) / float(max_health)
 
 	_draw_enemy_shape(health_ratio)
+	_draw_elemental_feedback()
 	_draw_health_arc(health_ratio)
+
+
+func _draw_elemental_feedback() -> void:
+	if _burn_time_left > 0.0:
+		var pulse := 1.08 + sin(float(Time.get_ticks_msec()) * 0.018) * 0.08
+		draw_arc(Vector2.ZERO, radius * pulse + 5.0, 0.0, TAU, 24, Color(1.0, 0.38, 0.1, 0.92), 2.0, true)
+	if _slow_time_left > 0.0:
+		draw_arc(Vector2.ZERO, radius + 8.0, 0.0, TAU, 24, Color(0.48, 0.88, 1.0, 0.88), 2.0, true)
 
 
 func _draw_enemy_shape(_health_ratio: float) -> void:

@@ -17,6 +17,8 @@ signal bounce_requested(world_position: Vector2)
 @export var outline_color: Color = Color(1.0, 1.0, 0.82)
 @export var trail_style: String = "standard"
 @export var glow_strength: float = 0.0
+@export var element_effect_id: String = "direct"
+@export var element_effect_power: float = 0.0
 
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
@@ -59,6 +61,8 @@ func _on_body_entered(body: Node) -> void:
 
 	if body.has_method("take_damage"):
 		body.call("take_damage", damage)
+	if body.has_method("apply_elemental_effect") and element_effect_id != "direct":
+		body.call("apply_elemental_effect", element_effect_id, element_effect_power, damage)
 
 	if explosion_radius > 0.0 and explosion_damage > 0:
 		explosion_requested.emit(global_position, explosion_radius, explosion_damage)
@@ -127,6 +131,19 @@ func _draw() -> void:
 		draw_circle(Vector2.ZERO, draw_radius * (1.45 + glow_strength * 0.3), Color(fill_color.r, fill_color.g, fill_color.b, 0.09 + glow_strength * 0.08))
 
 	match visual_shape:
+		"triangle":
+			var triangle_points := PackedVector2Array([
+				Vector2(draw_radius * 1.15, 0.0),
+				Vector2(-draw_radius * 0.8, -draw_radius * 0.86),
+				Vector2(-draw_radius * 0.8, draw_radius * 0.86),
+			])
+			draw_colored_polygon(triangle_points, fill_color)
+			draw_polyline(PackedVector2Array([triangle_points[0], triangle_points[1], triangle_points[2], triangle_points[0]]), outline_color, 1.5)
+		"square":
+			var side := draw_radius * 1.72
+			var square_rect := Rect2(Vector2(-side, -side) * 0.5, Vector2(side, side))
+			draw_rect(square_rect, fill_color, true)
+			draw_rect(square_rect, outline_color, false, 1.5)
 		"diamond":
 			var points := PackedVector2Array([
 				Vector2(0.0, -draw_radius),
