@@ -52,7 +52,7 @@ const PLAYABLE_CAST_TYPE_IDS := ["simple_projectile", "chain_lightning", "area",
 @export var chain_jump_range: float = 185.0
 # max_hits inclui o primeiro alvo: a cadeia base nunca atinge mais de tres inimigos.
 @export var chain_max_hits: int = 3
-@export var chain_max_hits_cap: int = 24
+@export var chain_max_hits_cap: int = 18
 @export var chain_max_jump_range: float = 560.0
 @export var chain_min_cast_interval: float = 0.2
 @export var chain_cast_interval_multiplier: float = 1.45
@@ -552,8 +552,8 @@ func _apply_starting_meta_upgrade(upgrade_id: String, message: String) -> void:
 	if upgrade.is_empty():
 		return
 
-	_add_spell_node_from_upgrade(upgrade)
-	_apply_upgrade(upgrade)
+	if not _try_apply_upgrade(upgrade):
+		return
 	if is_instance_valid(player):
 		_spawn_floating_text(message, player.global_position + Vector2(0.0, -46.0), Color(0.76, 0.96, 1.0), 0.7)
 
@@ -1428,7 +1428,8 @@ func _spawn_chain_lightning_effect(chain_points: Array[Vector2], visual_width: f
 		visual_profile.get("primary_color", Color(0.4, 0.9, 1.0)),
 		visual_profile.get("secondary_color", Color(0.9, 0.98, 1.0)),
 		visual_width,
-		chain_visual_duration
+		chain_visual_duration,
+		str(_spell_attributes.get("visual_shape", "circle"))
 	)
 
 
@@ -1647,18 +1648,26 @@ func _pick_priority_meta_upgrades(pool: Array[Dictionary], picked: Array[Diction
 func _prepare_upgrade_option(upgrade: Dictionary) -> void:
 	var upgrade_id := str(upgrade.get("id", ""))
 	upgrade["current_stack"] = int(upgrade_stacks.get(upgrade_id, 0))
-	var delivery_effects = upgrade.get("delivery_effects", {})
+	var max_stacks := _get_upgrade_max_stacks(upgrade)
+	upgrade["max_stack"] = max_stacks
+	var delivery_effects: Variant = upgrade.get("delivery_effects", {})
 	if delivery_effects is Dictionary and delivery_effects.has(str(selected_spell_summary.get("delivery_id", "simple_projectile"))):
-		var effect_data = delivery_effects[str(selected_spell_summary.get("delivery_id", "simple_projectile"))]
+		var effect_data: Variant = delivery_effects[str(selected_spell_summary.get("delivery_id", "simple_projectile"))]
 		if effect_data is Dictionary:
 			for key in ["name", "description", "impact_text"]:
 				if effect_data.has(key):
 					upgrade[key] = effect_data[key]
+	if max_stacks >= 0:
+		upgrade["description"] = str(upgrade.get("description", "")).replace("{max_stacks}", str(max_stacks))
 
 
 func _on_upgrade_selected(upgrade: Dictionary) -> void:
-	_add_spell_node_from_upgrade(upgrade)
-	_apply_upgrade(upgrade)
+	if not _try_apply_upgrade(upgrade):
+		_reward_open = false
+		hud.call("set_wave_message", "Upgrade limit reached")
+		get_tree().create_timer(wave_interval).timeout.connect(_start_next_wave)
+		return
+
 	run_stats["upgrades_chosen"] = int(run_stats.get("upgrades_chosen", 0)) + 1
 	_spawn_floating_text("NODE +1", arena_rect.position + Vector2(arena_rect.size.x * 0.5, arena_rect.size.y - 92.0), Color(0.72, 0.96, 1.0), 0.8)
 	_reward_open = false
@@ -1676,8 +1685,11 @@ func _on_upgrade_reroll_requested() -> void:
 
 
 func _apply_upgrade(upgrade: Dictionary) -> void:
+	if not _can_add_upgrade_stack(upgrade):
+		return
+
 	var upgrade_id := str(upgrade.get("id", ""))
-	var values = upgrade.get("values", {})
+	var values: Variant = upgrade.get("values", {})
 
 	match upgrade_id:
 		"arcane_damage":
@@ -1790,7 +1802,19 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 	_update_active_synergies()
 
 
+func _try_apply_upgrade(upgrade: Dictionary) -> bool:
+	if not _can_add_upgrade_stack(upgrade):
+		return false
+
+	_apply_upgrade(upgrade)
+	_add_spell_node_from_upgrade(upgrade)
+	return true
+
+
 func _add_spell_node_from_upgrade(upgrade: Dictionary) -> void:
+	if not _can_add_upgrade_stack(upgrade):
+		return
+
 	var upgrade_id := str(upgrade.get("id", ""))
 	upgrade_stacks[upgrade_id] = int(upgrade_stacks.get(upgrade_id, 0)) + 1
 	if spell_graph != null:
@@ -1888,12 +1912,25 @@ func _is_upgrade_compatible_with_current_delivery(upgrade: Dictionary) -> bool:
 	if compatible_deliveries is Array and not compatible_deliveries.is_empty() and not compatible_deliveries.has(delivery_id):
 		return false
 
-	var upgrade_id := str(upgrade.get("id", ""))
-	var stack_caps = upgrade.get("max_stacks_by_delivery", {})
-	if stack_caps is Dictionary and stack_caps.has(delivery_id):
-		return int(upgrade_stacks.get(upgrade_id, 0)) < int(stack_caps[delivery_id])
+	return _can_add_upgrade_stack(upgrade, delivery_id)
 
-	return true
+
+func _get_upgrade_max_stacks(upgrade: Dictionary, cast_type_id: String = "") -> int:
+	var delivery_id := cast_type_id if not cast_type_id.is_empty() else str(selected_spell_summary.get("delivery_id", "simple_projectile"))
+	var stack_caps: Variant = upgrade.get("max_stacks_by_delivery", {})
+	if stack_caps is Dictionary and stack_caps.has(delivery_id):
+		return maxi(int(stack_caps[delivery_id]), 0)
+
+	return -1
+
+
+func _can_add_upgrade_stack(upgrade: Dictionary, cast_type_id: String = "") -> bool:
+	var maximum_stacks := _get_upgrade_max_stacks(upgrade, cast_type_id)
+	if maximum_stacks < 0:
+		return true
+
+	var upgrade_id := str(upgrade.get("id", ""))
+	return int(upgrade_stacks.get(upgrade_id, 0)) < maximum_stacks
 
 
 func _on_projectile_explosion_requested(world_position: Vector2, radius: float, damage: int) -> void:

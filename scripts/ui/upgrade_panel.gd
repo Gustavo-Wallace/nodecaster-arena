@@ -120,7 +120,10 @@ func show_upgrades(upgrades: Array[Dictionary], rerolls_left: int = 0) -> void:
 		var branch := str(upgrade.get("branch", _get_branch_for_category(category)))
 		option_category_labels[index].text = "BRANCH: " + _format_branch(branch)
 		var current_stack := int(upgrade.get("current_stack", 0))
-		if current_stack > 0:
+		var max_stack := int(upgrade.get("max_stack", -1))
+		if max_stack >= 0:
+			option_category_labels[index].text += "   STACK %d/%d" % [current_stack, max_stack]
+		elif current_stack > 0:
 			option_category_labels[index].text += "   STACK %d" % current_stack
 		option_category_labels[index].add_theme_color_override("font_color", _get_branch_color(branch))
 		option_title_labels[index].text = str(upgrade.get("name", "Upgrade"))
