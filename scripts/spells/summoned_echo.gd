@@ -17,7 +17,7 @@ var empowered_interval: int = 0
 var empowered_damage_multiplier: float = 1.25
 
 var _time_left: float = 0.0
-var _attack_left: float = 0.16
+var _attack_left: float = 0.04
 var _attack_count: int = 0
 var _anchor_offset: Vector2 = Vector2.ZERO
 var _bolt_start := Vector2.ZERO
@@ -43,6 +43,7 @@ func setup(spawn_position: Vector2, player_node: Node2D, parameters: Dictionary)
 	empowered_damage_multiplier = float(parameters.get("empowered_damage_multiplier", empowered_damage_multiplier))
 	_rng.randomize()
 	_anchor_offset = Vector2.from_angle(_rng.randf_range(0.0, TAU)) * _rng.randf_range(30.0, 72.0)
+	_attack_left = 0.04
 	if is_node_ready():
 		_time_left = lifetime
 		queue_redraw()
@@ -83,7 +84,8 @@ func _process(delta: float) -> void:
 
 func _get_nearest_target() -> Node2D:
 	var nearest: Node2D = null
-	var nearest_distance := attack_range * attack_range
+	var acquisition_range := attack_range * 1.85
+	var nearest_distance := acquisition_range * acquisition_range
 	for enemy_node in get_tree().get_nodes_in_group("enemies"):
 		var enemy := enemy_node as Node2D
 		if enemy == null or not is_instance_valid(enemy):

@@ -47,7 +47,7 @@ static func get_upgrades(playable_delivery_ids: Array) -> Array[Dictionary]:
 				"area": {"name": "Field Reach", "description": "Lets you create Area Fields farther from the core.", "impact_text": "+56 Area range"},
 				"slash": {"name": "Extended Cut", "description": "Increases Slash targeting range.", "impact_text": "+48 Slash range"},
 				"persistent_waves": {"name": "Wave Speed", "description": "Increases Persistent Wave travel speed.", "impact_text": "+80 Wave speed"},
-				"summon": {"name": "Reflection Agility", "description": "Reflections move faster and attack from farther away.", "impact_text": "+36 range, +10% speed"},
+				"summon": {"name": "Reflection Agility", "description": "Reflections move faster and attack from farther away.", "impact_text": "+50 range, +15% speed"},
 			},
 		},
 		{

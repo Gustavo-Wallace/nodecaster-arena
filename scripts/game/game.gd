@@ -52,7 +52,7 @@ const PLAYABLE_CAST_TYPE_IDS := ["simple_projectile", "chain_lightning", "area",
 @export var projectile_size_multiplier: float = 1.0
 @export var projectile_explosion_radius: float = 0.0
 @export var projectile_explosion_damage_multiplier: float = 0.0
-@export var chain_range: float = 410.0
+@export var chain_range: float = 400.0
 @export var chain_jump_range: float = 185.0
 # max_hits inclui o primeiro alvo: a cadeia base nunca atinge mais de tres inimigos.
 @export var chain_max_hits: int = 3
@@ -60,22 +60,22 @@ const PLAYABLE_CAST_TYPE_IDS := ["simple_projectile", "chain_lightning", "area",
 @export var chain_max_jump_range: float = 560.0
 @export var chain_min_cast_interval: float = 0.2
 @export var chain_cast_interval_multiplier: float = 1.45
-@export var chain_damage_falloff: float = 0.65
-@export var chain_base_damage_multiplier: float = 0.68
+@export var chain_damage_falloff: float = 0.63
+@export var chain_base_damage_multiplier: float = 0.64
 @export var chain_visual_duration: float = 0.18
 @export var area_range: float = 420.0
-@export var area_radius: float = 78.0
-@export var area_duration: float = 2.5
-@export var area_tick_interval: float = 0.5
-@export var area_tick_damage_multiplier: float = 0.35
+@export var area_radius: float = 84.0
+@export var area_duration: float = 2.8
+@export var area_tick_interval: float = 0.48
+@export var area_tick_damage_multiplier: float = 0.38
 @export var area_cast_interval_multiplier: float = 1.6
 @export var area_min_cast_interval: float = 0.25
 @export var area_max_active: int = 12
 @export var area_max_duration: float = 12.0
 @export var area_min_tick_interval: float = 0.12
 @export var area_max_size_multiplier: float = 5.0
-@export var slash_range: float = 260.0
-@export var slash_damage_multiplier: float = 1.15
+@export var slash_range: float = 310.0
+@export var slash_damage_multiplier: float = 1.2
 @export var slash_cast_interval_multiplier: float = 1.45
 @export var slash_size_multiplier: float = 1.0
 @export var slash_width: float = 10.0
@@ -86,33 +86,33 @@ const PLAYABLE_CAST_TYPE_IDS := ["simple_projectile", "chain_lightning", "area",
 @export var slash_max_range: float = 1000.0
 @export var slash_max_size_multiplier: float = 5.0
 @export var wave_range: float = 500.0
-@export var wave_speed: float = 340.0
-@export var wave_lifetime: float = 1.4
-@export var wave_damage_multiplier: float = 0.75
+@export var wave_speed: float = 380.0
+@export var wave_lifetime: float = 1.55
+@export var wave_damage_multiplier: float = 0.82
 @export var wave_cast_interval_multiplier: float = 1.45
-@export var wave_width: float = 70.0
+@export var wave_width: float = 78.0
 @export var wave_length: float = 28.0
 @export var wave_hit_cooldown_per_enemy: float = 0.35
-@export var max_active_waves: int = 5
+@export var max_active_waves: int = 6
 @export var wave_min_cast_interval: float = 0.2
 @export var wave_max_width: float = 420.0
 @export var wave_max_lifetime: float = 8.0
 @export var wave_max_active: int = 12
 @export var wave_max_speed: float = 1100.0
 @export var wave_min_hit_cooldown_per_enemy: float = 0.08
-@export var summon_lifetime: float = 8.0
-@export var summon_attack_range: float = 280.0
-@export var summon_attack_interval: float = 0.72
-@export var summon_damage_multiplier: float = 0.48
-@export var summon_cast_interval_multiplier: float = 1.8
+@export var summon_lifetime: float = 10.0
+@export var summon_attack_range: float = 360.0
+@export var summon_attack_interval: float = 0.58
+@export var summon_damage_multiplier: float = 0.62
+@export var summon_cast_interval_multiplier: float = 1.55
 @export var summon_max_active: int = 3
 @export var summon_spawn_radius: float = 70.0
-@export var summon_move_speed: float = 140.0
-@export var summon_min_cast_interval: float = 0.3
-@export var summon_max_active_cap: int = 12
+@export var summon_move_speed: float = 170.0
+@export var summon_min_cast_interval: float = 0.26
+@export var summon_max_active_cap: int = 10
 @export var summon_max_lifetime: float = 24.0
-@export var summon_min_attack_interval: float = 0.18
-@export var summon_max_attack_range: float = 720.0
+@export var summon_min_attack_interval: float = 0.16
+@export var summon_max_attack_range: float = 760.0
 @export var summon_max_damage_multiplier: float = 2.0
 @export var base_enemies_per_wave: int = 1
 @export var enemies_added_per_wave: int = 2
@@ -427,6 +427,10 @@ func _create_run_stats() -> Dictionary:
 			"circle_chaser": 0,
 			"triangle_dasher": 0,
 			"square_tank": 0,
+			"hex_swarm": 0,
+			"diamond_splitter": 0,
+			"diamond_fragment": 0,
+			"star_shooter": 0,
 			"diamond_shooter": 0,
 			"star_bomber": 0,
 			"line_sniper": 0,
@@ -436,6 +440,8 @@ func _create_run_stats() -> Dictionary:
 		"miniboss_defeated": false,
 		"boss_defeated": false,
 		"upgrades_chosen": 0,
+		"reflections_summoned": 0,
+		"reflection_damage_dealt": 0,
 		"build_nodes": [],
 		"spell_graph": {},
 	}
@@ -666,7 +672,7 @@ func _get_enemy_count_for_wave(wave_number: int) -> int:
 		return int(_wave_enemy_counts[wave_number])
 
 	var progress: float = clampf(float(wave_number - 1) / float(maxi(max_run_wave - 1, 1)), 0.0, 1.0)
-	return clampi(int(round(3.0 + pow(progress, 1.45) * 102.0)), 3, 105)
+	return clampi(int(round(3.0 + pow(progress, 1.6) * 96.0)), 3, 99)
 
 
 func _build_enemy_scenes_for_wave(wave_number: int) -> Array[PackedScene]:
@@ -872,7 +878,7 @@ func _try_apply_elite_modifier(enemy: Node) -> void:
 	if _rng.randf() > elite_chance:
 		return
 
-	var modifiers: Array[String] = ["swift", "hardened", "volatile"]
+	var modifiers: Array[String] = ["swift", "swift", "hardened", "hardened", "volatile"]
 	enemy.call("apply_elite_modifier", modifiers[_rng.randi_range(0, modifiers.size() - 1)])
 
 
@@ -892,7 +898,7 @@ func _apply_wave_scaling_to_enemy(enemy: Node) -> void:
 	var base_speed = enemy.get("speed")
 
 	if base_health != null:
-		var scaled_health := int(round(float(base_health) * (1.0 + progress * 1.65)))
+		var scaled_health := int(round(float(base_health) * (1.0 + progress * 1.48)))
 		if current_wave_type == "mini_boss" and current_wave >= elite_miniboss_wave:
 			scaled_health = int(round(float(scaled_health) * 1.45))
 		elif current_wave_type == "boss":
@@ -900,7 +906,7 @@ func _apply_wave_scaling_to_enemy(enemy: Node) -> void:
 		scaled_health = maxi(1, int(round(float(scaled_health) * float(current_wave_modifier.get("health_multiplier", 1.0)))))
 		enemy.set("max_health", scaled_health)
 	if base_speed != null:
-		var scaled_speed := float(base_speed) * (1.0 + progress * 0.5)
+		var scaled_speed := float(base_speed) * (1.0 + progress * 0.42)
 		scaled_speed *= float(current_wave_modifier.get("speed_multiplier", 1.0))
 		enemy.set("speed", scaled_speed)
 
@@ -1394,6 +1400,7 @@ func _cast_summoning_spell() -> void:
 	add_child(echo)
 	echo.call("setup", spawn_position, player, parameters)
 	_active_summons.append(echo)
+	run_stats["reflections_summoned"] = int(run_stats.get("reflections_summoned", 0)) + 1
 	_spawn_impact_ring(spawn_position, Color(0.62, 0.9, 1.0, 0.5), 8.0, 28.0, 0.16, 1.4)
 
 
@@ -1402,6 +1409,7 @@ func _on_summoned_echo_hit(enemy: Node2D, damage: int, effect_id: String, effect
 		return
 	if enemy.has_method("take_damage"):
 		enemy.call("take_damage", damage)
+	run_stats["reflection_damage_dealt"] = int(run_stats.get("reflection_damage_dealt", 0)) + damage
 	if enemy.has_method("apply_elemental_effect") and effect_id != "direct":
 		enemy.call("apply_elemental_effect", effect_id, effect_power, damage, _element_effect_duration_multiplier)
 	var visual_profile: Dictionary = _get_spell_visual_profile()
@@ -1878,8 +1886,8 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 			elif _is_persistent_waves_delivery():
 				_wave_speed_bonus += float(values.get("projectile_speed_bonus", 80.0))
 			elif _is_summoning_delivery():
-				_summon_attack_range_bonus = minf(_summon_attack_range_bonus + 36.0, summon_max_attack_range - summon_attack_range)
-				_summon_move_speed_multiplier *= 1.1
+				_summon_attack_range_bonus = minf(_summon_attack_range_bonus + 50.0, summon_max_attack_range - summon_attack_range)
+				_summon_move_speed_multiplier *= 1.15
 		"initial_fragmentation":
 			if _is_chain_lightning_delivery():
 				_chain_bonus_hits = mini(_chain_bonus_hits + int(values.get("projectile_count_bonus", 1)), chain_max_hits_cap - chain_max_hits)

@@ -40,13 +40,15 @@ func show_result(victory: bool, stats: Dictionary, max_wave: int) -> void:
 	var run_time := float(stats.get("run_time_seconds", 0.0))
 	var total_enemies := int(stats.get("total_enemies_defeated", 0))
 	var upgrades_chosen := int(stats.get("upgrades_chosen", 0))
+	var reflections_summoned := int(stats.get("reflections_summoned", 0))
+	var reflection_damage := int(stats.get("reflection_damage_dealt", 0))
 	var character_name := str(stats.get("character_name", "Circle"))
 	var ecos_earned := int(stats.get("ecos_earned", 0))
 	var total_ecos := int(stats.get("total_ecos", 0))
 	var score_record := "Yes" if bool(stats.get("new_best_score", false)) else "No"
 	var wave_record := "Yes" if bool(stats.get("new_best_wave", false)) else "No"
 
-	stats_label.text = "Form: %s\nWave: %d/%d\nScore: %d\nTime: %s\n\nEchoes: +%d / Total %d\nNew Score Record: %s\nNew Wave Record: %s\n\nEnemies Defeated: %d\nMutations: %d" % [
+	stats_label.text = "Form: %s\nWave: %d/%d\nScore: %d\nTime: %s\n\nEchoes: +%d / Total %d\nNew Score Record: %s\nNew Wave Record: %s\n\nEnemies Defeated: %d\nMutations: %d\nReflections: %d summoned / %d damage" % [
 		character_name,
 		wave_reached,
 		max_wave,
@@ -58,6 +60,8 @@ func show_result(victory: bool, stats: Dictionary, max_wave: int) -> void:
 		wave_record,
 		total_enemies,
 		upgrades_chosen,
+		reflections_summoned,
+		reflection_damage,
 	]
 
 	kills_label.text = "%s\n%s" % [_format_kill_breakdown(stats), _format_modifier_breakdown(stats)]
@@ -101,10 +105,14 @@ func _format_kill_breakdown(stats: Dictionary) -> String:
 	var miniboss_text := "Defeated" if bool(stats.get("miniboss_defeated", false)) else "Not Defeated"
 	var boss_text := "Defeated" if bool(stats.get("boss_defeated", false)) else "Not Defeated"
 
-	return "Circles: %d  Triangles: %d  Squares: %d\nDiamonds: %d  Bombers: %d  Snipers: %d\nMini-Boss: %s  Boss: %s" % [
+	return "Circles: %d  Triangles: %d  Squares: %d  Hexes: %d\nSplitters: %d  Fragments: %d  Star Shooters: %d\nDiamonds: %d  Bombers: %d  Snipers: %d\nMini-Boss: %s  Boss: %s" % [
 		int(kills.get("circle_chaser", 0)),
 		int(kills.get("triangle_dasher", 0)),
 		int(kills.get("square_tank", 0)),
+		int(kills.get("hex_swarm", 0)),
+		int(kills.get("diamond_splitter", 0)),
+		int(kills.get("diamond_fragment", 0)),
+		int(kills.get("star_shooter", 0)),
 		int(kills.get("diamond_shooter", 0)),
 		int(kills.get("star_bomber", 0)),
 		int(kills.get("line_sniper", 0)),
