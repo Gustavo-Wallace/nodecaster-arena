@@ -12,6 +12,10 @@ signal damage_taken(enemy: Node, amount: int, world_position: Vector2)
 @export var contact_damage_cooldown: float = 0.65
 @export var radius: float = 16.0
 @export var contact_distance: float = 40.0
+@export var separation_radius: float = 52.0
+@export_range(0.0, 1.5, 0.05) var separation_strength: float = 0.62
+@export var separation_padding: float = 8.0
+@export_range(0.0, 1.5, 0.05) var player_push_strength: float = 0.9
 
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
@@ -29,6 +33,8 @@ var _slow_multiplier: float = 1.0
 
 func _ready() -> void:
 	add_to_group("enemies")
+	# Contact damage is distance-based, so bodies do not need to physically lock together.
+	collision_mask = 0
 	current_health = max_health
 	_update_collision_shape()
 	queue_redraw()
@@ -45,6 +51,8 @@ func _physics_process(delta: float) -> void:
 	_contact_cooldown_left = maxf(_contact_cooldown_left - delta, 0.0)
 	_update_elemental_effects(delta)
 	_update_behavior(delta)
+	velocity += _get_enemy_separation_velocity()
+	velocity += _get_player_separation_velocity()
 	velocity *= _slow_multiplier
 	move_and_slide()
 	_try_damage_player()
@@ -102,6 +110,43 @@ func _get_direction_to_player() -> Vector2:
 		return Vector2.ZERO
 
 	return global_position.direction_to(player.global_position)
+
+
+func _get_enemy_separation_velocity() -> Vector2:
+	var separation_velocity := Vector2.ZERO
+	var checked_count := 0
+	for other_node in get_tree().get_nodes_in_group("enemies"):
+		if other_node == self or checked_count >= 28:
+			continue
+		var other := other_node as Node2D
+		if other == null or not is_instance_valid(other):
+			continue
+		checked_count += 1
+		var other_radius: float = float(other.get("radius")) if other.get("radius") != null else radius
+		var desired_distance: float = maxf(separation_radius, radius + other_radius + separation_padding)
+		var distance: float = global_position.distance_to(other.global_position)
+		if distance >= desired_distance:
+			continue
+		var away := other.global_position.direction_to(global_position)
+		if away == Vector2.ZERO:
+			away = Vector2.RIGHT.rotated(float(get_instance_id() % 360))
+		var size_weight: float = clampf(other_radius / maxf(radius, 1.0), 0.55, 1.45)
+		separation_velocity += away * speed * separation_strength * size_weight * (1.0 - distance / desired_distance)
+	return separation_velocity
+
+
+func _get_player_separation_velocity() -> Vector2:
+	if not is_instance_valid(player):
+		return Vector2.ZERO
+	var player_radius: float = float(player.get("radius")) if player.get("radius") != null else 18.0
+	var desired_distance: float = radius + player_radius + separation_padding
+	var distance: float = global_position.distance_to(player.global_position)
+	if distance >= desired_distance:
+		return Vector2.ZERO
+	var away := player.global_position.direction_to(global_position)
+	if away == Vector2.ZERO:
+		away = Vector2.RIGHT.rotated(float(get_instance_id() % 360))
+	return away * speed * player_push_strength * (1.0 - distance / desired_distance)
 
 
 func _try_damage_player() -> void:

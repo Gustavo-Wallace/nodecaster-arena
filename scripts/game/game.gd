@@ -1297,7 +1297,7 @@ func _on_summoned_echo_hit(enemy: Node2D, damage: int, effect_id: String, effect
 	var impact_color: Color = visual_profile.get("impact_color", Color(0.96, 0.48, 1.0))
 	_spawn_impact_ring(enemy.global_position, Color(impact_color.r, impact_color.g, impact_color.b, 0.48), 3.0, 18.0, 0.14, 1.3)
 	if empowered:
-		_spawn_floating_text("ECHO", enemy.global_position + Vector2(0.0, -28.0), Color(0.72, 1.0, 0.94), 0.36)
+		_spawn_floating_text("REFLECTION", enemy.global_position + Vector2(0.0, -28.0), Color(0.72, 1.0, 0.94), 0.36)
 	if projectile_explosion_radius > 0.0 and projectile_explosion_damage_multiplier > 0.0:
 		_on_projectile_explosion_requested(enemy.global_position, projectile_explosion_radius * 0.42, maxi(1, int(round(float(damage) * projectile_explosion_damage_multiplier * 0.4))))
 

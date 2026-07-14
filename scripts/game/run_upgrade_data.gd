@@ -47,7 +47,7 @@ static func get_upgrades(playable_delivery_ids: Array) -> Array[Dictionary]:
 				"area": {"name": "Field Reach", "description": "Lets you create Area Fields farther from the core.", "impact_text": "+56 Area range"},
 				"slash": {"name": "Extended Cut", "description": "Increases Slash targeting range.", "impact_text": "+48 Slash range"},
 				"persistent_waves": {"name": "Wave Speed", "description": "Increases Persistent Wave travel speed.", "impact_text": "+80 Wave speed"},
-				"summon": {"name": "Echo Agility", "description": "Echoes move faster and attack from farther away.", "impact_text": "+36 range, +10% speed"},
+				"summon": {"name": "Reflection Agility", "description": "Reflections move faster and attack from farther away.", "impact_text": "+36 range, +10% speed"},
 			},
 		},
 		{
@@ -60,7 +60,7 @@ static func get_upgrades(playable_delivery_ids: Array) -> Array[Dictionary]:
 				"area": {"name": "Field Size", "description": "Increases Area Field size. 3 stack limit.", "impact_text": "+18% Area size"},
 				"slash": {"name": "Fragmented Cuts", "description": "Hits +1 nearby target per Slash. 3 stack limit.", "impact_text": "+1 target per cut"},
 				"persistent_waves": {"name": "Wider Wave", "description": "Increases Persistent Wave width. 3 stack limit.", "impact_text": "+18% Wave width"},
-				"summon": {"name": "Extra Echo", "description": "Raises the active echo limit by 1. 4 stack limit.", "impact_text": "+1 active Echo"},
+				"summon": {"name": "Extra Reflection", "description": "Raises the active Reflection limit by 1. 4 stack limit.", "impact_text": "+1 active Reflection"},
 			},
 		},
 		{
@@ -101,7 +101,7 @@ static func get_upgrades(playable_delivery_ids: Array) -> Array[Dictionary]:
 				"area": {"name": "Dense Field", "description": "+40% damage and a larger Area Field with slower cadence.", "impact_text": "+40% damage, +20% size"},
 				"slash": {"name": "Heavy Cut", "description": "+40% damage and a larger cut with slower cadence.", "impact_text": "+40% damage, +20% size"},
 				"persistent_waves": {"name": "Heavy Wave", "description": "+40% damage, wider Persistent Waves, slower travel and cadence.", "impact_text": "+40% damage, +20% width"},
-				"summon": {"name": "Heavy Echo", "description": "Echoes hit harder but attack more slowly.", "impact_text": "+40% Echo damage"},
+				"summon": {"name": "Heavy Reflection", "description": "Reflections hit harder but attack more slowly.", "impact_text": "+40% Reflection damage"},
 			},
 		},
 		{
@@ -115,7 +115,7 @@ static func get_upgrades(playable_delivery_ids: Array) -> Array[Dictionary]:
 				"area": {"name": "Resonant Field", "description": "Every 4 fields, the next Area Field lasts longer.", "impact_text": "Echo: longer Field"},
 				"slash": {"name": "Cutting Echo", "description": "Every 4 Slashes, performs an extra strong cut on another nearby target.", "impact_text": "Echo: extra strong cut"},
 				"persistent_waves": {"name": "Wave Echo", "description": "Every 4 casts, launches a smaller extra wave at a slight angle.", "impact_text": "Echo: extra Wave"},
-				"summon": {"name": "Echo Rhythm", "description": "Every 4 echo attacks is strengthened.", "impact_text": "Echo: empowered attack"},
+				"summon": {"name": "Reflection Rhythm", "description": "Every 4 Reflection attacks is strengthened.", "impact_text": "Reflection: empowered attack"},
 			},
 		},
 		{

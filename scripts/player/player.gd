@@ -27,6 +27,8 @@ var _damage_invulnerability_left: float = 0.0
 
 func _ready() -> void:
 	add_to_group("player")
+	# Enemy contact is handled by their distance checks, avoiding body-to-body sticking.
+	collision_mask = 0
 	current_health = max_health
 	_update_collision_radius()
 	health_changed.emit(current_health, max_health)
