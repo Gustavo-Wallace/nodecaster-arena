@@ -2,6 +2,7 @@ extends CharacterBody2D
 
 signal died(enemy: Node)
 signal damage_taken(enemy: Node, amount: int, world_position: Vector2)
+signal elite_exploded(enemy: Node, world_position: Vector2, explosion_radius: float, damage: int)
 
 @export var speed: float = 140.0
 @export var max_health: int = 40
@@ -29,6 +30,9 @@ var _burn_tick_left: float = 0.0
 var _burn_damage: int = 0
 var _slow_time_left: float = 0.0
 var _slow_multiplier: float = 1.0
+var elite_modifier_id: String = ""
+var _elite_volatile_radius: float = 0.0
+var _elite_volatile_damage: int = 0
 
 
 func _ready() -> void:
@@ -42,6 +46,30 @@ func _ready() -> void:
 
 func setup(target_player: Node2D) -> void:
 	player = target_player
+
+
+func apply_elite_modifier(modifier_id: String) -> void:
+	if not elite_modifier_id.is_empty() or modifier_id.is_empty():
+		return
+
+	elite_modifier_id = modifier_id
+	match elite_modifier_id:
+		"swift":
+			speed *= 1.34
+			score_value = int(round(float(score_value) * 1.45))
+		"hardened":
+			max_health = maxi(1, int(round(float(max_health) * 1.72)))
+			current_health = max_health
+			contact_damage = maxi(1, int(round(float(contact_damage) * 1.18)))
+			radius *= 1.18
+			contact_distance *= 1.1
+			score_value = int(round(float(score_value) * 1.8))
+			_update_collision_shape()
+		"volatile":
+			_elite_volatile_radius = radius * 3.3
+			_elite_volatile_damage = maxi(4, int(round(float(contact_damage) * 1.45)))
+			score_value = int(round(float(score_value) * 1.65))
+	queue_redraw()
 
 
 func _physics_process(delta: float) -> void:
@@ -163,6 +191,8 @@ func _try_damage_player() -> void:
 
 func _die() -> void:
 	_is_dead = true
+	if elite_modifier_id == "volatile":
+		elite_exploded.emit(self, global_position, _elite_volatile_radius, _elite_volatile_damage)
 	died.emit(self)
 	queue_free()
 
@@ -192,6 +222,7 @@ func _draw() -> void:
 
 	_draw_enemy_shape(health_ratio)
 	_draw_elemental_feedback()
+	_draw_elite_feedback()
 	_draw_health_arc(health_ratio)
 
 
@@ -201,6 +232,21 @@ func _draw_elemental_feedback() -> void:
 		draw_arc(Vector2.ZERO, radius * pulse + 5.0, 0.0, TAU, 24, Color(1.0, 0.38, 0.1, 0.92), 2.0, true)
 	if _slow_time_left > 0.0:
 		draw_arc(Vector2.ZERO, radius + 8.0, 0.0, TAU, 24, Color(0.48, 0.88, 1.0, 0.88), 2.0, true)
+
+
+func _draw_elite_feedback() -> void:
+	match elite_modifier_id:
+		"swift":
+			var swift_pulse := 0.72 + sin(float(Time.get_ticks_msec()) * 0.022) * 0.16
+			draw_arc(Vector2.ZERO, radius + 5.0, 0.0, TAU, 28, Color(0.52, 0.98, 1.0, swift_pulse), 1.8, true)
+			draw_line(Vector2(-radius * 1.5, 0.0), Vector2(-radius * 0.48, 0.0), Color(0.52, 0.98, 1.0, 0.46), 2.0)
+		"hardened":
+			draw_arc(Vector2.ZERO, radius + 5.5, 0.0, TAU, 32, Color(1.0, 0.84, 0.4, 0.92), 3.2, true)
+			draw_arc(Vector2.ZERO, radius + 10.0, 0.0, TAU, 32, Color(0.2, 0.12, 0.05, 0.72), 2.0, true)
+		"volatile":
+			var volatile_pulse := 1.0 + sin(float(Time.get_ticks_msec()) * 0.028) * 0.12
+			draw_arc(Vector2.ZERO, radius * volatile_pulse + 7.0, 0.0, TAU, 30, Color(1.0, 0.3, 0.14, 0.96), 2.4, true)
+			draw_circle(Vector2.ZERO, radius * 0.42, Color(1.0, 0.44, 0.16, 0.24))
 
 
 func _draw_enemy_shape(_health_ratio: float) -> void:

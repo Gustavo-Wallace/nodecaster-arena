@@ -84,6 +84,12 @@ func _draw_fragment(local_shape: String, size: float, color: Color) -> void:
 				Vector2(-size * 0.95, size * 0.72),
 			])
 			draw_colored_polygon(points, color)
+		"hexagon":
+			var points := PackedVector2Array()
+			for index in range(6):
+				var angle := PI / 6.0 + TAU * float(index) / 6.0
+				points.append(Vector2.from_angle(angle) * size)
+			draw_colored_polygon(points, color)
 		"square":
 			draw_rect(Rect2(Vector2(-size, -size), Vector2(size * 2.0, size * 2.0)), color, true)
 		"diamond":
@@ -120,6 +126,8 @@ func _choose_fragment_shape() -> String:
 	match shape_type:
 		"triangle":
 			return "triangle"
+		"hexagon":
+			return "hexagon"
 		"square":
 			return "square"
 		"diamond":

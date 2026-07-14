@@ -1,0 +1,23 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/diamond_fragment.gd" id="1_fragment"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_fragment"]
+radius = 9.0
+
+[node name="DiamondFragment" type="CharacterBody2D"]
+collision_layer = 2
+collision_mask = 1
+script = ExtResource("1_fragment")
+speed = 174.0
+max_health = 14
+enemy_id = "diamond_fragment"
+enemy_display_name = "Diamond Fragment"
+score_value = 4
+contact_damage = 5
+radius = 9.0
+contact_distance = 30.0
+separation_radius = 34.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_fragment")

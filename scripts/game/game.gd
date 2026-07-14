@@ -7,6 +7,10 @@ const SQUARE_TANK_SCENE := preload("res://scenes/enemies/square_tank.tscn")
 const DIAMOND_SHOOTER_SCENE := preload("res://scenes/enemies/diamond_shooter.tscn")
 const STAR_BOMBER_SCENE := preload("res://scenes/enemies/star_bomber.tscn")
 const LINE_SNIPER_SCENE := preload("res://scenes/enemies/line_sniper.tscn")
+const HEX_SWARM_SCENE := preload("res://scenes/enemies/hex_swarm.tscn")
+const DIAMOND_SPLITTER_SCENE := preload("res://scenes/enemies/diamond_splitter.tscn")
+const DIAMOND_FRAGMENT_SCENE := preload("res://scenes/enemies/diamond_fragment.tscn")
+const STAR_SHOOTER_SCENE := preload("res://scenes/enemies/star_shooter.tscn")
 const BASIC_PROJECTILE_SCENE := preload("res://scenes/projectiles/basic_projectile.tscn")
 const GAME_HUD_SCENE := preload("res://scenes/ui/game_hud.tscn")
 const PAUSE_MENU_SCENE := preload("res://scenes/ui/pause_menu.tscn")
@@ -122,6 +126,7 @@ const PLAYABLE_CAST_TYPE_IDS := ["simple_projectile", "chain_lightning", "area",
 @export var miniboss_wave: int = 10
 @export var elite_miniboss_wave: int = 20
 @export var boss_wave: int = 30
+@export var max_split_fragments_per_wave: int = 36
 
 var player: Node2D
 var hud: Control
@@ -157,6 +162,7 @@ var _camera_shake_strength: float = 0.0
 var _rng := RandomNumberGenerator.new()
 var _available_upgrades: Array[Dictionary] = []
 var _wave_enemy_counts: Dictionary = {}
+var _split_fragments_spawned: int = 0
 var _shot_sequence: int = 0
 var _cutting_echo_interval: int = 0
 var _cutting_echo_damage_multiplier: float = 1.5
@@ -374,6 +380,7 @@ func _start_wave(wave_number: int) -> void:
 	_wave_in_progress = true
 	_reward_open = false
 	enemies.clear()
+	_split_fragments_spawned = 0
 	_activate_wave_meta_effects()
 
 	if is_instance_valid(_auto_fire_timer):
@@ -651,8 +658,7 @@ func _spawn_wave_enemies() -> void:
 				_spawn_enemy(_choose_enemy_scene_from_pool(_get_enemy_pool_for_wave(current_wave, 14)), _get_spawn_position_near_arena_edge())
 		_:
 			var enemy_scenes := _build_enemy_scenes_for_wave(current_wave)
-			for enemy_scene in enemy_scenes:
-				_spawn_enemy(enemy_scene, _get_spawn_position_near_arena_edge())
+			_spawn_enemy_scene_sequence(enemy_scenes)
 
 
 func _get_enemy_count_for_wave(wave_number: int) -> int:
@@ -669,10 +675,16 @@ func _build_enemy_scenes_for_wave(wave_number: int) -> Array[PackedScene]:
 	var enemy_pool := _get_enemy_pool_for_wave(wave_number, int(spawn_config.get("special_weight_bonus", 0)))
 	var enemy_scenes: Array[PackedScene] = []
 
-	for _index in range(enemy_count):
-		enemy_scenes.append(_choose_enemy_scene_from_pool(enemy_pool))
+	while enemy_scenes.size() < enemy_count:
+		var enemy_scene := _choose_enemy_scene_from_pool(enemy_pool)
+		enemy_scenes.append(enemy_scene)
+		if enemy_scene == HEX_SWARM_SCENE:
+			var extra_swarm_members := _rng.randi_range(1, 2)
+			for _member in range(extra_swarm_members):
+				if enemy_scenes.size() >= enemy_count:
+					break
+				enemy_scenes.append(HEX_SWARM_SCENE)
 
-	_shuffle_enemy_scenes(enemy_scenes)
 	return enemy_scenes
 
 
@@ -698,6 +710,7 @@ func _get_spawn_config_for_wave(wave_number: int) -> Dictionary:
 
 
 func _get_enemy_pool_for_wave(wave_number: int, special_weight_bonus: int = 0) -> Array[Dictionary]:
+	var bonus := maxi(special_weight_bonus, 0)
 	var pool: Array[Dictionary] = [
 		{"scene": CIRCLE_CHASER_SCENE, "weight": 100, "special": false},
 	]
@@ -707,23 +720,68 @@ func _get_enemy_pool_for_wave(wave_number: int, special_weight_bonus: int = 0) -
 			{"scene": CIRCLE_CHASER_SCENE, "weight": 74, "special": false},
 			{"scene": TRIANGLE_DASHER_SCENE, "weight": 26, "special": false},
 		]
-	if wave_number >= 3:
-		pool = [
-			{"scene": CIRCLE_CHASER_SCENE, "weight": 52, "special": false},
-			{"scene": TRIANGLE_DASHER_SCENE, "weight": 25, "special": false},
-			{"scene": SQUARE_TANK_SCENE, "weight": 23, "special": false},
-		]
 	if wave_number >= 4:
 		pool = [
-			{"scene": CIRCLE_CHASER_SCENE, "weight": 44, "special": false},
-			{"scene": TRIANGLE_DASHER_SCENE, "weight": 22, "special": false},
+			{"scene": CIRCLE_CHASER_SCENE, "weight": 55, "special": false},
+			{"scene": TRIANGLE_DASHER_SCENE, "weight": 25, "special": false},
 			{"scene": SQUARE_TANK_SCENE, "weight": 20, "special": false},
-			{"scene": DIAMOND_SHOOTER_SCENE, "weight": 14 + special_weight_bonus, "special": true},
 		]
 	if wave_number >= 6:
-		pool.append({"scene": STAR_BOMBER_SCENE, "weight": 12 + special_weight_bonus, "special": true})
+		pool = [
+			{"scene": CIRCLE_CHASER_SCENE, "weight": 45, "special": false},
+			{"scene": TRIANGLE_DASHER_SCENE, "weight": 25, "special": false},
+			{"scene": SQUARE_TANK_SCENE, "weight": 15, "special": false},
+			{"scene": HEX_SWARM_SCENE, "weight": 15 + bonus, "special": true},
+		]
 	if wave_number >= 8:
-		pool.append({"scene": LINE_SNIPER_SCENE, "weight": 9 + special_weight_bonus, "special": true})
+		pool = [
+			{"scene": CIRCLE_CHASER_SCENE, "weight": 37, "special": false},
+			{"scene": TRIANGLE_DASHER_SCENE, "weight": 22, "special": false},
+			{"scene": SQUARE_TANK_SCENE, "weight": 15, "special": false},
+			{"scene": HEX_SWARM_SCENE, "weight": 18 + bonus, "special": true},
+			{"scene": DIAMOND_SHOOTER_SCENE, "weight": 8 + bonus, "special": true},
+		]
+	if wave_number >= 10:
+		pool = [
+			{"scene": CIRCLE_CHASER_SCENE, "weight": 31, "special": false},
+			{"scene": TRIANGLE_DASHER_SCENE, "weight": 20, "special": false},
+			{"scene": SQUARE_TANK_SCENE, "weight": 15, "special": false},
+			{"scene": HEX_SWARM_SCENE, "weight": 19 + bonus, "special": true},
+			{"scene": DIAMOND_SPLITTER_SCENE, "weight": 10 + bonus, "special": true},
+			{"scene": DIAMOND_SHOOTER_SCENE, "weight": 5 + bonus, "special": true},
+		]
+	if wave_number >= 12:
+		pool = [
+			{"scene": CIRCLE_CHASER_SCENE, "weight": 26, "special": false},
+			{"scene": TRIANGLE_DASHER_SCENE, "weight": 18, "special": false},
+			{"scene": SQUARE_TANK_SCENE, "weight": 14, "special": false},
+			{"scene": HEX_SWARM_SCENE, "weight": 20 + bonus, "special": true},
+			{"scene": DIAMOND_SPLITTER_SCENE, "weight": 12 + bonus, "special": true},
+			{"scene": STAR_SHOOTER_SCENE, "weight": 7 + bonus, "special": true},
+			{"scene": DIAMOND_SHOOTER_SCENE, "weight": 4 + bonus, "special": true},
+		]
+	if wave_number >= 16:
+		pool = [
+			{"scene": CIRCLE_CHASER_SCENE, "weight": 18, "special": false},
+			{"scene": TRIANGLE_DASHER_SCENE, "weight": 16, "special": false},
+			{"scene": SQUARE_TANK_SCENE, "weight": 14, "special": false},
+			{"scene": HEX_SWARM_SCENE, "weight": 20 + bonus, "special": true},
+			{"scene": DIAMOND_SPLITTER_SCENE, "weight": 15 + bonus, "special": true},
+			{"scene": STAR_SHOOTER_SCENE, "weight": 7 + bonus, "special": true},
+			{"scene": STAR_BOMBER_SCENE, "weight": 5 + bonus, "special": true},
+			{"scene": LINE_SNIPER_SCENE, "weight": 3 + bonus, "special": true},
+		]
+	if wave_number >= 26:
+		pool = [
+			{"scene": CIRCLE_CHASER_SCENE, "weight": 14, "special": false},
+			{"scene": TRIANGLE_DASHER_SCENE, "weight": 14, "special": false},
+			{"scene": SQUARE_TANK_SCENE, "weight": 14, "special": false},
+			{"scene": HEX_SWARM_SCENE, "weight": 21 + bonus, "special": true},
+			{"scene": DIAMOND_SPLITTER_SCENE, "weight": 16 + bonus, "special": true},
+			{"scene": STAR_SHOOTER_SCENE, "weight": 6 + bonus, "special": true},
+			{"scene": STAR_BOMBER_SCENE, "weight": 6 + bonus, "special": true},
+			{"scene": LINE_SNIPER_SCENE, "weight": 5 + bonus, "special": true},
+		]
 
 	return pool
 
@@ -756,7 +814,31 @@ func _shuffle_enemy_scenes(enemy_scenes: Array[PackedScene]) -> void:
 		enemy_scenes[swap_index] = stored_scene
 
 
-func _spawn_enemy(enemy_scene: PackedScene, spawn_position: Vector2) -> void:
+func _spawn_enemy_scene_sequence(enemy_scenes: Array[PackedScene]) -> void:
+	var has_hex_group: bool = false
+	var hex_group_anchor := Vector2.ZERO
+	for enemy_scene in enemy_scenes:
+		var spawn_position := _get_spawn_position_near_arena_edge()
+		if enemy_scene == HEX_SWARM_SCENE:
+			if not has_hex_group:
+				has_hex_group = true
+				hex_group_anchor = spawn_position
+			else:
+				spawn_position = _get_hex_swarm_group_position(hex_group_anchor)
+		else:
+			has_hex_group = false
+		_spawn_enemy(enemy_scene, spawn_position)
+
+
+func _get_hex_swarm_group_position(anchor: Vector2) -> Vector2:
+	var offset := Vector2.from_angle(_rng.randf_range(0.0, TAU)) * _rng.randf_range(26.0, 72.0)
+	var position := anchor + offset
+	position.x = clampf(position.x, arena_rect.position.x + spawn_edge_padding, arena_rect.end.x - spawn_edge_padding)
+	position.y = clampf(position.y, arena_rect.position.y + spawn_edge_padding, arena_rect.end.y - spawn_edge_padding)
+	return position
+
+
+func _spawn_enemy(enemy_scene: PackedScene, spawn_position: Vector2, allow_elite: bool = true) -> void:
 	var enemy := enemy_scene.instantiate() as Node2D
 	_apply_wave_scaling_to_enemy(enemy)
 	add_child(enemy)
@@ -770,7 +852,38 @@ func _spawn_enemy(enemy_scene: PackedScene, spawn_position: Vector2) -> void:
 		enemy.connect("exploded", Callable(self, "_on_star_bomber_exploded"))
 	if enemy.has_signal("laser_fired"):
 		enemy.connect("laser_fired", Callable(self, "_on_line_sniper_laser_fired"))
+	if enemy.has_signal("split_requested"):
+		enemy.connect("split_requested", Callable(self, "_on_diamond_split_requested"))
+	if enemy.has_signal("elite_exploded"):
+		enemy.connect("elite_exploded", Callable(self, "_on_elite_volatile_exploded"))
+	if allow_elite:
+		_try_apply_elite_modifier(enemy)
 	enemies.append(enemy)
+
+
+func _try_apply_elite_modifier(enemy: Node) -> void:
+	if current_wave_type != "normal" or current_wave <= 5 or not enemy.has_method("apply_elite_modifier"):
+		return
+
+	var elite_chance := _get_elite_chance_for_wave(current_wave)
+	var enemy_id := _get_enemy_id(enemy)
+	if enemy_id in ["star_shooter", "diamond_shooter", "line_sniper"]:
+		elite_chance *= 0.5
+	if _rng.randf() > elite_chance:
+		return
+
+	var modifiers: Array[String] = ["swift", "hardened", "volatile"]
+	enemy.call("apply_elite_modifier", modifiers[_rng.randi_range(0, modifiers.size() - 1)])
+
+
+func _get_elite_chance_for_wave(wave_number: int) -> float:
+	if wave_number <= 5:
+		return 0.0
+	if wave_number <= 10:
+		return 0.03 + 0.004 * float(wave_number - 6)
+	if wave_number <= 20:
+		return 0.08 + 0.007 * float(wave_number - 11)
+	return 0.15 + 0.01 * float(wave_number - 21)
 
 
 func _apply_wave_scaling_to_enemy(enemy: Node) -> void:
@@ -1503,6 +1616,39 @@ func _on_enemy_died(enemy: Node) -> void:
 
 	if _wave_in_progress and enemies.is_empty() and not _is_restarting and not _run_finished:
 		_complete_wave()
+
+
+func _on_diamond_split_requested(_enemy: Node, world_position: Vector2, fragment_count: int) -> void:
+	if _run_finished or not _wave_in_progress:
+		return
+
+	var remaining_capacity := maxi(max_split_fragments_per_wave - _split_fragments_spawned, 0)
+	var spawn_count := mini(fragment_count, remaining_capacity)
+	if spawn_count <= 0:
+		return
+
+	for index in range(spawn_count):
+		var angle := TAU * float(index) / float(spawn_count) + _rng.randf_range(-0.22, 0.22)
+		var spawn_position := world_position + Vector2.from_angle(angle) * _rng.randf_range(24.0, 42.0)
+		spawn_position.x = clampf(spawn_position.x, arena_rect.position.x + spawn_edge_padding, arena_rect.end.x - spawn_edge_padding)
+		spawn_position.y = clampf(spawn_position.y, arena_rect.position.y + spawn_edge_padding, arena_rect.end.y - spawn_edge_padding)
+		_spawn_enemy(DIAMOND_FRAGMENT_SCENE, spawn_position, false)
+		_split_fragments_spawned += 1
+
+	_spawn_burst(world_position, Color(1.0, 0.5, 0.8), 10 + spawn_count * 2)
+
+
+func _on_elite_volatile_exploded(_enemy: Node, world_position: Vector2, explosion_radius: float, damage: int) -> void:
+	_spawn_burst(world_position, Color(1.0, 0.34, 0.14), 16)
+	_spawn_impact_ring(world_position, Color(1.0, 0.4, 0.16, 0.86), 10.0, explosion_radius, 0.28, 3.0)
+	_start_camera_shake(0.12, 3.5)
+
+	if not is_instance_valid(player) or player.global_position.distance_to(world_position) > explosion_radius:
+		return
+
+	if player.has_method("take_damage"):
+		player.call("take_damage", damage)
+		_spawn_floating_text("-%d" % damage, player.global_position + Vector2(0.0, -34.0), Color(1.0, 0.36, 0.2), 0.62)
 
 
 func _get_score_value_for_enemy(enemy: Node) -> int:
@@ -2319,6 +2465,10 @@ func _get_enemy_shatter_profile(enemy: Node) -> Dictionary:
 		"circle_chaser": {"shape_type": "circle", "color": fallback_color, "intensity": 0.85, "fragments": 7, "rings": 1},
 		"triangle_dasher": {"shape_type": "triangle", "color": fallback_color, "intensity": 1.05, "fragments": 8, "rings": 1},
 		"square_tank": {"shape_type": "square", "color": fallback_color, "intensity": 1.18, "fragments": 12, "rings": 1, "shake_strength": 3.5, "shake_duration": 0.12},
+		"hex_swarm": {"shape_type": "hexagon", "color": fallback_color, "intensity": 0.7, "fragments": 6, "rings": 1},
+		"diamond_splitter": {"shape_type": "diamond", "color": fallback_color, "intensity": 1.2, "fragments": 13, "rings": 2, "shake_strength": 3.0, "shake_duration": 0.12},
+		"diamond_fragment": {"shape_type": "diamond", "color": fallback_color, "intensity": 0.58, "fragments": 5, "rings": 0},
+		"star_shooter": {"shape_type": "star", "color": fallback_color, "intensity": 1.08, "fragments": 11, "rings": 1, "shake_strength": 2.0, "shake_duration": 0.1},
 		"diamond_shooter": {"shape_type": "diamond", "color": fallback_color, "intensity": 1.12, "fragments": 10, "rings": 1, "shake_strength": 2.5, "shake_duration": 0.1},
 		"star_bomber": {"shape_type": "star", "color": fallback_color, "intensity": 1.35, "fragments": 14, "rings": 2, "shake_strength": 5.0, "shake_duration": 0.16},
 		"line_sniper": {"shape_type": "line", "color": fallback_color, "intensity": 1.05, "fragments": 10, "rings": 1, "shake_strength": 2.0, "shake_duration": 0.1},
@@ -2341,6 +2491,14 @@ func _get_enemy_color(enemy: Node) -> Color:
 			return Color(0.92, 0.42, 1.0)
 		"square_tank":
 			return Color(0.36, 0.88, 0.54)
+		"hex_swarm":
+			return Color(0.24, 0.94, 0.78)
+		"diamond_splitter":
+			return Color(0.94, 0.36, 0.72)
+		"diamond_fragment":
+			return Color(1.0, 0.58, 0.84)
+		"star_shooter":
+			return Color(1.0, 0.8, 0.28)
 		"diamond_shooter":
 			return Color(0.38, 0.82, 1.0)
 		"star_bomber":

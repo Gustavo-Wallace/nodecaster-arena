@@ -1,0 +1,23 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/hex_swarm.gd" id="1_hex"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_hex"]
+radius = 11.0
+
+[node name="HexSwarm" type="CharacterBody2D"]
+collision_layer = 2
+collision_mask = 1
+script = ExtResource("1_hex")
+speed = 184.0
+max_health = 24
+enemy_id = "hex_swarm"
+enemy_display_name = "Hex Swarm"
+score_value = 8
+contact_damage = 7
+radius = 11.0
+contact_distance = 33.0
+separation_radius = 38.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_hex")

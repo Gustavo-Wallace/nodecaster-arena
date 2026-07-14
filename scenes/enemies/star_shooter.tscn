@@ -1,0 +1,22 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/star_shooter.gd" id="1_star_shooter"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_star_shooter"]
+radius = 18.0
+
+[node name="StarShooter" type="CharacterBody2D"]
+collision_layer = 2
+collision_mask = 1
+script = ExtResource("1_star_shooter")
+speed = 108.0
+max_health = 48
+enemy_id = "star_shooter"
+enemy_display_name = "Star Shooter"
+score_value = 22
+contact_damage = 8
+radius = 18.0
+contact_distance = 38.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_star_shooter")
