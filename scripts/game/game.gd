@@ -33,14 +33,15 @@ const PLAYABLE_CAST_TYPE_IDS := ["simple_projectile", "chain_lightning", "area",
 @export var arena_position: Vector2 = Vector2(96.0, 72.0)
 @export var arena_size: Vector2 = Vector2(1088.0, 576.0)
 @export var arena_padding: Vector2 = Vector2(22.0, 18.0)
+@export var arena_world_scale: float = 1.5
 @export var auto_fire_interval: float = 0.45
-@export var min_auto_fire_interval: float = 0.16
+@export var min_auto_fire_interval: float = 0.11
 @export var projectile_damage: int = 12
 @export var projectile_speed: float = 520.0
 @export var projectile_count: int = 1
-@export var max_projectile_count: int = 5
-@export var max_projectile_pierce: int = 6
-@export var max_projectile_bounces: int = 5
+@export var max_projectile_count: int = 18
+@export var max_projectile_pierce: int = 20
+@export var max_projectile_bounces: int = 16
 @export var projectile_spread_degrees: float = 12.0
 @export var projectile_pierce: int = 0
 @export var projectile_bounce: int = 0
@@ -51,9 +52,9 @@ const PLAYABLE_CAST_TYPE_IDS := ["simple_projectile", "chain_lightning", "area",
 @export var chain_jump_range: float = 185.0
 # max_hits inclui o primeiro alvo: a cadeia base nunca atinge mais de tres inimigos.
 @export var chain_max_hits: int = 3
-@export var chain_max_hits_cap: int = 8
-@export var chain_max_jump_range: float = 320.0
-@export var chain_min_cast_interval: float = 0.55
+@export var chain_max_hits_cap: int = 24
+@export var chain_max_jump_range: float = 560.0
+@export var chain_min_cast_interval: float = 0.2
 @export var chain_cast_interval_multiplier: float = 1.45
 @export var chain_damage_falloff: float = 0.65
 @export var chain_base_damage_multiplier: float = 0.68
@@ -64,11 +65,11 @@ const PLAYABLE_CAST_TYPE_IDS := ["simple_projectile", "chain_lightning", "area",
 @export var area_tick_interval: float = 0.5
 @export var area_tick_damage_multiplier: float = 0.35
 @export var area_cast_interval_multiplier: float = 1.6
-@export var area_min_cast_interval: float = 0.8
-@export var area_max_active: int = 4
-@export var area_max_duration: float = 5.0
-@export var area_min_tick_interval: float = 0.25
-@export var area_max_size_multiplier: float = 2.5
+@export var area_min_cast_interval: float = 0.25
+@export var area_max_active: int = 12
+@export var area_max_duration: float = 12.0
+@export var area_min_tick_interval: float = 0.12
+@export var area_max_size_multiplier: float = 5.0
 @export var slash_range: float = 260.0
 @export var slash_damage_multiplier: float = 1.15
 @export var slash_cast_interval_multiplier: float = 1.45
@@ -76,10 +77,10 @@ const PLAYABLE_CAST_TYPE_IDS := ["simple_projectile", "chain_lightning", "area",
 @export var slash_width: float = 10.0
 @export var slash_targets: int = 1
 @export var slash_visual_duration: float = 0.16
-@export var slash_min_cast_interval: float = 0.45
-@export var slash_max_targets: int = 6
-@export var slash_max_range: float = 520.0
-@export var slash_max_size_multiplier: float = 2.5
+@export var slash_min_cast_interval: float = 0.16
+@export var slash_max_targets: int = 20
+@export var slash_max_range: float = 1000.0
+@export var slash_max_size_multiplier: float = 5.0
 @export var wave_range: float = 500.0
 @export var wave_speed: float = 340.0
 @export var wave_lifetime: float = 1.4
@@ -88,27 +89,27 @@ const PLAYABLE_CAST_TYPE_IDS := ["simple_projectile", "chain_lightning", "area",
 @export var wave_width: float = 70.0
 @export var wave_length: float = 28.0
 @export var wave_hit_cooldown_per_enemy: float = 0.35
-@export var max_active_waves: int = 3
-@export var wave_min_cast_interval: float = 0.55
-@export var wave_max_width: float = 180.0
-@export var wave_max_lifetime: float = 3.0
-@export var wave_max_active: int = 5
-@export var wave_max_speed: float = 620.0
-@export var wave_min_hit_cooldown_per_enemy: float = 0.18
-@export var summon_lifetime: float = 7.0
+@export var max_active_waves: int = 5
+@export var wave_min_cast_interval: float = 0.2
+@export var wave_max_width: float = 420.0
+@export var wave_max_lifetime: float = 8.0
+@export var wave_max_active: int = 12
+@export var wave_max_speed: float = 1100.0
+@export var wave_min_hit_cooldown_per_enemy: float = 0.08
+@export var summon_lifetime: float = 8.0
 @export var summon_attack_range: float = 280.0
-@export var summon_attack_interval: float = 0.9
-@export var summon_damage_multiplier: float = 0.35
+@export var summon_attack_interval: float = 0.72
+@export var summon_damage_multiplier: float = 0.48
 @export var summon_cast_interval_multiplier: float = 1.8
-@export var summon_max_active: int = 2
+@export var summon_max_active: int = 3
 @export var summon_spawn_radius: float = 70.0
 @export var summon_move_speed: float = 140.0
-@export var summon_min_cast_interval: float = 0.8
-@export var summon_max_active_cap: int = 6
-@export var summon_max_lifetime: float = 14.0
-@export var summon_min_attack_interval: float = 0.35
-@export var summon_max_attack_range: float = 480.0
-@export var summon_max_damage_multiplier: float = 1.2
+@export var summon_min_cast_interval: float = 0.3
+@export var summon_max_active_cap: int = 12
+@export var summon_max_lifetime: float = 24.0
+@export var summon_min_attack_interval: float = 0.18
+@export var summon_max_attack_range: float = 720.0
+@export var summon_max_damage_multiplier: float = 2.0
 @export var base_enemies_per_wave: int = 1
 @export var enemies_added_per_wave: int = 2
 @export var wave_interval: float = 2.0
@@ -117,9 +118,10 @@ const PLAYABLE_CAST_TYPE_IDS := ["simple_projectile", "chain_lightning", "area",
 @export var fallback_enemy_score_value: int = 10
 @export var spawn_edge_padding: float = 28.0
 @export var min_spawn_distance_from_player: float = 180.0
-@export var max_run_wave: int = 10
-@export var miniboss_wave: int = 5
-@export var boss_wave: int = 10
+@export var max_run_wave: int = 30
+@export var miniboss_wave: int = 10
+@export var elite_miniboss_wave: int = 20
+@export var boss_wave: int = 30
 
 var player: Node2D
 var hud: Control
@@ -229,6 +231,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not _run_finished:
 		run_time_seconds += delta
+		_update_camera_position(delta)
 		_update_unstable_field(delta)
 		var opening_charge_was_active := _opening_charge_time_left > 0.0
 		_opening_charge_time_left = maxf(_opening_charge_time_left - delta, 0.0)
@@ -275,11 +278,8 @@ func _draw() -> void:
 
 func _configure_arena_to_viewport() -> void:
 	var viewport_size := get_viewport_rect().size
-	var safe_size := Vector2(
-		maxf(viewport_size.x - arena_padding.x * 2.0, 320.0),
-		maxf(viewport_size.y - arena_padding.y * 2.0, 240.0)
-	)
-	arena_position = arena_padding
+	var safe_size := Vector2(maxf(viewport_size.x * arena_world_scale, 480.0), maxf(viewport_size.y * arena_world_scale, 360.0))
+	arena_position = (viewport_size - safe_size) * 0.5
 	arena_size = safe_size
 	arena_rect = Rect2(arena_position, arena_size)
 
@@ -397,21 +397,14 @@ func _get_wave_type(wave_number: int) -> String:
 		return "boss"
 	if wave_number == miniboss_wave:
 		return "mini_boss"
+	if wave_number == elite_miniboss_wave:
+		return "mini_boss"
 
 	return "normal"
 
 
 func _create_wave_enemy_counts() -> Dictionary:
-	return {
-		1: 3,
-		2: 4,
-		3: 6,
-		4: 7,
-		6: 9,
-		7: 10,
-		8: 11,
-		9: 12,
-	}
+	return {}
 
 
 func _create_run_stats() -> Dictionary:
@@ -649,10 +642,13 @@ func _spawn_wave_enemies() -> void:
 	match current_wave_type:
 		"mini_boss":
 			_spawn_enemy(PENTAGON_MINIBOSS_SCENE, arena_rect.get_center() + Vector2(0.0, -120.0))
-			for _index in range(2):
+			var support_count := 8 if current_wave < elite_miniboss_wave else 22
+			for _index in range(support_count):
 				_spawn_enemy(CIRCLE_CHASER_SCENE, _get_spawn_position_near_arena_edge())
 		"boss":
 			_spawn_enemy(HEXAGON_BOSS_SCENE, arena_rect.get_center() + Vector2(0.0, -110.0))
+			for _index in range(70):
+				_spawn_enemy(_choose_enemy_scene_from_pool(_get_enemy_pool_for_wave(current_wave, 14)), _get_spawn_position_near_arena_edge())
 		_:
 			var enemy_scenes := _build_enemy_scenes_for_wave(current_wave)
 			for enemy_scene in enemy_scenes:
@@ -663,7 +659,8 @@ func _get_enemy_count_for_wave(wave_number: int) -> int:
 	if _wave_enemy_counts.has(wave_number):
 		return int(_wave_enemy_counts[wave_number])
 
-	return base_enemies_per_wave + wave_number * enemies_added_per_wave
+	var progress: float = clampf(float(wave_number - 1) / float(maxi(max_run_wave - 1, 1)), 0.0, 1.0)
+	return clampi(int(round(3.0 + pow(progress, 1.45) * 102.0)), 3, 105)
 
 
 func _build_enemy_scenes_for_wave(wave_number: int) -> Array[PackedScene]:
@@ -777,19 +774,20 @@ func _spawn_enemy(enemy_scene: PackedScene, spawn_position: Vector2) -> void:
 
 
 func _apply_wave_scaling_to_enemy(enemy: Node) -> void:
-	if current_wave_type != "normal":
-		return
-
-	var wave_bonus := maxi(current_wave - 1, 0)
+	var progress: float = clampf(float(current_wave - 1) / float(maxi(max_run_wave - 1, 1)), 0.0, 1.0)
 	var base_health = enemy.get("max_health")
 	var base_speed = enemy.get("speed")
 
 	if base_health != null:
-		var scaled_health := int(base_health) + wave_bonus * enemy_health_per_wave
+		var scaled_health := int(round(float(base_health) * (1.0 + progress * 1.65)))
+		if current_wave_type == "mini_boss" and current_wave >= elite_miniboss_wave:
+			scaled_health = int(round(float(scaled_health) * 1.45))
+		elif current_wave_type == "boss":
+			scaled_health = int(round(float(scaled_health) * 1.35))
 		scaled_health = maxi(1, int(round(float(scaled_health) * float(current_wave_modifier.get("health_multiplier", 1.0)))))
 		enemy.set("max_health", scaled_health)
 	if base_speed != null:
-		var scaled_speed := float(base_speed) + float(wave_bonus) * enemy_speed_per_wave
+		var scaled_speed := float(base_speed) * (1.0 + progress * 0.5)
 		scaled_speed *= float(current_wave_modifier.get("speed_multiplier", 1.0))
 		enemy.set("speed", scaled_speed)
 
@@ -2042,6 +2040,12 @@ func _get_enemy_id(enemy: Node) -> String:
 
 
 func _get_wave_title(wave_type: String) -> String:
+	if current_wave == 10:
+		return "Distortion Rising"
+	if current_wave == 20:
+		return "Reality Fracturing"
+	if current_wave == 30:
+		return "Final Convergence"
 	match wave_type:
 		"mini_boss":
 			return "Mini-Boss"
@@ -2371,6 +2375,16 @@ func _setup_camera() -> void:
 	camera.make_current()
 
 
+func _update_camera_position(delta: float) -> void:
+	if not is_instance_valid(camera) or not is_instance_valid(player):
+		return
+	var viewport_half: Vector2 = get_viewport_rect().size * 0.5
+	var desired: Vector2 = player.global_position
+	desired.x = clampf(desired.x, arena_rect.position.x + viewport_half.x, arena_rect.end.x - viewport_half.x)
+	desired.y = clampf(desired.y, arena_rect.position.y + viewport_half.y, arena_rect.end.y - viewport_half.y)
+	camera.position = camera.position.lerp(desired, clampf(delta * 5.5, 0.0, 1.0))
+
+
 func _start_camera_shake(duration: float, strength: float) -> void:
 	_camera_shake_duration = duration
 	_camera_shake_time_left = duration
@@ -2502,6 +2516,7 @@ func _clear_active_threats() -> void:
 
 	_clear_projectiles()
 	_clear_area_spells()
+	_clear_persistent_waves()
 	_clear_summons()
 
 
@@ -2519,6 +2534,13 @@ func _clear_area_spells() -> void:
 		if is_instance_valid(area_spell):
 			area_spell.queue_free()
 	_active_area_spells.clear()
+
+
+func _clear_persistent_waves() -> void:
+	for wave in _active_persistent_waves:
+		if is_instance_valid(wave):
+			wave.queue_free()
+	_active_persistent_waves.clear()
 
 
 func _clear_summons() -> void:

@@ -54,7 +54,7 @@ static func get_upgrades(playable_delivery_ids: Array) -> Array[Dictionary]:
 			"id": "initial_fragmentation", "name": "Initial Fragmentation", "description": "+1 projectile per cast in a spread.",
 			"category": "projectile", "branch": "form", "effect_type": "projectile_count", "node_label": "Fragment",
 			"compatible_deliveries": playable_delivery_ids, "values": {"projectile_count_bonus": 1},
-			"max_stacks_by_delivery": {"simple_projectile": 4, "chain_lightning": 2, "area": 3, "slash": 3, "persistent_waves": 3, "summon": 4},
+			"max_stacks_by_delivery": {"simple_projectile": 16, "chain_lightning": 12, "area": 12, "slash": 12, "persistent_waves": 12, "summon": 9},
 			"delivery_effects": {
 				"chain_lightning": {"name": "Extra Link", "description": "Hits +1 total target per chain. 2 stack limit.", "impact_text": "+1 maximum target"},
 				"area": {"name": "Field Size", "description": "Increases Area Field size. 3 stack limit.", "impact_text": "+18% Area size"},
@@ -66,7 +66,7 @@ static func get_upgrades(playable_delivery_ids: Array) -> Array[Dictionary]:
 		{
 			"id": "piercing", "name": "Piercing", "description": "Projectiles pass through +1 enemy.",
 			"category": "projectile", "branch": "form", "effect_type": "projectile_pierce", "node_label": "Pierce", "unlock_id": "upgrade_piercing",
-			"values": {"pierce_bonus": 1}, "max_stacks_by_delivery": {"simple_projectile": 6, "chain_lightning": 3},
+			"values": {"pierce_bonus": 1}, "max_stacks_by_delivery": {"simple_projectile": 18, "chain_lightning": 12},
 			"compatible_deliveries": ["simple_projectile", "chain_lightning"],
 			"delivery_effects": {
 				"chain_lightning": {"name": "Reduced Falloff", "description": "Each jump retains more damage. 3 stack limit.", "impact_text": "+5% damage retained per jump"},
@@ -75,7 +75,7 @@ static func get_upgrades(playable_delivery_ids: Array) -> Array[Dictionary]:
 		{
 			"id": "ricochet", "name": "Ricochet", "description": "Projectiles ricochet +1 time from arena edges.",
 			"category": "projectile", "branch": "form", "effect_type": "projectile_bounce", "node_label": "Ricochet",
-			"values": {"bounce_bonus": 1}, "max_stacks_by_delivery": {"simple_projectile": 5},
+			"values": {"bounce_bonus": 1}, "max_stacks_by_delivery": {"simple_projectile": 14},
 			"compatible_deliveries": ["simple_projectile"],
 		},
 		{
@@ -95,7 +95,7 @@ static func get_upgrades(playable_delivery_ids: Array) -> Array[Dictionary]:
 			"category": "projectile", "branch": "form", "effect_type": "heavy_projectile", "node_label": "Orb",
 			"compatible_deliveries": playable_delivery_ids,
 			"values": {"damage_multiplier": 1.4, "speed_multiplier": 0.85, "size_bonus": 0.2},
-			"max_stacks_by_delivery": {"chain_lightning": 2, "area": 2, "slash": 2, "persistent_waves": 2, "summon": 2},
+			"max_stacks_by_delivery": {"chain_lightning": 8, "area": 8, "slash": 8, "persistent_waves": 8, "summon": 6},
 			"delivery_effects": {
 				"chain_lightning": {"name": "Heavy Discharge", "description": "+40% Chain Lightning damage with -12% initial range.", "impact_text": "+40% damage, -12% range"},
 				"area": {"name": "Dense Field", "description": "+40% damage and a larger Area Field with slower cadence.", "impact_text": "+40% damage, +20% size"},
@@ -108,7 +108,7 @@ static func get_upgrades(playable_delivery_ids: Array) -> Array[Dictionary]:
 			"id": "cutting_echo", "name": "Cutting Echo", "description": "Every 4 casts, launches an extra strong projectile.",
 			"category": "rhythm", "branch": "rhythm", "effect_type": "special_projectile", "node_label": "Echo",
 			"values": {"shot_interval": 4, "damage_multiplier_bonus": 0.25},
-			"max_stacks_by_delivery": {"chain_lightning": 2, "area": 2, "slash": 2, "persistent_waves": 2, "summon": 2},
+			"max_stacks_by_delivery": {"chain_lightning": 8, "area": 8, "slash": 8, "persistent_waves": 8, "summon": 6},
 			"compatible_deliveries": playable_delivery_ids,
 			"delivery_effects": {
 				"chain_lightning": {"name": "Resonant Echo", "description": "Every 4 chains, the next gains extra damage and +1 target.", "impact_text": "Echo: extra damage and +1 target"},
