@@ -1,6 +1,8 @@
 extends Control
 
 const SHAPE_PREVIEW_SCRIPT := preload("res://scripts/ui/shape_preview.gd")
+const NEUTRAL_FORM_FILL := Color(0.38, 0.48, 0.58, 1.0)
+const NEUTRAL_FORM_OUTLINE := Color(0.82, 0.9, 0.98, 1.0)
 const FALLBACK_CHARACTERS := [
 	{
 		"id": "circle",
@@ -97,7 +99,7 @@ func _create_character_card(character: Dictionary) -> PanelContainer:
 	var preview := Control.new()
 	preview.custom_minimum_size = Vector2(210.0, 78.0)
 	preview.set_script(SHAPE_PREVIEW_SCRIPT)
-	preview.call("setup", str(character.get("visual_shape", "circle")), character.get("fill_color", Color.WHITE), character.get("outline_color", Color.WHITE))
+	preview.call("setup", str(character.get("visual_shape", "circle")), NEUTRAL_FORM_FILL, NEUTRAL_FORM_OUTLINE)
 	layout.add_child(preview)
 
 	var description := Label.new()

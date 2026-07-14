@@ -71,19 +71,23 @@ func _draw_arc_slash(glow_color: Color, core_color: Color, active_width: float) 
 
 
 func _draw_precision_slash(glow_color: Color, core_color: Color, active_width: float) -> void:
-	var start := Vector2(-slash_length * 0.5, -slash_length * 0.28)
-	var end := Vector2(slash_length * 0.5, slash_length * 0.28)
-	draw_line(start, end, glow_color, active_width * 2.15, true)
-	draw_line(start, end, core_color, active_width * 0.8, true)
-	draw_line(start + Vector2(8.0, -4.0), end + Vector2(-14.0, -7.0), Color(primary_color.r, primary_color.g, primary_color.b, glow_color.a * 0.72), active_width * 0.38, true)
+	var wedge := PackedVector2Array([
+		Vector2(-slash_length * 0.56, -active_width * 1.18),
+		Vector2(-slash_length * 0.56, active_width * 1.18),
+		Vector2(slash_length * 0.66, 0.0),
+	])
+	var wedge_fill := Color(primary_color.r, primary_color.g, primary_color.b, glow_color.a * 2.15)
+	draw_colored_polygon(wedge, wedge_fill)
+	draw_polyline(PackedVector2Array([wedge[0], wedge[1], wedge[2], wedge[0]]), core_color, maxf(1.4, active_width * 0.42), true)
+	draw_line(Vector2(-slash_length * 0.42, 0.0), wedge[2], core_color, maxf(1.0, active_width * 0.34), true)
 
 
 func _draw_heavy_slash(glow_color: Color, core_color: Color, active_width: float) -> void:
-	var start := Vector2(-slash_length * 0.54, -slash_length * 0.2)
-	var end := Vector2(slash_length * 0.54, slash_length * 0.2)
-	draw_line(start, end, glow_color, active_width * 2.7, true)
-	draw_line(start, end, core_color, active_width, true)
-	draw_circle(Vector2.ZERO, active_width * 0.64, Color(primary_color.r, primary_color.g, primary_color.b, glow_color.a * 0.9))
+	var plate := Rect2(Vector2(-slash_length * 0.54, -active_width * 1.35), Vector2(slash_length * 1.08, active_width * 2.7))
+	var plate_fill := Color(primary_color.r, primary_color.g, primary_color.b, glow_color.a * 2.3)
+	draw_rect(plate, plate_fill, true)
+	draw_rect(plate, core_color, false, maxf(1.6, active_width * 0.44), true)
+	draw_line(Vector2(slash_length * 0.46, -active_width * 1.18), Vector2(slash_length * 0.46, active_width * 1.18), core_color, maxf(1.1, active_width * 0.36), true)
 
 
 func _build_sparks() -> void:

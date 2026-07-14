@@ -28,46 +28,46 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -580.0
-offset_top = -330.0
-offset_right = 580.0
-offset_bottom = 330.0
+offset_left = -600.0
+offset_top = -340.0
+offset_right = 600.0
+offset_bottom = 340.0
 grow_horizontal = 2
 grow_vertical = 2
 
 [node name="TitleLabel" type="Label" parent="Panel"]
 layout_mode = 0
 offset_left = 32.0
-offset_top = 22.0
-offset_right = 1128.0
-offset_bottom = 62.0
+offset_top = 18.0
+offset_right = 1168.0
+offset_bottom = 58.0
 text = "Arcane Workshop"
 horizontal_alignment = 1
 theme_override_font_sizes/font_size = 32
 
 [node name="SubtitleLabel" type="Label" parent="Panel"]
 layout_mode = 0
-offset_left = 80.0
-offset_top = 66.0
-offset_right = 1080.0
-offset_bottom = 94.0
-text = "Define your spell matrix before entering the arena."
+offset_left = 100.0
+offset_top = 60.0
+offset_right = 1100.0
+offset_bottom = 84.0
+text = "Build a spell matrix before entering the arena."
 horizontal_alignment = 1
 theme_override_colors/font_color = Color(0.68, 0.84, 1, 1)
-theme_override_font_sizes/font_size = 17
+theme_override_font_sizes/font_size = 16
 
 [node name="Columns" type="HBoxContainer" parent="Panel"]
 layout_mode = 0
-offset_left = 34.0
-offset_top = 114.0
-offset_right = 790.0
-offset_bottom = 502.0
-theme_override_constants/separation = 12
+offset_left = 30.0
+offset_top = 116.0
+offset_right = 800.0
+offset_bottom = 590.0
+theme_override_constants/separation = 10
 
 [node name="ShapeColumn" type="VBoxContainer" parent="Panel/Columns"]
-custom_minimum_size = Vector2(236, 0)
+custom_minimum_size = Vector2(240, 0)
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
 [node name="Title" type="Label" parent="Panel/Columns/ShapeColumn"]
 layout_mode = 2
@@ -76,21 +76,28 @@ horizontal_alignment = 1
 theme_override_colors/font_color = Color(0.86, 0.7, 1, 1)
 theme_override_font_sizes/font_size = 16
 
+[node name="Hint" type="Label" parent="Panel/Columns/ShapeColumn"]
+layout_mode = 2
+text = "Defines the spell profile"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.56, 0.64, 0.76, 1)
+theme_override_font_sizes/font_size = 12
+
 [node name="OptionsScroll" type="ScrollContainer" parent="Panel/Columns/ShapeColumn"]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
 [node name="Options" type="VBoxContainer" parent="Panel/Columns/ShapeColumn/OptionsScroll"]
-custom_minimum_size = Vector2(214, 0)
+custom_minimum_size = Vector2(222, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
 [node name="ElementColumn" type="VBoxContainer" parent="Panel/Columns"]
-custom_minimum_size = Vector2(236, 0)
+custom_minimum_size = Vector2(240, 0)
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
 [node name="Title" type="Label" parent="Panel/Columns/ElementColumn"]
 layout_mode = 2
@@ -99,21 +106,28 @@ horizontal_alignment = 1
 theme_override_colors/font_color = Color(1, 0.72, 0.38, 1)
 theme_override_font_sizes/font_size = 16
 
+[node name="Hint" type="Label" parent="Panel/Columns/ElementColumn"]
+layout_mode = 2
+text = "Adds a combat identity"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.56, 0.64, 0.76, 1)
+theme_override_font_sizes/font_size = 12
+
 [node name="OptionsScroll" type="ScrollContainer" parent="Panel/Columns/ElementColumn"]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
 [node name="Options" type="VBoxContainer" parent="Panel/Columns/ElementColumn/OptionsScroll"]
-custom_minimum_size = Vector2(214, 0)
+custom_minimum_size = Vector2(222, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
 [node name="DeliveryColumn" type="VBoxContainer" parent="Panel/Columns"]
-custom_minimum_size = Vector2(260, 0)
+custom_minimum_size = Vector2(270, 0)
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
 [node name="Title" type="Label" parent="Panel/Columns/DeliveryColumn"]
 layout_mode = 2
@@ -122,76 +136,84 @@ horizontal_alignment = 1
 theme_override_colors/font_color = Color(0.42, 0.94, 1, 1)
 theme_override_font_sizes/font_size = 16
 
+[node name="Hint" type="Label" parent="Panel/Columns/DeliveryColumn"]
+layout_mode = 2
+text = "Chooses how the spell acts"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.56, 0.64, 0.76, 1)
+theme_override_font_sizes/font_size = 12
+
 [node name="OptionsScroll" type="ScrollContainer" parent="Panel/Columns/DeliveryColumn"]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
 [node name="Options" type="VBoxContainer" parent="Panel/Columns/DeliveryColumn/OptionsScroll"]
-custom_minimum_size = Vector2(238, 0)
+custom_minimum_size = Vector2(250, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 6
+theme_override_constants/separation = 8
 
 [node name="PreviewPanel" type="Panel" parent="Panel"]
 layout_mode = 0
-offset_left = 814.0
-offset_top = 114.0
-offset_right = 1126.0
-offset_bottom = 502.0
+offset_left = 820.0
+offset_top = 116.0
+offset_right = 1170.0
+offset_bottom = 590.0
 
 [node name="PreviewTitle" type="Label" parent="Panel/PreviewPanel"]
 layout_mode = 0
 offset_left = 20.0
-offset_top = 18.0
-offset_right = 292.0
-offset_bottom = 44.0
-text = "CURRENT MATRIX"
+offset_top = 16.0
+offset_right = 330.0
+offset_bottom = 38.0
+text = "LIVE SPELL PREVIEW"
 horizontal_alignment = 1
-theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.82, 0.94, 1, 1)
+theme_override_font_sizes/font_size = 15
 
-[node name="Preview" type="Control" parent="Panel"]
+[node name="Preview" type="Control" parent="Panel/PreviewPanel"]
 layout_mode = 0
-offset_left = 866.0
-offset_top = 162.0
-offset_right = 1074.0
-offset_bottom = 322.0
+offset_left = 28.0
+offset_top = 48.0
+offset_right = 322.0
+offset_bottom = 218.0
+mouse_filter = 2
 script = ExtResource("2_preview")
 
-[node name="SelectionLabel" type="Label" parent="Panel"]
+[node name="FormulaLabel" type="Label" parent="Panel/PreviewPanel"]
 layout_mode = 0
-offset_left = 832.0
-offset_top = 330.0
-offset_right = 1108.0
-offset_bottom = 382.0
+offset_left = 20.0
+offset_top = 228.0
+offset_right = 330.0
+offset_bottom = 254.0
 horizontal_alignment = 1
 autowrap_mode = 3
-theme_override_colors/font_color = Color(0.9, 0.98, 1, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.62, 0.86, 1, 1)
+theme_override_font_sizes/font_size = 12
 
-[node name="DetailLabel" type="Label" parent="Panel"]
+[node name="SummaryLabel" type="Label" parent="Panel/PreviewPanel"]
 layout_mode = 0
-offset_left = 834.0
-offset_top = 384.0
-offset_right = 1106.0
-offset_bottom = 530.0
+offset_left = 28.0
+offset_top = 272.0
+offset_right = 322.0
+offset_bottom = 450.0
 autowrap_mode = 3
-horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.68, 0.84, 1, 1)
-theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.84, 0.92, 1, 1)
+theme_override_font_sizes/font_size = 14
 
 [node name="BackButton" type="Button" parent="Panel"]
 layout_mode = 0
-offset_left = 352.0
-offset_top = 548.0
-offset_right = 530.0
-offset_bottom = 596.0
+offset_left = 430.0
+offset_top = 616.0
+offset_right = 590.0
+offset_bottom = 658.0
 text = "Back"
 
 [node name="StartButton" type="Button" parent="Panel"]
 layout_mode = 0
-offset_left = 630.0
-offset_top = 548.0
-offset_right = 808.0
-offset_bottom = 596.0
+offset_left = 610.0
+offset_top = 616.0
+offset_right = 770.0
+offset_bottom = 658.0
 text = "Start Run"

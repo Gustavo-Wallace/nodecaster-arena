@@ -1,11 +1,48 @@
 extends Control
 
+const WORKSHOP_OPTION_CARD_SCRIPT := preload("res://scripts/ui/workshop_option_card.gd")
+
+const SHAPE_CARD_COPY := {
+	"circle": {"description": "Balanced and stable.", "details": ["Flexible all-round matrix."]},
+	"triangle": {"description": "Fast and aggressive.", "details": ["Quick casts, focused pressure."]},
+	"square": {"description": "Heavy and wide.", "details": ["Large, durable spell patterns."]},
+	"diamond": {"description": "Precise and quick.", "details": ["Fast rhythm, focused output."]},
+	"star": {"description": "Chaotic multi-hit form.", "details": ["Reserved for future matrices."]},
+	"pentagon": {"description": "Experimental matrix pattern.", "details": ["Reserved for future matrices."]},
+}
+
+const ELEMENT_CARD_COPY := {
+	"arcane": {"description": "Pure direct energy.", "details": ["Clean impact, no status effect."]},
+	"fire": {"description": "Burns enemies over time.", "details": ["Adds brief damage after impact."]},
+	"ice": {"description": "Slows enemies briefly.", "details": ["Creates room through control."]},
+	"electric": {"description": "Sparks and chains energy.", "details": ["Boosts chain links and field pulses."]},
+	"shadow": {"description": "Amplifies direct impact.", "details": ["A stronger violet direct hit."]},
+}
+
+const DELIVERY_CARD_COPY := {
+	"simple_projectile": ["Strong: Flexible direct fire", "Weak: Modest group clear", "Scales: Pierce / Ricochet / Speed"],
+	"chain_lightning": ["Strong: Cluster clear", "Weak: Isolated targets", "Scales: Links / Range / Falloff"],
+	"area": ["Strong: Space control", "Weak: Enemies can leave", "Scales: Size / Duration / Tick rate"],
+	"slash": ["Strong: Close burst", "Weak: Limited reach", "Scales: Range / Targets / Cadence"],
+	"persistent_waves": ["Strong: Lined-up groups", "Weak: Scattered targets", "Scales: Width / Speed / Lifetime"],
+	"summon": ["Strong: Persistent damage", "Weak: Slow early clear", "Scales: Count / Speed / Lifetime"],
+}
+
+const DELIVERY_CARD_DESCRIPTIONS := {
+	"simple_projectile": "Automatic focused fire.",
+	"chain_lightning": "Links nearby targets.",
+	"area": "Pulsing zone control.",
+	"slash": "Instant close-range cut.",
+	"persistent_waves": "Moving directional waves.",
+	"summon": "Reflections attack nearby targets.",
+}
+
 @onready var shape_list: VBoxContainer = $Panel/Columns/ShapeColumn/OptionsScroll/Options
 @onready var element_list: VBoxContainer = $Panel/Columns/ElementColumn/OptionsScroll/Options
 @onready var delivery_list: VBoxContainer = $Panel/Columns/DeliveryColumn/OptionsScroll/Options
-@onready var preview: Control = $Panel/Preview
-@onready var selection_label: Label = $Panel/SelectionLabel
-@onready var detail_label: Label = $Panel/DetailLabel
+@onready var preview: Control = $Panel/PreviewPanel/Preview
+@onready var formula_label: Label = $Panel/PreviewPanel/FormulaLabel
+@onready var summary_label: Label = $Panel/PreviewPanel/SummaryLabel
 @onready var start_button: Button = $Panel/StartButton
 @onready var back_button: Button = $Panel/BackButton
 
@@ -29,63 +66,63 @@ func _build_options() -> void:
 	if _run_config == null:
 		return
 
-	for shape in _run_config.call("get_spell_shape_list"):
-		var data: Dictionary = shape
-		var shape_available := bool(data.get("available", false))
-		var button := _create_option_button(str(data.get("display_name", "Shape")), str(data.get("modifiers_text", data.get("description", ""))), shape_available, not shape_available)
-		if not shape_available:
-			button.text = _get_locked_option_text(data)
-		else:
+	for shape_option in _run_config.call("get_spell_shape_list"):
+		var data: Dictionary = shape_option
+		var button := _create_option_card("shape", data)
+		if bool(data.get("available", false)):
 			button.pressed.connect(_on_shape_selected.bind(str(data.get("id", "circle"))))
 		shape_list.add_child(button)
 		_shape_buttons[str(data.get("id", "circle"))] = button
 
-	for element in _run_config.call("get_spell_element_list"):
-		var data: Dictionary = element
-		var element_available := bool(data.get("available", false))
-		var button := _create_option_button(str(data.get("display_name", "Element")), str(data.get("modifiers_text", data.get("description", ""))), element_available, not element_available)
-		if not element_available:
-			button.text = _get_locked_option_text(data)
-		else:
+	for element_option in _run_config.call("get_spell_element_list"):
+		var data: Dictionary = element_option
+		var button := _create_option_card("element", data)
+		if bool(data.get("available", false)):
 			button.pressed.connect(_on_element_selected.bind(str(data.get("id", "arcane"))))
-		var primary_color = data.get("primary_color", Color.WHITE)
-		if primary_color is Color:
-			button.add_theme_color_override("font_color", primary_color)
 		element_list.add_child(button)
 		_element_buttons[str(data.get("id", "arcane"))] = button
 
-	for delivery in _run_config.call("get_spell_delivery_list"):
-		var data: Dictionary = delivery
-		var cast_type_available := bool(data.get("available", false))
-		var button := _create_option_button(str(data.get("display_name", "Cast Type")), str(data.get("playstyle_summary", data.get("description", ""))), cast_type_available, not cast_type_available)
-		if not cast_type_available:
-			button.text = _get_locked_option_text(data)
-		else:
+	for delivery_option in _run_config.call("get_spell_delivery_list"):
+		var data: Dictionary = delivery_option
+		var button := _create_option_card("cast_type", data)
+		if bool(data.get("available", false)):
 			button.pressed.connect(_on_delivery_selected.bind(str(data.get("id", "simple_projectile"))))
 		delivery_list.add_child(button)
 		_delivery_buttons[str(data.get("id", "simple_projectile"))] = button
 
 
-func _get_locked_option_text(data: Dictionary) -> String:
-	var display_name := str(data.get("display_name", "Locked"))
-	if bool(data.get("future", false)):
-		return "%s (COMING SOON)" % display_name
-	return "%s (LOCKED IN ECHO TREE)" % display_name
+func _create_option_card(option_kind: String, data: Dictionary) -> Button:
+	var content: Dictionary = _get_card_content(option_kind, data)
+	var description: String = str(content.get("description", ""))
+	var details: Array[String] = []
+	for detail_value in content.get("details", []):
+		details.append(str(detail_value))
+
+	var card: Button = WORKSHOP_OPTION_CARD_SCRIPT.new()
+	card.call("configure", option_kind, data, description, details)
+	_setup_button_feedback(card)
+	return card
 
 
-func _create_option_button(title: String, description: String, enabled: bool, compact: bool = false) -> Button:
-	var button := Button.new()
-	button.custom_minimum_size = Vector2(0.0, 46.0 if compact else 58.0)
-	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button.text = title if compact else title + "\n" + description
-	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	button.disabled = not enabled
-	button.focus_mode = Control.FOCUS_NONE
-	button.add_theme_font_size_override("font_size", 14 if compact else 15)
-	button.add_theme_color_override("font_disabled_color", Color(0.48, 0.54, 0.62))
-	_setup_button_feedback(button)
-	return button
+func _get_card_content(option_kind: String, data: Dictionary) -> Dictionary:
+	var option_id: String = str(data.get("id", ""))
+	match option_kind:
+		"shape":
+			var shape_content: Dictionary = SHAPE_CARD_COPY.get(option_id, {"description": str(data.get("description", "")), "details": []})
+			return shape_content
+		"element":
+			var element_content: Dictionary = ELEMENT_CARD_COPY.get(option_id, {"description": str(data.get("description", "")), "details": []})
+			return element_content
+		_:
+			var details: Array[String] = []
+			for detail_value in DELIVERY_CARD_COPY.get(option_id, []):
+				details.append(str(detail_value))
+			if details.is_empty():
+				details.append("Coming in a future matrix.")
+			return {
+				"description": str(DELIVERY_CARD_DESCRIPTIONS.get(option_id, data.get("description", ""))),
+				"details": details,
+			}
 
 
 func _on_shape_selected(shape_id: String) -> void:
@@ -110,42 +147,56 @@ func _refresh_selection() -> void:
 	if _run_config == null:
 		return
 
-	var blueprint = _run_config.call("get_spell_blueprint")
+	var blueprint: Variant = _run_config.call("get_spell_blueprint")
 	var summary: Dictionary = blueprint.get_summary()
 	var shape: Dictionary = blueprint.get_shape_data()
 	var element: Dictionary = blueprint.get_element_data()
-	var delivery: Dictionary = blueprint.get_delivery_data()
-	selection_label.text = "%s + %s + %s" % [
-		str(summary.get("shape_name", "Circle")),
-		str(summary.get("element_name", "Arcane")),
-		str(summary.get("delivery_name", "Simple Projectile")),
-	]
-	detail_label.text = _format_delivery_details(delivery)
-	preview.call("setup", str(shape.get("visual_shape", "circle")), element.get("primary_color", Color.WHITE), element.get("secondary_color", Color.WHITE))
+	var character_data: Dictionary = _run_config.call("get_selected_character_data")
+	var shape_name: String = str(summary.get("shape_name", "Circle"))
+	var element_name: String = str(summary.get("element_name", "Arcane"))
+	var delivery_name: String = str(summary.get("delivery_name", "Simple Projectile"))
+	var delivery_id: String = str(summary.get("delivery_id", "simple_projectile"))
+
+	formula_label.text = "SPELL: %s + %s + %s" % [shape_name, element_name, delivery_name]
+	summary_label.text = _format_spell_summary(shape_name, element_name, delivery_name, delivery_id)
+	preview.call(
+		"setup",
+		str(shape.get("visual_shape", "circle")),
+		element.get("primary_color", Color.WHITE),
+		element.get("secondary_color", Color.WHITE),
+		delivery_id,
+		str(character_data.get("visual_shape", "circle"))
+	)
 	_refresh_button_states(_shape_buttons, str(summary.get("shape_id", "circle")))
 	_refresh_button_states(_element_buttons, str(summary.get("element_id", "arcane")))
-	_refresh_button_states(_delivery_buttons, str(summary.get("delivery_id", "simple_projectile")))
+	_refresh_button_states(_delivery_buttons, delivery_id)
 
 
-func _format_delivery_details(delivery: Dictionary) -> String:
-	return "Playstyle: %s\nStrengths: %s\nWeaknesses: %s\nScaling: %s" % [
-		str(delivery.get("playstyle_summary", delivery.get("description", ""))),
-		str(delivery.get("strengths", "Flexible elemental scaling.")),
-		str(delivery.get("weaknesses", "Requires positioning and upgrade choices.")),
-		str(delivery.get("scaling_keywords", "damage, cadence, elemental effects")),
+func _format_spell_summary(shape_name: String, element_name: String, delivery_name: String, delivery_id: String) -> String:
+	var cast_phrases: Dictionary = {
+		"simple_projectile": "as a focused projectile.",
+		"chain_lightning": "as jumping arcs of energy.",
+		"area": "as a pulsing field.",
+		"slash": "as a rapid cutting arc.",
+		"persistent_waves": "as moving waves.",
+		"summon": "through temporary Reflections.",
+	}
+	var cast_phrase: String = str(cast_phrases.get(delivery_id, "through an unstable matrix."))
+	return "CURRENT SPELL\nShape: %s\nElement: %s\nCast Type: %s\n\nA %s %s spell cast %s" % [
+		shape_name,
+		element_name,
+		delivery_name,
+		element_name,
+		shape_name,
+		cast_phrase,
 	]
 
 
 func _refresh_button_states(buttons: Dictionary, selected_id: String) -> void:
 	for option_id in buttons:
 		var button := buttons[option_id] as Button
-		if option_id == selected_id:
-			button.modulate = Color(1.0, 1.0, 1.0, 1.0)
-			button.add_theme_color_override("font_outline_color", Color(0.36, 0.9, 1.0))
-			button.add_theme_constant_override("outline_size", 2)
-		else:
-			button.modulate = Color(0.76, 0.82, 0.9, 0.88)
-			button.add_theme_constant_override("outline_size", 0)
+		if button != null:
+			button.call("set_selected", option_id == selected_id)
 
 
 func _on_start_pressed() -> void:
@@ -168,7 +219,7 @@ func _on_button_hovered(button: Button, hovered: bool) -> void:
 		return
 	button.pivot_offset = button.size * 0.5
 	var tween := create_tween()
-	tween.tween_property(button, "scale", Vector2.ONE * (1.02 if hovered else 1.0), 0.1)
+	tween.tween_property(button, "scale", Vector2.ONE * (1.015 if hovered else 1.0), 0.1)
 
 
 func _play_audio(method_name: String) -> void:

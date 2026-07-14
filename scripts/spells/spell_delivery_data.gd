@@ -92,6 +92,6 @@ static func get_data(delivery_id: String) -> Dictionary:
 
 static func get_all() -> Array[Dictionary]:
 	var deliveries: Array[Dictionary] = []
-	for delivery_id in ["simple_projectile", "chain_lightning", "area", "slash", "persistent_waves", "summon"]:
+	for delivery_id in ["simple_projectile", "chain_lightning", "area", "slash", "persistent_waves", "summon", "orbitals", "dual_casting"]:
 		deliveries.append(get_data(delivery_id))
 	return deliveries

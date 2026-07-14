@@ -105,60 +105,58 @@ func _draw() -> void:
 	var pulse := 1.0 + sin(_elapsed_time * 13.0) * 0.05
 	var half_width := wave_width * 0.5 * pulse
 	var half_length := wave_length * 0.5
-	var body_color := Color(fill_color.r, fill_color.g, fill_color.b, 0.2 + remaining_ratio * 0.16)
-	var line_color := Color(outline_color.r, outline_color.g, outline_color.b, 0.72 * remaining_ratio)
-	var trail_color := Color(fill_color.r, fill_color.g, fill_color.b, 0.22 * remaining_ratio)
-
-	draw_line(Vector2(-half_length - wave_length * 1.4, 0.0), Vector2(-half_length, 0.0), trail_color, maxf(3.0, wave_width * 0.12), true)
+	var body_color := Color(fill_color.r, fill_color.g, fill_color.b, 0.18 * remaining_ratio)
+	var line_color := Color(outline_color.r, outline_color.g, outline_color.b, 0.88 * remaining_ratio)
+	var trail_color := Color(fill_color.r, fill_color.g, fill_color.b, 0.2 * remaining_ratio)
+	draw_line(Vector2(-half_length * 1.55, 0.0), Vector2(-half_length * 0.32, 0.0), trail_color, maxf(2.0, half_width * 0.14), true)
 	match visual_shape:
 		"triangle":
-			_draw_triangle_wave(half_width, half_length, body_color, line_color)
+			_draw_triangle_wave(Vector2.ZERO, half_width, half_length, body_color, line_color)
 		"square":
-			_draw_square_wave(half_width, half_length, body_color, line_color)
+			_draw_square_wave(Vector2.ZERO, half_width, half_length, body_color, line_color)
 		"diamond":
-			_draw_diamond_wave(half_width, half_length, body_color, line_color)
+			_draw_diamond_wave(Vector2.ZERO, half_width, half_length, body_color, line_color)
 		"star":
-			_draw_star_wave(half_width, half_length, body_color, line_color)
+			_draw_star_wave(Vector2.ZERO, half_width, half_length, body_color, line_color)
 		_:
-			_draw_circle_wave(half_width, half_length, body_color, line_color)
+			_draw_circle_wave(Vector2(half_length * 0.28, 0.0), half_width, body_color, line_color)
 
 
-func _draw_circle_wave(half_width: float, half_length: float, body_color: Color, line_color: Color) -> void:
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2(half_length / maxf(half_width, 1.0), 1.0))
-	draw_circle(Vector2.ZERO, half_width, body_color)
-	draw_arc(Vector2.ZERO, half_width, -PI * 0.5, PI * 0.5, 24, line_color, 2.4, true)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+func _draw_circle_wave(center: Vector2, half_width: float, body_color: Color, line_color: Color) -> void:
+	draw_arc(center, half_width, -PI * 0.5, PI * 0.5, 20, line_color, 2.8, true)
+	draw_arc(center + Vector2(-half_width * 0.18, 0.0), half_width * 0.72, -PI * 0.5, PI * 0.5, 16, body_color.lightened(0.38), 1.2, true)
 
 
-func _draw_triangle_wave(half_width: float, half_length: float, body_color: Color, line_color: Color) -> void:
+func _draw_triangle_wave(center: Vector2, half_width: float, half_length: float, body_color: Color, line_color: Color) -> void:
 	var points := PackedVector2Array([
-		Vector2(half_length * 1.25, 0.0),
-		Vector2(-half_length, -half_width),
-		Vector2(-half_length, half_width),
+		center + Vector2(half_length * 1.25, 0.0),
+		center + Vector2(-half_length, -half_width),
+		center + Vector2(-half_length, half_width),
 	])
 	draw_colored_polygon(points, body_color)
 	draw_polyline(PackedVector2Array([points[0], points[1], points[2], points[0]]), line_color, 2.4, true)
 
 
-func _draw_square_wave(half_width: float, half_length: float, body_color: Color, line_color: Color) -> void:
-	var rect := Rect2(Vector2(-half_length, -half_width), Vector2(half_length * 2.0, half_width * 2.0))
+func _draw_square_wave(center: Vector2, half_width: float, half_length: float, body_color: Color, line_color: Color) -> void:
+	var rect := Rect2(center + Vector2(-half_length * 0.42, -half_width), Vector2(half_length * 0.84, half_width * 2.0))
 	draw_rect(rect, body_color, true)
 	draw_rect(rect, line_color, false, 2.6, true)
+	draw_line(Vector2(rect.end.x, rect.position.y), Vector2(rect.end.x, rect.end.y), line_color, 1.3, true)
 
 
-func _draw_diamond_wave(half_width: float, half_length: float, body_color: Color, line_color: Color) -> void:
+func _draw_diamond_wave(center: Vector2, half_width: float, half_length: float, body_color: Color, line_color: Color) -> void:
 	var points := PackedVector2Array([
-		Vector2(half_length * 1.35, 0.0),
-		Vector2(0.0, -half_width),
-		Vector2(-half_length * 1.1, 0.0),
-		Vector2(0.0, half_width),
+		center + Vector2(half_length * 1.35, 0.0),
+		center + Vector2(0.0, -half_width),
+		center + Vector2(-half_length * 1.1, 0.0),
+		center + Vector2(0.0, half_width),
 	])
 	draw_colored_polygon(points, body_color)
 	draw_polyline(PackedVector2Array([points[0], points[1], points[2], points[3], points[0]]), line_color, 2.4, true)
 
 
-func _draw_star_wave(half_width: float, half_length: float, body_color: Color, line_color: Color) -> void:
-	_draw_circle_wave(half_width, half_length, body_color, line_color)
+func _draw_star_wave(center: Vector2, half_width: float, half_length: float, body_color: Color, line_color: Color) -> void:
+	_draw_circle_wave(center, half_width, body_color, line_color)
 	for offset in [-0.55, 0.0, 0.55]:
-		var origin := Vector2(offset * half_length, 0.0)
+		var origin := center + Vector2(offset * half_length, 0.0)
 		draw_line(origin + Vector2(0.0, -half_width * 0.72), origin + Vector2(0.0, half_width * 0.72), line_color, 1.4, true)
