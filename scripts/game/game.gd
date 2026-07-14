@@ -26,6 +26,7 @@ const PENTAGON_MINIBOSS_SCENE := preload("res://scenes/enemies/pentagon_miniboss
 const HEXAGON_BOSS_SCENE := preload("res://scenes/enemies/hexagon_boss.tscn")
 const RUN_RESULT_PANEL_SCENE := preload("res://scenes/ui/run_result_panel.tscn")
 const UNSTABLE_FIELD_AURA_SCRIPT := preload("res://scripts/effects/unstable_field_aura.gd")
+const PLAYABLE_CAST_TYPE_IDS := ["simple_projectile", "chain_lightning", "area", "slash", "persistent_waves"]
 
 @export var arena_position: Vector2 = Vector2(96.0, 72.0)
 @export var arena_size: Vector2 = Vector2(1088.0, 576.0)
@@ -36,6 +37,8 @@ const UNSTABLE_FIELD_AURA_SCRIPT := preload("res://scripts/effects/unstable_fiel
 @export var projectile_speed: float = 520.0
 @export var projectile_count: int = 1
 @export var max_projectile_count: int = 5
+@export var max_projectile_pierce: int = 6
+@export var max_projectile_bounces: int = 5
 @export var projectile_spread_degrees: float = 12.0
 @export var projectile_pierce: int = 0
 @export var projectile_bounce: int = 0
@@ -468,7 +471,7 @@ func _apply_spell_blueprint_to_run() -> void:
 	elif _is_persistent_waves_delivery():
 		auto_fire_interval = maxf(auto_fire_interval * wave_cast_interval_multiplier, wave_min_cast_interval)
 	projectile_size_multiplier *= float(_spell_attributes.get("size_multiplier", 1.0))
-	projectile_pierce += int(_spell_attributes.get("pierce_bonus", 0))
+	projectile_pierce = mini(projectile_pierce + int(_spell_attributes.get("pierce_bonus", 0)), max_projectile_pierce)
 
 
 func _apply_meta_skill_bonuses_to_selected_character() -> void:
@@ -1084,7 +1087,7 @@ func _get_chain_parameters() -> Dictionary:
 		"max_hits": mini(chain_max_hits + _chain_bonus_hits + int(_spell_attributes.get("chain_bonus_jumps", 0)), chain_max_hits_cap),
 		"falloff": clampf(chain_damage_falloff * falloff_multiplier + _chain_falloff_bonus, 0.55, 0.9),
 		"damage_multiplier": chain_base_damage_multiplier,
-		"visual_width": 4.0 * float(_spell_attributes.get("chain_visual_width_multiplier", 1.0)),
+		"visual_width": 4.0 * float(_spell_attributes.get("chain_visual_width_multiplier", 1.0)) * projectile_size_multiplier,
 	}
 
 
@@ -1206,19 +1209,24 @@ func _on_persistent_wave_hit(enemy: Node2D, damage: int, effect_id: String, effe
 
 
 func _cast_area_spell() -> void:
-	var parameters := _get_area_parameters()
+	var parameters: Dictionary = _get_area_parameters()
 	var target := _get_nearest_enemy_in_range(player.global_position, float(parameters["range"]), [])
 	if target == null:
 		return
 
 	_shot_sequence += 1
 	var catalyzed := _has_meta_skill("catalyzed_shot") and _shot_sequence % maxi(int(_get_meta_effect_value("catalyzed_shot_interval")), 1) == 0
+	var echo_cast := _cutting_echo_interval > 0 and _shot_sequence % _cutting_echo_interval == 0
 	var empowered_multiplier := _get_elemental_empowerment_multiplier()
 	var tick_damage := maxi(1, int(round(float(projectile_damage) * float(parameters["damage_multiplier"]) * (1.8 if catalyzed else 1.0) * empowered_multiplier)))
+	if echo_cast:
+		parameters["duration"] = minf(float(parameters["duration"]) * 1.35, area_max_duration)
 	if catalyzed:
 		_spawn_floating_text("CATALYZED", player.global_position + Vector2(0.0, -42.0), Color(1.0, 0.66, 0.94), 0.46)
 	if empowered_multiplier > 1.0:
 		_spawn_floating_text("STATIC", player.global_position + Vector2(0.0, -58.0), Color(1.0, 0.94, 0.42), 0.42)
+	if echo_cast:
+		_spawn_floating_text("ECHO", player.global_position + Vector2(0.0, -64.0), Color(0.72, 1.0, 0.94), 0.42)
 
 	_remove_invalid_area_spells()
 	if _active_area_spells.size() >= area_max_active:
@@ -1334,7 +1342,7 @@ func _spawn_projectile(spawn_position: Vector2, direction: Vector2, overrides: D
 	projectile.set("damage", actual_damage)
 	projectile.set("speed", float(overrides.get("speed", projectile_speed)))
 	var opening_pierce := 1 if _opening_charge_time_left > 0.0 else 0
-	projectile.set("pierce_left", projectile_pierce + opening_pierce)
+	projectile.set("pierce_left", mini(projectile_pierce + opening_pierce, max_projectile_pierce))
 	projectile.set("bounce_left", projectile_bounce)
 	projectile.set("arena_rect", arena_rect)
 	projectile.set("explosion_radius", projectile_explosion_radius)
@@ -1454,7 +1462,21 @@ func _pick_upgrade_options(count: int) -> Array[Dictionary]:
 		picked.append(upgrade)
 		pool.remove_at(index)
 
+	if picked.size() < count:
+		_append_compatible_upgrade_fallbacks(picked, count)
+
 	return picked
+
+
+func _append_compatible_upgrade_fallbacks(picked: Array[Dictionary], count: int) -> void:
+	var fallback_pool := _filter_delivery_compatible_upgrades(_available_upgrades)
+	if fallback_pool.is_empty():
+		return
+
+	while picked.size() < count:
+		var upgrade: Dictionary = fallback_pool[_rng.randi_range(0, fallback_pool.size() - 1)].duplicate(true)
+		_prepare_upgrade_option(upgrade)
+		picked.append(upgrade)
 
 
 func _pick_directed_affinity_option(pool: Array[Dictionary], picked: Array[Dictionary], count: int) -> void:
@@ -1580,8 +1602,9 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 			if is_instance_valid(player) and player.has_method("increase_max_health"):
 				player.call("increase_max_health", int(values.get("max_health_bonus", 20)), int(values.get("heal_amount", 12)))
 		"swift_projectile":
-			projectile_speed += float(values.get("projectile_speed_bonus", 80.0))
-			if _is_chain_lightning_delivery():
+			if _is_simple_projectile_cast_type():
+				projectile_speed += float(values.get("projectile_speed_bonus", 80.0))
+			elif _is_chain_lightning_delivery():
 				_chain_range_bonus += 52.0
 				_chain_jump_range_bonus += 24.0
 			elif _is_area_delivery():
@@ -1606,21 +1629,29 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 			if _is_chain_lightning_delivery():
 				_chain_falloff_bonus = minf(_chain_falloff_bonus + 0.05 * float(values.get("pierce_bonus", 1)), 0.25)
 			else:
-				projectile_pierce += int(values.get("pierce_bonus", 1))
+				projectile_pierce = mini(projectile_pierce + int(values.get("pierce_bonus", 1)), max_projectile_pierce)
 		"ricochet":
-			projectile_bounce += int(values.get("bounce_bonus", 1))
+			projectile_bounce = mini(projectile_bounce + int(values.get("bounce_bonus", 1)), max_projectile_bounces)
 		"arcane_explosion":
 			projectile_explosion_radius += float(values.get("radius_bonus", 60.0))
 			projectile_explosion_damage_multiplier += float(values.get("damage_multiplier_bonus", 0.5))
 		"heavy_orb":
 			projectile_damage = int(round(float(projectile_damage) * float(values.get("damage_multiplier", 1.4))))
-			projectile_speed *= float(values.get("speed_multiplier", 0.85))
-			projectile_size_multiplier += float(values.get("size_bonus", 0.2))
-			if _is_chain_lightning_delivery():
+			if _is_simple_projectile_cast_type():
+				projectile_speed *= float(values.get("speed_multiplier", 0.85))
+				projectile_size_multiplier += float(values.get("size_bonus", 0.2))
+			elif _is_chain_lightning_delivery():
+				projectile_size_multiplier += float(values.get("size_bonus", 0.2))
 				_chain_range_multiplier *= 0.88
+				auto_fire_interval *= 1.1
+				if is_instance_valid(_auto_fire_timer):
+					_auto_fire_timer.wait_time = auto_fire_interval
 			elif _is_area_delivery():
 				_area_size_multiplier = minf(_area_size_multiplier * 1.2, area_max_size_multiplier)
 				_area_duration_multiplier = maxf(_area_duration_multiplier * 0.9, 0.55)
+				auto_fire_interval *= 1.1
+				if is_instance_valid(_auto_fire_timer):
+					_auto_fire_timer.wait_time = auto_fire_interval
 			elif _is_slash_delivery():
 				_slash_size_multiplier = minf(_slash_size_multiplier * 1.2, slash_max_size_multiplier)
 				auto_fire_interval *= 1.1
@@ -1718,6 +1749,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"branch": "energy",
 			"effect_type": "projectile_damage",
 			"node_label": "Damage",
+			"compatible_deliveries": PLAYABLE_CAST_TYPE_IDS,
 			"values": {
 				"damage_bonus": 5,
 			},
@@ -1748,6 +1780,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"branch": "rhythm",
 			"effect_type": "fire_interval",
 			"node_label": "Cadence",
+			"compatible_deliveries": PLAYABLE_CAST_TYPE_IDS,
 			"values": {
 				"interval_multiplier": 0.84,
 			},
@@ -1778,6 +1811,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"branch": "core",
 			"effect_type": "player_speed",
 			"node_label": "Core",
+			"compatible_deliveries": PLAYABLE_CAST_TYPE_IDS,
 			"values": {
 				"speed_bonus": 35.0,
 			},
@@ -1790,6 +1824,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"branch": "core",
 			"effect_type": "player_health",
 			"node_label": "Shell",
+			"compatible_deliveries": PLAYABLE_CAST_TYPE_IDS,
 			"values": {
 				"max_health_bonus": 22,
 				"heal_amount": 16,
@@ -1803,17 +1838,18 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"branch": "form",
 			"effect_type": "projectile_speed",
 			"node_label": "Speed",
+			"compatible_deliveries": PLAYABLE_CAST_TYPE_IDS,
 			"values": {
 				"projectile_speed_bonus": 80.0,
 			},
 			"delivery_effects": {
 				"chain_lightning": {
-					"name": "Swift Conductor",
+					"name": "Chain Reach",
 					"description": "Increases Chain Lightning initial range and jump range.",
 					"impact_text": "+52 range, +24 jump",
 				},
 				"area": {
-					"name": "Expanded Range",
+					"name": "Field Reach",
 					"description": "Lets you create Area Fields farther from the core.",
 					"impact_text": "+56 Area range",
 				},
@@ -1823,7 +1859,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 					"impact_text": "+48 Slash range",
 				},
 				"persistent_waves": {
-					"name": "Swift Wave",
+					"name": "Wave Speed",
 					"description": "Increases Persistent Wave travel speed.",
 					"impact_text": "+80 Wave speed",
 				},
@@ -1837,18 +1873,19 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"branch": "form",
 			"effect_type": "projectile_count",
 			"node_label": "Fragment",
+			"compatible_deliveries": PLAYABLE_CAST_TYPE_IDS,
 			"values": {
 				"projectile_count_bonus": 1,
 			},
-			"max_stacks_by_delivery": {"chain_lightning": 2, "area": 3, "slash": 3, "persistent_waves": 3},
+			"max_stacks_by_delivery": {"simple_projectile": 4, "chain_lightning": 2, "area": 3, "slash": 3, "persistent_waves": 3},
 			"delivery_effects": {
 				"chain_lightning": {
-					"name": "Chain Fragmentation",
+					"name": "Extra Link",
 					"description": "Hits +1 total target per chain. 2 stack limit.",
 					"impact_text": "+1 maximum target",
 				},
 				"area": {
-					"name": "Fragmented Field",
+					"name": "Field Size",
 					"description": "Increases Area Field size. 3 stack limit.",
 					"impact_text": "+18% Area size",
 				},
@@ -1858,7 +1895,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 					"impact_text": "+1 target per cut",
 				},
 				"persistent_waves": {
-					"name": "Expanded Crest",
+					"name": "Wider Wave",
 					"description": "Increases Persistent Wave width. 3 stack limit.",
 					"impact_text": "+18% Wave width",
 				},
@@ -1876,11 +1913,11 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"values": {
 				"pierce_bonus": 1,
 			},
-			"max_stacks_by_delivery": {"chain_lightning": 3},
+			"max_stacks_by_delivery": {"simple_projectile": 6, "chain_lightning": 3},
 			"compatible_deliveries": ["simple_projectile", "chain_lightning"],
 			"delivery_effects": {
 				"chain_lightning": {
-					"name": "Piercing Conductor",
+					"name": "Reduced Falloff",
 					"description": "Each jump retains more damage. 3 stack limit.",
 					"impact_text": "+5% damage retained per jump",
 				},
@@ -1897,6 +1934,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"values": {
 				"bounce_bonus": 1,
 			},
+			"max_stacks_by_delivery": {"simple_projectile": 5},
 			"compatible_deliveries": ["simple_projectile"],
 		},
 		{
@@ -1907,6 +1945,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"branch": "energy",
 			"effect_type": "area_explosion",
 			"node_label": "Explode",
+			"compatible_deliveries": PLAYABLE_CAST_TYPE_IDS,
 			"values": {
 				"radius_bonus": 60.0,
 				"damage_multiplier_bonus": 0.5,
@@ -1938,6 +1977,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"branch": "form",
 			"effect_type": "heavy_projectile",
 			"node_label": "Orb",
+			"compatible_deliveries": PLAYABLE_CAST_TYPE_IDS,
 			"values": {
 				"damage_multiplier": 1.4,
 				"speed_multiplier": 0.85,
@@ -1952,7 +1992,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 				},
 				"area": {
 					"name": "Dense Field",
-					"description": "+40% damage, larger Area Field, and slightly shorter duration.",
+					"description": "+40% damage and a larger Area Field with slower cadence.",
 					"impact_text": "+40% damage, +20% size",
 				},
 				"slash": {
@@ -1979,13 +2019,18 @@ func _create_upgrade_data() -> Array[Dictionary]:
 				"shot_interval": 4,
 				"damage_multiplier_bonus": 0.25,
 			},
-			"max_stacks_by_delivery": {"chain_lightning": 2, "slash": 2, "persistent_waves": 2},
-			"compatible_deliveries": ["simple_projectile", "chain_lightning", "slash", "persistent_waves"],
+			"max_stacks_by_delivery": {"chain_lightning": 2, "area": 2, "slash": 2, "persistent_waves": 2},
+			"compatible_deliveries": PLAYABLE_CAST_TYPE_IDS,
 			"delivery_effects": {
 				"chain_lightning": {
 					"name": "Resonant Echo",
 					"description": "Every 4 chains, the next gains extra damage and +1 target.",
 					"impact_text": "Echo: extra damage and +1 target",
+				},
+				"area": {
+					"name": "Resonant Field",
+					"description": "Every 4 fields, the next Area Field lasts longer.",
+					"impact_text": "Echo: longer Field",
 				},
 				"slash": {
 					"name": "Cutting Echo",
@@ -2007,6 +2052,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"branch": "core",
 			"effect_type": "player_aura",
 			"node_label": "Field",
+			"compatible_deliveries": PLAYABLE_CAST_TYPE_IDS,
 			"values": {
 				"radius_bonus": 60.0,
 				"damage_bonus": 6,

@@ -137,16 +137,19 @@ func _format_modifier_breakdown(stats: Dictionary) -> String:
 func _format_build(stats: Dictionary) -> String:
 	var graph = stats.get("spell_graph", {})
 	var blueprint = stats.get("spell_blueprint", {})
-	var base_spell_line := ""
+	var base_spell_lines: Array[String] = []
 	if blueprint is Dictionary and not blueprint.is_empty():
-		base_spell_line = "Base spell: %s + %s + %s" % [
-			str(blueprint.get("shape_name", "Circle")),
-			str(blueprint.get("element_name", "Arcane")),
-			str(blueprint.get("delivery_name", "Simple Projectile")),
+		base_spell_lines = [
+			"Base Spell: %s" % str(blueprint.get("shape_name", "Circle")),
+			"Element: %s" % str(blueprint.get("element_name", "Arcane")),
+			"Cast Type: %s" % str(blueprint.get("delivery_name", "Simple Projectile")),
 		]
 	if graph is Dictionary and not graph.is_empty():
 		var branches = graph.get("branches", {})
-		var lines: Array[String] = [base_spell_line if not base_spell_line.is_empty() else "Branching build"]
+		var lines: Array[String] = base_spell_lines.duplicate()
+		if lines.is_empty():
+			lines.append("Base Spell: Branching build")
+		var run_nodes: Array[String] = []
 		for branch_data in [
 			{"id": "form", "name": "Form"},
 			{"id": "energy", "name": "Energy"},
@@ -155,7 +158,8 @@ func _format_build(stats: Dictionary) -> String:
 		]:
 			var labels = branches.get(str(branch_data["id"]), [])
 			if labels is Array and not labels.is_empty():
-				lines.append("%s: %s" % [str(branch_data["name"]), ", ".join(labels)])
+				run_nodes.append("%s: %s" % [str(branch_data["name"]), ", ".join(labels)])
+		lines.append("Run Nodes: " + (" | ".join(run_nodes) if not run_nodes.is_empty() else "None"))
 
 		var graph_synergies = graph.get("synergies", [])
 		lines.append("Synergies: " + (", ".join(graph_synergies) if graph_synergies is Array and not graph_synergies.is_empty() else "None"))
@@ -163,7 +167,7 @@ func _format_build(stats: Dictionary) -> String:
 
 	var build_nodes = stats.get("build_nodes", [])
 	if build_nodes.is_empty():
-		return base_spell_line if not base_spell_line.is_empty() else "Projectile"
+		return "\n".join(base_spell_lines) if not base_spell_lines.is_empty() else "Projectile"
 
 	var labels: Array[String] = []
 	for node_label in build_nodes:
@@ -175,7 +179,7 @@ func _format_build(stats: Dictionary) -> String:
 			build_text += " -> "
 		build_text += labels[index]
 
-	return base_spell_line + "\n" + build_text if not base_spell_line.is_empty() else build_text
+	return "\n".join(base_spell_lines + ["Run Nodes: " + build_text]) if not base_spell_lines.is_empty() else build_text
 
 
 func _format_synergies(stats: Dictionary) -> String:

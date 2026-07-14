@@ -112,8 +112,11 @@ func _rebuild_graph() -> void:
 
 
 func _create_root_node() -> void:
-	var root_label := str(_base_spell.get("shape_name", "Projectile")).to_upper()
-	var root := _create_node_card(root_label, Color(0.2, 0.48, 0.68), ROOT_SIZE, 16)
+	var root_label := "%s\n%s" % [
+		str(_base_spell.get("shape_name", "Projectile")).to_upper(),
+		str(_base_spell.get("delivery_name", "Simple Projectile")).to_upper(),
+	]
+	var root := _create_node_card(root_label, Color(0.2, 0.48, 0.68), ROOT_SIZE, 13)
 	root.position = ROOT_CENTER - ROOT_SIZE * 0.5
 	graph_canvas.add_child(root)
 

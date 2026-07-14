@@ -57,7 +57,7 @@ func _build_options() -> void:
 	for delivery in _run_config.call("get_spell_delivery_list"):
 		var data: Dictionary = delivery
 		var cast_type_available := bool(data.get("available", false))
-		var button := _create_option_button(str(data.get("display_name", "Cast Type")), str(data.get("description", "")), cast_type_available, not cast_type_available)
+		var button := _create_option_button(str(data.get("display_name", "Cast Type")), str(data.get("playstyle_summary", data.get("description", ""))), cast_type_available, not cast_type_available)
 		if not cast_type_available:
 			button.text = _get_locked_option_text(data)
 		else:
@@ -120,16 +120,20 @@ func _refresh_selection() -> void:
 		str(summary.get("element_name", "Arcane")),
 		str(summary.get("delivery_name", "Simple Projectile")),
 	]
-	detail_label.text = "%s\n%s\n%s\n\n%s" % [
-		str(shape.get("description", "")),
-		str(element.get("description", "")),
-		str(delivery.get("description", "")),
-		str(shape.get("modifiers_text", "")),
-	]
+	detail_label.text = _format_delivery_details(delivery)
 	preview.call("setup", str(shape.get("visual_shape", "circle")), element.get("primary_color", Color.WHITE), element.get("secondary_color", Color.WHITE))
 	_refresh_button_states(_shape_buttons, str(summary.get("shape_id", "circle")))
 	_refresh_button_states(_element_buttons, str(summary.get("element_id", "arcane")))
 	_refresh_button_states(_delivery_buttons, str(summary.get("delivery_id", "simple_projectile")))
+
+
+func _format_delivery_details(delivery: Dictionary) -> String:
+	return "Playstyle: %s\nStrengths: %s\nWeaknesses: %s\nScaling: %s" % [
+		str(delivery.get("playstyle_summary", delivery.get("description", ""))),
+		str(delivery.get("strengths", "Flexible elemental scaling.")),
+		str(delivery.get("weaknesses", "Requires positioning and upgrade choices.")),
+		str(delivery.get("scaling_keywords", "damage, cadence, elemental effects")),
+	]
 
 
 func _refresh_button_states(buttons: Dictionary, selected_id: String) -> void:
