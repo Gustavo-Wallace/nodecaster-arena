@@ -41,21 +41,6 @@ const FALLBACK_CHARACTERS := [
 		"fill_color": Color(0.43, 0.95, 0.58),
 		"outline_color": Color(0.86, 1.0, 0.88),
 	},
-	{
-		"id": "diamond",
-		"display_name": "Diamond",
-		"profile": "Caster",
-		"description": "An unstable form specialized in arcane power.",
-		"max_health": 86,
-		"move_speed": 320,
-		"projectile_damage": 18,
-		"fire_interval": 0.50,
-		"visual_shape": "diamond",
-		"fill_color": Color(0.34, 0.92, 0.92),
-		"outline_color": Color(0.9, 1.0, 1.0),
-		"unlocked": false,
-		"unlock_cost": 25,
-	},
 ]
 
 @onready var cards_row: HBoxContainer = $Panel/CardsRow

@@ -5,7 +5,7 @@ const SKILL_TREE_VERSION := 3
 
 const BASIC_CHARACTER_IDS := ["circle", "triangle", "square"]
 const BASIC_SPELL_SHAPE_IDS := ["circle", "triangle", "square"]
-const BASIC_ELEMENT_IDS := ["arcane", "fire", "ice", "lightning"]
+const BASIC_ELEMENT_IDS := ["arcane", "fire", "ice", "electric"]
 const BASIC_CAST_TYPE_IDS := ["simple_projectile", "chain_lightning", "area", "slash", "persistent_waves"]
 const BASIC_UPGRADE_IDS := [
 	"arcane_damage",
@@ -28,7 +28,7 @@ var unlock_definitions := {
 		"id": "character_diamond",
 		"kind": "character",
 		"target_id": "diamond",
-		"display_name": "Diamond",
+		"display_name": "Diamond Core",
 		"description": "An unstable form specialized in arcane power.",
 		"cost": 25,
 	},
@@ -80,8 +80,8 @@ var skill_definitions := {
 	"hotter_burn": {"id": "hotter_burn", "name": "Hotter Burn", "description": "Fire burn deals more damage per tick.", "branch": "element_fire", "cost": 28, "prerequisites": ["longer_burn"], "scope": "element", "scope_id": "fire", "bonus_type": "effect_power_multiplier", "effect_value": 0.25, "position": Vector2(640.0, 1380.0)},
 	"longer_chill": {"id": "longer_chill", "name": "Longer Chill", "description": "Ice slows enemies for longer.", "branch": "element_ice", "cost": 20, "prerequisites": [], "scope": "element", "scope_id": "ice", "bonus_type": "effect_duration_multiplier", "effect_value": 0.3, "position": Vector2(1050.0, 1290.0)},
 	"deeper_chill": {"id": "deeper_chill", "name": "Deeper Chill", "description": "Ice applies a stronger slow.", "branch": "element_ice", "cost": 28, "prerequisites": ["longer_chill"], "scope": "element", "scope_id": "ice", "bonus_type": "slow_multiplier_bonus", "effect_value": 0.1, "position": Vector2(1050.0, 1380.0)},
-	"higher_voltage": {"id": "higher_voltage", "name": "Higher Voltage", "description": "Electric casts deal slightly more damage.", "branch": "element_electric", "cost": 22, "prerequisites": [], "scope": "element", "scope_id": "lightning", "bonus_type": "damage_multiplier", "effect_value": 0.1, "position": Vector2(1370.0, 1290.0)},
-	"static_charge": {"id": "static_charge", "name": "Static Charge", "description": "Every 5th Electric cast is empowered.", "branch": "element_electric", "cost": 30, "prerequisites": ["higher_voltage"], "scope": "element", "scope_id": "lightning", "bonus_type": "empowered_interval", "effect_value": 5, "position": Vector2(1580.0, 1370.0)},
+	"higher_voltage": {"id": "higher_voltage", "name": "Higher Voltage", "description": "Electric casts deal slightly more damage.", "branch": "element_electric", "cost": 22, "prerequisites": [], "scope": "element", "scope_id": "electric", "bonus_type": "damage_multiplier", "effect_value": 0.1, "position": Vector2(1370.0, 1290.0)},
+	"static_charge": {"id": "static_charge", "name": "Static Charge", "description": "Every 5th Electric cast is empowered.", "branch": "element_electric", "cost": 30, "prerequisites": ["higher_voltage"], "scope": "element", "scope_id": "electric", "bonus_type": "empowered_interval", "effect_value": 5, "position": Vector2(1580.0, 1370.0)},
 }
 
 
@@ -249,9 +249,10 @@ func is_spell_shape_unlocked(shape_id: String) -> bool:
 
 
 func is_element_unlocked(element_id: String) -> bool:
-	if element_id in BASIC_ELEMENT_IDS:
+	var resolved_id := _resolve_element_id(element_id)
+	if resolved_id in BASIC_ELEMENT_IDS:
 		return true
-	return _is_scope_target_unlocked("unlock_element", element_id)
+	return _is_scope_target_unlocked("unlock_element", resolved_id)
 
 
 func is_cast_type_unlocked(cast_type_id: String) -> bool:
@@ -265,7 +266,7 @@ func get_cast_type_bonus(cast_type_id: String, bonus_type: String) -> float:
 
 
 func get_element_bonus(element_id: String, bonus_type: String) -> float:
-	return _get_scoped_bonus("element", element_id, bonus_type)
+	return _get_scoped_bonus("element", _resolve_element_id(element_id), bonus_type)
 
 
 func get_skill_effect_value(effect_type: String) -> float:
@@ -532,6 +533,10 @@ func _get_scoped_bonus(scope: String, scope_id: String, bonus_type: String) -> f
 		if str(skill.get("bonus_type", "")) == bonus_type:
 			total += float(skill.get("effect_value", 0.0))
 	return total
+
+
+func _resolve_element_id(element_id: String) -> String:
+	return "electric" if element_id == "lightning" else element_id
 
 
 func _migrate_legacy_skill_purchases() -> void:

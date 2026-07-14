@@ -97,7 +97,7 @@ const SHAPES := {
 	},
 	"diamond": {
 		"id": "diamond",
-		"display_name": "Diamond",
+		"display_name": "Diamond Shape",
 		"description": "A rapid Spell Shape for fast, precise casts.",
 		"visual_shape": "diamond",
 		"base_color": Color(0.36, 0.92, 0.94),

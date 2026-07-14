@@ -63,7 +63,7 @@ var characters := {
 	},
 	"diamond": {
 		"id": "diamond",
-		"display_name": "Diamond",
+		"display_name": "Diamond Core",
 		"profile": "Caster",
 		"description": "An unstable form specialized in arcane power.",
 		"max_health": 86,
@@ -140,7 +140,8 @@ func get_character_data(character_id: String) -> Dictionary:
 func get_character_list() -> Array[Dictionary]:
 	var list: Array[Dictionary] = []
 
-	for character_id in ["circle", "triangle", "square", "diamond"]:
+	# Kept loadable for legacy saves, but hidden until it has a dedicated unlock path.
+	for character_id in ["circle", "triangle", "square"]:
 		list.append(get_character_data(character_id))
 
 	return list
@@ -175,6 +176,7 @@ func is_cast_type_unlocked(cast_type_id: String) -> bool:
 func _ensure_spell_selection_is_valid() -> void:
 	if not is_spell_shape_unlocked(selected_spell_shape_id):
 		selected_spell_shape_id = "circle"
+	selected_spell_element_id = str(SPELL_ELEMENT_DATA.get_data(selected_spell_element_id).get("id", "arcane"))
 	if not is_element_unlocked(selected_spell_element_id):
 		selected_spell_element_id = "arcane"
 	if not is_cast_type_unlocked(selected_spell_delivery_id):

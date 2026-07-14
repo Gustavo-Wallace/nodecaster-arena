@@ -38,8 +38,8 @@ const ELEMENTS := {
 		"tags": ["control", "slow"],
 		"modifiers_text": "Reduces target speed for 1.4s.",
 	},
-	"lightning": {
-		"id": "lightning",
+	"electric": {
+		"id": "electric",
 		"display_name": "Electric",
 		"description": "Improves Chain Lightning propagation and speeds up Area Field pulses.",
 		"primary_color": Color(1.0, 0.84, 0.18),
@@ -66,13 +66,23 @@ const ELEMENTS := {
 }
 
 
+const LEGACY_ELEMENT_ALIASES := {
+	"lightning": "electric",
+}
+
+
+static func resolve_id(element_id: String) -> String:
+	var resolved_id: String = str(LEGACY_ELEMENT_ALIASES.get(element_id, element_id))
+	return resolved_id if ELEMENTS.has(resolved_id) else "arcane"
+
+
 static func get_data(element_id: String) -> Dictionary:
-	var resolved_id := element_id if ELEMENTS.has(element_id) else "arcane"
+	var resolved_id := resolve_id(element_id)
 	return ELEMENTS[resolved_id].duplicate(true)
 
 
 static func get_available() -> Array[Dictionary]:
 	var elements: Array[Dictionary] = []
-	for element_id in ["arcane", "fire", "ice", "lightning", "shadow"]:
+	for element_id in ["arcane", "fire", "ice", "electric", "shadow"]:
 		elements.append(get_data(element_id))
 	return elements
