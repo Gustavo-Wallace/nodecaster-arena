@@ -59,10 +59,14 @@ const DELIVERIES := {
 	},
 	"summon": {
 		"id": "summon",
-		"display_name": "Summon",
-		"description": "Creates echoes or mini clones that attack on their own.",
-		"available": false,
-		"tags": ["future", "echo"],
+		"display_name": "Summoning",
+		"description": "Summons temporary echoes that attack nearby enemies.",
+		"playstyle_summary": "Persistent autonomous echoes with elemental attacks.",
+		"strengths": "Persistent damage, elemental effects, and strong duration scaling.",
+		"weaknesses": "Slow setup, weaker burst, and limited early echo count.",
+		"scaling_keywords": "echo count, lifetime, attack speed, damage",
+		"available": true,
+		"tags": ["summon", "persistent", "echo"],
 	},
 	"orbitals": {
 		"id": "orbitals",

@@ -21,13 +21,14 @@ const IMPACT_RING_SCENE := preload("res://scenes/effects/impact_ring.tscn")
 const CHAIN_LIGHTNING_EFFECT_SCENE := preload("res://scenes/effects/chain_lightning_effect.tscn")
 const AREA_SPELL_SCENE := preload("res://scenes/spells/area_spell.tscn")
 const PERSISTENT_WAVE_SCENE := preload("res://scenes/spells/persistent_wave.tscn")
+const SUMMONED_ECHO_SCENE := preload("res://scenes/spells/summoned_echo.tscn")
 const SLASH_EFFECT_SCENE := preload("res://scenes/effects/slash_effect.tscn")
 const PENTAGON_MINIBOSS_SCENE := preload("res://scenes/enemies/pentagon_miniboss.tscn")
 const HEXAGON_BOSS_SCENE := preload("res://scenes/enemies/hexagon_boss.tscn")
 const RUN_RESULT_PANEL_SCENE := preload("res://scenes/ui/run_result_panel.tscn")
 const UNSTABLE_FIELD_AURA_SCRIPT := preload("res://scripts/effects/unstable_field_aura.gd")
 const RUN_UPGRADE_DATA := preload("res://scripts/game/run_upgrade_data.gd")
-const PLAYABLE_CAST_TYPE_IDS := ["simple_projectile", "chain_lightning", "area", "slash", "persistent_waves"]
+const PLAYABLE_CAST_TYPE_IDS := ["simple_projectile", "chain_lightning", "area", "slash", "persistent_waves", "summon"]
 
 @export var arena_position: Vector2 = Vector2(96.0, 72.0)
 @export var arena_size: Vector2 = Vector2(1088.0, 576.0)
@@ -94,6 +95,20 @@ const PLAYABLE_CAST_TYPE_IDS := ["simple_projectile", "chain_lightning", "area",
 @export var wave_max_active: int = 5
 @export var wave_max_speed: float = 620.0
 @export var wave_min_hit_cooldown_per_enemy: float = 0.18
+@export var summon_lifetime: float = 7.0
+@export var summon_attack_range: float = 280.0
+@export var summon_attack_interval: float = 0.9
+@export var summon_damage_multiplier: float = 0.35
+@export var summon_cast_interval_multiplier: float = 1.8
+@export var summon_max_active: int = 2
+@export var summon_spawn_radius: float = 70.0
+@export var summon_move_speed: float = 140.0
+@export var summon_min_cast_interval: float = 0.8
+@export var summon_max_active_cap: int = 6
+@export var summon_max_lifetime: float = 14.0
+@export var summon_min_attack_interval: float = 0.35
+@export var summon_max_attack_range: float = 480.0
+@export var summon_max_damage_multiplier: float = 1.2
 @export var base_enemies_per_wave: int = 1
 @export var enemies_added_per_wave: int = 2
 @export var wave_interval: float = 2.0
@@ -166,6 +181,12 @@ var _area_size_multiplier: float = 1.0
 var _area_duration_multiplier: float = 1.0
 var _area_damage_multiplier: float = 1.0
 var _active_persistent_waves: Array[Node2D] = []
+var _active_summons: Array[Node2D] = []
+var _summon_max_active_bonus: int = 0
+var _summon_attack_range_bonus: float = 0.0
+var _summon_move_speed_multiplier: float = 1.0
+var _summon_attack_interval_multiplier: float = 1.0
+var _summon_damage_multiplier: float = 1.0
 var _wave_speed_bonus: float = 0.0
 var _wave_speed_multiplier: float = 1.0
 var _wave_width_multiplier: float = 1.0
@@ -471,6 +492,8 @@ func _apply_spell_blueprint_to_run() -> void:
 		auto_fire_interval = maxf(auto_fire_interval * slash_cast_interval_multiplier, slash_min_cast_interval)
 	elif _is_persistent_waves_delivery():
 		auto_fire_interval = maxf(auto_fire_interval * wave_cast_interval_multiplier, wave_min_cast_interval)
+	elif _is_summoning_delivery():
+		auto_fire_interval = maxf(auto_fire_interval * summon_cast_interval_multiplier, summon_min_cast_interval)
 	projectile_size_multiplier *= float(_spell_attributes.get("size_multiplier", 1.0))
 	projectile_pierce = mini(projectile_pierce + int(_spell_attributes.get("pierce_bonus", 0)), max_projectile_pierce)
 
@@ -838,6 +861,9 @@ func _fire_at_nearest_enemy() -> void:
 	if _is_persistent_waves_delivery():
 		_cast_persistent_wave_spell()
 		return
+	if _is_summoning_delivery():
+		_cast_summoning_spell()
+		return
 
 	_cast_projectile_spell()
 
@@ -955,6 +981,10 @@ func _is_slash_delivery() -> bool:
 
 func _is_persistent_waves_delivery() -> bool:
 	return str(selected_spell_summary.get("delivery_id", "simple_projectile")) == "persistent_waves"
+
+
+func _is_summoning_delivery() -> bool:
+	return str(selected_spell_summary.get("delivery_id", "simple_projectile")) == "summon"
 
 
 func _is_simple_projectile_cast_type() -> bool:
@@ -1207,6 +1237,79 @@ func _on_persistent_wave_hit(enemy: Node2D, damage: int, effect_id: String, effe
 			projectile_explosion_radius * 0.58,
 			maxi(1, int(round(float(damage) * projectile_explosion_damage_multiplier * 0.52)))
 		)
+
+
+func _cast_summoning_spell() -> void:
+	_remove_invalid_summons()
+	var active_limit := clampi(summon_max_active + _summon_max_active_bonus, 1, summon_max_active_cap)
+	if _active_summons.size() >= active_limit:
+		return
+	var spawn_direction := Vector2.from_angle(_rng.randf_range(0.0, TAU))
+	var spawn_position := player.global_position + spawn_direction * _rng.randf_range(28.0, summon_spawn_radius)
+	var visual_profile: Dictionary = _get_spell_visual_profile()
+	var shape_id := str(_spell_attributes.get("visual_shape", "circle"))
+	var shape_damage_multiplier := 1.0
+	var shape_attack_multiplier := 1.0
+	var shape_move_multiplier := 1.0
+	match shape_id:
+		"triangle":
+			shape_damage_multiplier = 0.86
+			shape_attack_multiplier = 0.84
+			shape_move_multiplier = 1.2
+		"square":
+			shape_damage_multiplier = 1.18
+			shape_attack_multiplier = 1.16
+			shape_move_multiplier = 0.84
+		"diamond":
+			shape_damage_multiplier = 0.85
+			shape_attack_multiplier = 0.78
+	var parameters := {
+		"lifetime": minf(summon_lifetime * float(_spell_attributes.get("duration_multiplier", 1.0)), summon_max_lifetime),
+		"attack_range": minf(summon_attack_range + _summon_attack_range_bonus, summon_max_attack_range),
+		"attack_interval": maxf(summon_attack_interval * shape_attack_multiplier * _summon_attack_interval_multiplier, summon_min_attack_interval),
+		"damage": maxi(1, int(round(float(projectile_damage) * summon_damage_multiplier * shape_damage_multiplier * _summon_damage_multiplier))),
+		"move_speed": summon_move_speed * shape_move_multiplier * _summon_move_speed_multiplier,
+		"visual_shape": shape_id,
+		"fill_color": visual_profile.get("primary_color", Color(0.77, 0.36, 1.0)),
+		"outline_color": visual_profile.get("secondary_color", Color(1.0, 0.78, 1.0)),
+		"element_effect_id": str(_spell_attributes.get("element_effect_id", "direct")),
+		"element_effect_power": float(_spell_attributes.get("element_effect_power", 0.0)),
+		"empowered_interval": _cutting_echo_interval,
+		"empowered_damage_multiplier": _cutting_echo_damage_multiplier,
+	}
+	var echo := SUMMONED_ECHO_SCENE.instantiate() as Node2D
+	echo.connect("hit_requested", Callable(self, "_on_summoned_echo_hit"))
+	echo.tree_exited.connect(Callable(self, "_remove_summon_reference").bind(echo))
+	add_child(echo)
+	echo.call("setup", spawn_position, player, parameters)
+	_active_summons.append(echo)
+	_spawn_impact_ring(spawn_position, Color(0.62, 0.9, 1.0, 0.5), 8.0, 28.0, 0.16, 1.4)
+
+
+func _on_summoned_echo_hit(enemy: Node2D, damage: int, effect_id: String, effect_power: float, empowered: bool) -> void:
+	if not is_instance_valid(enemy):
+		return
+	if enemy.has_method("take_damage"):
+		enemy.call("take_damage", damage)
+	if enemy.has_method("apply_elemental_effect") and effect_id != "direct":
+		enemy.call("apply_elemental_effect", effect_id, effect_power, damage, _element_effect_duration_multiplier)
+	var visual_profile: Dictionary = _get_spell_visual_profile()
+	var impact_color: Color = visual_profile.get("impact_color", Color(0.96, 0.48, 1.0))
+	_spawn_impact_ring(enemy.global_position, Color(impact_color.r, impact_color.g, impact_color.b, 0.48), 3.0, 18.0, 0.14, 1.3)
+	if empowered:
+		_spawn_floating_text("ECHO", enemy.global_position + Vector2(0.0, -28.0), Color(0.72, 1.0, 0.94), 0.36)
+	if projectile_explosion_radius > 0.0 and projectile_explosion_damage_multiplier > 0.0:
+		_on_projectile_explosion_requested(enemy.global_position, projectile_explosion_radius * 0.42, maxi(1, int(round(float(damage) * projectile_explosion_damage_multiplier * 0.4))))
+
+
+func _remove_invalid_summons() -> void:
+	for index in range(_active_summons.size() - 1, -1, -1):
+		if not is_instance_valid(_active_summons[index]):
+			_active_summons.remove_at(index)
+
+
+func _remove_summon_reference(echo: Node) -> void:
+	_active_summons.erase(echo)
 
 
 func _cast_area_spell() -> void:
@@ -1591,7 +1694,11 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 				minimum_interval = slash_min_cast_interval
 			elif _is_persistent_waves_delivery():
 				minimum_interval = wave_min_cast_interval
+			elif _is_summoning_delivery():
+				minimum_interval = summon_min_cast_interval
 			auto_fire_interval = maxf(auto_fire_interval * float(values.get("interval_multiplier", 0.88)), minimum_interval)
+			if _is_summoning_delivery():
+				_summon_attack_interval_multiplier = maxf(_summon_attack_interval_multiplier * 0.94, summon_min_attack_interval / summon_attack_interval)
 			if is_instance_valid(_auto_fire_timer):
 				_auto_fire_timer.wait_time = auto_fire_interval
 		"light_core":
@@ -1614,6 +1721,9 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 				_slash_range_bonus = minf(_slash_range_bonus + 48.0, slash_max_range - slash_range * 0.5)
 			elif _is_persistent_waves_delivery():
 				_wave_speed_bonus += float(values.get("projectile_speed_bonus", 80.0))
+			elif _is_summoning_delivery():
+				_summon_attack_range_bonus = minf(_summon_attack_range_bonus + 36.0, summon_max_attack_range - summon_attack_range)
+				_summon_move_speed_multiplier *= 1.1
 		"initial_fragmentation":
 			if _is_chain_lightning_delivery():
 				_chain_bonus_hits = mini(_chain_bonus_hits + int(values.get("projectile_count_bonus", 1)), chain_max_hits_cap - chain_max_hits)
@@ -1624,6 +1734,8 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 				_slash_targets_bonus = mini(_slash_targets_bonus + int(values.get("projectile_count_bonus", 1)), slash_target_bonus_cap)
 			elif _is_persistent_waves_delivery():
 				_wave_width_multiplier *= 1.18
+			elif _is_summoning_delivery():
+				_summon_max_active_bonus = mini(_summon_max_active_bonus + int(values.get("projectile_count_bonus", 1)), summon_max_active_cap - summon_max_active)
 			else:
 				projectile_count = mini(projectile_count + int(values.get("projectile_count_bonus", 1)), max_projectile_count)
 		"piercing":
@@ -1664,6 +1776,9 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 				auto_fire_interval *= 1.1
 				if is_instance_valid(_auto_fire_timer):
 					_auto_fire_timer.wait_time = auto_fire_interval
+			elif _is_summoning_delivery():
+				_summon_damage_multiplier = minf(_summon_damage_multiplier * float(values.get("damage_multiplier", 1.4)), summon_max_damage_multiplier)
+				_summon_attack_interval_multiplier *= 1.15
 		"cutting_echo":
 			_cutting_echo_interval = int(values.get("shot_interval", 4))
 			_cutting_echo_damage_multiplier += float(values.get("damage_multiplier_bonus", 0.25))
@@ -2387,6 +2502,7 @@ func _clear_active_threats() -> void:
 
 	_clear_projectiles()
 	_clear_area_spells()
+	_clear_summons()
 
 
 func _clear_projectiles() -> void:
@@ -2403,6 +2519,13 @@ func _clear_area_spells() -> void:
 		if is_instance_valid(area_spell):
 			area_spell.queue_free()
 	_active_area_spells.clear()
+
+
+func _clear_summons() -> void:
+	for echo in _active_summons:
+		if is_instance_valid(echo):
+			echo.queue_free()
+	_active_summons.clear()
 
 
 func _play_audio(method_name: String) -> void:
