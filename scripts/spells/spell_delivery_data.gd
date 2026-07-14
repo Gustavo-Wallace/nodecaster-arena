@@ -33,9 +33,9 @@ const DELIVERIES := {
 	"persistent_waves": {
 		"id": "persistent_waves",
 		"display_name": "Persistent Waves",
-		"description": "Launches waves toward the target.",
-		"available": false,
-		"tags": ["future", "wave"],
+		"description": "Launches a moving wave toward the nearest enemy. Strong against lined-up groups and chokepoints. Scales with size, duration, speed and elemental effects.",
+		"available": true,
+		"tags": ["directional", "wave", "groups"],
 	},
 	"summon": {
 		"id": "summon",

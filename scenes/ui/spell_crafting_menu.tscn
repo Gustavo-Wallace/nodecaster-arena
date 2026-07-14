@@ -76,8 +76,15 @@ horizontal_alignment = 1
 theme_override_colors/font_color = Color(0.86, 0.7, 1, 1)
 theme_override_font_sizes/font_size = 16
 
-[node name="Options" type="VBoxContainer" parent="Panel/Columns/ShapeColumn"]
+[node name="OptionsScroll" type="ScrollContainer" parent="Panel/Columns/ShapeColumn"]
 layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Options" type="VBoxContainer" parent="Panel/Columns/ShapeColumn/OptionsScroll"]
+custom_minimum_size = Vector2(214, 0)
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
 [node name="ElementColumn" type="VBoxContainer" parent="Panel/Columns"]
@@ -92,8 +99,15 @@ horizontal_alignment = 1
 theme_override_colors/font_color = Color(1, 0.72, 0.38, 1)
 theme_override_font_sizes/font_size = 16
 
-[node name="Options" type="VBoxContainer" parent="Panel/Columns/ElementColumn"]
+[node name="OptionsScroll" type="ScrollContainer" parent="Panel/Columns/ElementColumn"]
 layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Options" type="VBoxContainer" parent="Panel/Columns/ElementColumn/OptionsScroll"]
+custom_minimum_size = Vector2(214, 0)
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
 [node name="DeliveryColumn" type="VBoxContainer" parent="Panel/Columns"]
@@ -108,8 +122,15 @@ horizontal_alignment = 1
 theme_override_colors/font_color = Color(0.42, 0.94, 1, 1)
 theme_override_font_sizes/font_size = 16
 
-[node name="Options" type="VBoxContainer" parent="Panel/Columns/DeliveryColumn"]
+[node name="OptionsScroll" type="ScrollContainer" parent="Panel/Columns/DeliveryColumn"]
 layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Options" type="VBoxContainer" parent="Panel/Columns/DeliveryColumn/OptionsScroll"]
+custom_minimum_size = Vector2(238, 0)
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 6
 
 [node name="PreviewPanel" type="Panel" parent="Panel"]

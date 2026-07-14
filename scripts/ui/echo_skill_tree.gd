@@ -217,6 +217,11 @@ func _update_details() -> void:
 		status_label.text = "Already purchased."
 		buy_button.text = "Purchased"
 		buy_button.disabled = true
+	elif bool(skill.get("implemented", false)):
+		status_label.text = "Available in the Arcane Workshop."
+		cost_label.text = "Development Cast Type"
+		buy_button.text = "Implemented"
+		buy_button.disabled = true
 	elif bool(skill.get("future", false)):
 		status_label.text = "Coming soon."
 		buy_button.text = "Unavailable"
@@ -325,6 +330,10 @@ func _apply_skill_button_style(button: Button, skill: Dictionary) -> void:
 		bg_color = Color(branch_color.r * 0.35, branch_color.g * 0.35, branch_color.b * 0.35, 0.98)
 		border_color = Color(branch_color.r, branch_color.g, branch_color.b, 1.0)
 		font_color = Color(0.96, 1.0, 1.0)
+	elif bool(skill.get("implemented", false)):
+		bg_color = Color(0.05, 0.12, 0.15, 0.98)
+		border_color = Color(0.42, 0.9, 1.0, 0.9)
+		font_color = Color(0.74, 0.94, 1.0)
 	elif bool(skill.get("can_purchase", false)):
 		bg_color = Color(0.105, 0.112, 0.13, 0.98)
 		border_color = Color(1.0, 0.86, 0.38, 1.0)

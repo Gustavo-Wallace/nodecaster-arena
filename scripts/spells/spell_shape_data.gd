@@ -27,6 +27,10 @@ const SHAPES := {
 		"slash_width_multiplier": 1.0,
 		"slash_damage_multiplier": 1.0,
 		"slash_arc_multiplier": 1.15,
+		"wave_speed_multiplier": 1.0,
+		"wave_width_multiplier": 1.0,
+		"wave_damage_multiplier": 1.0,
+		"wave_lifetime_multiplier": 1.0,
 		"modifiers_text": "Balanced damage, speed, and size.",
 	},
 	"triangle": {
@@ -54,6 +58,10 @@ const SHAPES := {
 		"slash_width_multiplier": 0.74,
 		"slash_damage_multiplier": 1.14,
 		"slash_arc_multiplier": 0.72,
+		"wave_speed_multiplier": 1.2,
+		"wave_width_multiplier": 0.72,
+		"wave_damage_multiplier": 0.94,
+		"wave_lifetime_multiplier": 0.92,
 		"modifiers_text": "+28% speed, -8% damage, smaller projectiles.",
 	},
 	"square": {
@@ -81,6 +89,10 @@ const SHAPES := {
 		"slash_width_multiplier": 1.28,
 		"slash_damage_multiplier": 1.12,
 		"slash_arc_multiplier": 0.92,
+		"wave_speed_multiplier": 0.76,
+		"wave_width_multiplier": 1.28,
+		"wave_damage_multiplier": 1.18,
+		"wave_lifetime_multiplier": 1.12,
 		"modifiers_text": "+28% damage, larger and slower projectiles.",
 	},
 	"diamond": {
@@ -108,6 +120,10 @@ const SHAPES := {
 		"slash_width_multiplier": 0.84,
 		"slash_damage_multiplier": 0.92,
 		"slash_arc_multiplier": 1.05,
+		"wave_speed_multiplier": 1.1,
+		"wave_width_multiplier": 0.9,
+		"wave_damage_multiplier": 0.9,
+		"wave_lifetime_multiplier": 0.92,
 		"modifiers_text": "+18% cast rhythm, +16% speed, -10% damage.",
 	},
 	"star": {

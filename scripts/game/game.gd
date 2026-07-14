@@ -20,6 +20,7 @@ const GEOMETRIC_SHATTER_SCENE := preload("res://scenes/effects/geometric_shatter
 const IMPACT_RING_SCENE := preload("res://scenes/effects/impact_ring.tscn")
 const CHAIN_LIGHTNING_EFFECT_SCENE := preload("res://scenes/effects/chain_lightning_effect.tscn")
 const AREA_SPELL_SCENE := preload("res://scenes/spells/area_spell.tscn")
+const PERSISTENT_WAVE_SCENE := preload("res://scenes/spells/persistent_wave.tscn")
 const SLASH_EFFECT_SCENE := preload("res://scenes/effects/slash_effect.tscn")
 const PENTAGON_MINIBOSS_SCENE := preload("res://scenes/enemies/pentagon_miniboss.tscn")
 const HEXAGON_BOSS_SCENE := preload("res://scenes/enemies/hexagon_boss.tscn")
@@ -74,6 +75,21 @@ const UNSTABLE_FIELD_AURA_SCRIPT := preload("res://scripts/effects/unstable_fiel
 @export var slash_max_targets: int = 6
 @export var slash_max_range: float = 520.0
 @export var slash_max_size_multiplier: float = 2.5
+@export var wave_range: float = 500.0
+@export var wave_speed: float = 340.0
+@export var wave_lifetime: float = 1.4
+@export var wave_damage_multiplier: float = 0.75
+@export var wave_cast_interval_multiplier: float = 1.45
+@export var wave_width: float = 70.0
+@export var wave_length: float = 28.0
+@export var wave_hit_cooldown_per_enemy: float = 0.35
+@export var max_active_waves: int = 3
+@export var wave_min_cast_interval: float = 0.55
+@export var wave_max_width: float = 180.0
+@export var wave_max_lifetime: float = 3.0
+@export var wave_max_active: int = 5
+@export var wave_max_speed: float = 620.0
+@export var wave_min_hit_cooldown_per_enemy: float = 0.18
 @export var base_enemies_per_wave: int = 1
 @export var enemies_added_per_wave: int = 2
 @export var wave_interval: float = 2.0
@@ -145,6 +161,10 @@ var _area_range_bonus: float = 0.0
 var _area_size_multiplier: float = 1.0
 var _area_duration_multiplier: float = 1.0
 var _area_damage_multiplier: float = 1.0
+var _active_persistent_waves: Array[Node2D] = []
+var _wave_speed_bonus: float = 0.0
+var _wave_speed_multiplier: float = 1.0
+var _wave_width_multiplier: float = 1.0
 var _slash_range_bonus: float = 0.0
 var _slash_size_multiplier: float = 1.0
 var _slash_targets_bonus: int = 0
@@ -445,6 +465,8 @@ func _apply_spell_blueprint_to_run() -> void:
 		auto_fire_interval = maxf(auto_fire_interval * area_cast_interval_multiplier, area_min_cast_interval)
 	elif _is_slash_delivery():
 		auto_fire_interval = maxf(auto_fire_interval * slash_cast_interval_multiplier, slash_min_cast_interval)
+	elif _is_persistent_waves_delivery():
+		auto_fire_interval = maxf(auto_fire_interval * wave_cast_interval_multiplier, wave_min_cast_interval)
 	projectile_size_multiplier *= float(_spell_attributes.get("size_multiplier", 1.0))
 	projectile_pierce += int(_spell_attributes.get("pierce_bonus", 0))
 
@@ -809,6 +831,9 @@ func _fire_at_nearest_enemy() -> void:
 	if _is_slash_delivery():
 		_cast_slash_spell()
 		return
+	if _is_persistent_waves_delivery():
+		_cast_persistent_wave_spell()
+		return
 
 	_cast_projectile_spell()
 
@@ -922,6 +947,10 @@ func _is_area_delivery() -> bool:
 
 func _is_slash_delivery() -> bool:
 	return str(selected_spell_summary.get("delivery_id", "simple_projectile")) == "slash"
+
+
+func _is_persistent_waves_delivery() -> bool:
+	return str(selected_spell_summary.get("delivery_id", "simple_projectile")) == "persistent_waves"
 
 
 func _is_simple_projectile_cast_type() -> bool:
@@ -1073,6 +1102,107 @@ func _get_nearest_enemy_in_range(origin: Vector2, max_range: float, excluded: Ar
 			nearest_enemy = enemy
 
 	return nearest_enemy
+
+
+func _cast_persistent_wave_spell() -> void:
+	var parameters: Dictionary = _get_persistent_wave_parameters()
+	var target := _get_nearest_enemy_in_range(player.global_position, float(parameters["range"]), [])
+	if target == null:
+		return
+
+	var direction := player.global_position.direction_to(target.global_position)
+	if direction == Vector2.ZERO:
+		direction = Vector2.RIGHT
+
+	_shot_sequence += 1
+	var catalyzed := _has_meta_skill("catalyzed_shot") and _shot_sequence % maxi(int(_get_meta_effect_value("catalyzed_shot_interval")), 1) == 0
+	var echo_cast := _cutting_echo_interval > 0 and _shot_sequence % _cutting_echo_interval == 0
+	var empowered_multiplier := _get_elemental_empowerment_multiplier()
+	var hit_damage := maxi(1, int(round(float(projectile_damage) * float(parameters["damage_multiplier"]) * (1.8 if catalyzed else 1.0) * empowered_multiplier)))
+	if catalyzed:
+		_spawn_floating_text("CATALYZED", player.global_position + Vector2(0.0, -42.0), Color(1.0, 0.66, 0.94), 0.46)
+	if empowered_multiplier > 1.0:
+		_spawn_floating_text("STATIC", player.global_position + Vector2(0.0, -58.0), Color(1.0, 0.94, 0.42), 0.42)
+
+	_spawn_persistent_wave(player.global_position + direction * 32.0, direction, parameters, hit_damage)
+	if echo_cast:
+		var echo_parameters: Dictionary = parameters.duplicate(true)
+		echo_parameters["width"] = float(echo_parameters["width"]) * 0.72
+		echo_parameters["speed"] = float(echo_parameters["speed"]) * 0.9
+		_spawn_persistent_wave(
+			player.global_position + direction.rotated(0.14) * 28.0,
+			direction.rotated(0.14),
+			echo_parameters,
+			maxi(1, int(round(float(hit_damage) * _cutting_echo_damage_multiplier)))
+		)
+		_spawn_floating_text("ECHO", player.global_position + Vector2(0.0, -64.0), Color(0.72, 1.0, 0.94), 0.42)
+
+	_play_audio("play_wave_cast")
+
+
+func _get_persistent_wave_parameters() -> Dictionary:
+	var visual_profile: Dictionary = _get_spell_visual_profile()
+	var shape_speed_multiplier := float(_spell_attributes.get("wave_speed_multiplier", 1.0))
+	var shape_width_multiplier := float(_spell_attributes.get("wave_width_multiplier", 1.0))
+	var shape_damage_multiplier := float(_spell_attributes.get("wave_damage_multiplier", 1.0))
+	var shape_lifetime_multiplier := float(_spell_attributes.get("wave_lifetime_multiplier", 1.0))
+	return {
+		"range": wave_range,
+		"speed": clampf((wave_speed + _wave_speed_bonus) * shape_speed_multiplier * _wave_speed_multiplier, 120.0, wave_max_speed),
+		"lifetime": clampf(wave_lifetime * shape_lifetime_multiplier, 0.35, wave_max_lifetime),
+		"damage_multiplier": wave_damage_multiplier * shape_damage_multiplier,
+		"width": clampf(wave_width * shape_width_multiplier * _wave_width_multiplier, 26.0, wave_max_width),
+		"length": clampf(wave_length * float(_spell_attributes.get("size_multiplier", 1.0)), 16.0, 68.0),
+		"hit_cooldown": maxf(wave_hit_cooldown_per_enemy, wave_min_hit_cooldown_per_enemy),
+		"visual_shape": str(_spell_attributes.get("visual_shape", "circle")),
+		"fill_color": visual_profile.get("primary_color", Color(0.77, 0.36, 1.0)),
+		"outline_color": visual_profile.get("secondary_color", Color(1.0, 0.78, 1.0)),
+		"element_effect_id": str(_spell_attributes.get("element_effect_id", "direct")),
+		"element_effect_power": float(_spell_attributes.get("element_effect_power", 0.0)),
+	}
+
+
+func _spawn_persistent_wave(spawn_position: Vector2, direction: Vector2, parameters: Dictionary, hit_damage: int) -> void:
+	_remove_invalid_persistent_waves()
+	var active_limit := clampi(max_active_waves, 1, wave_max_active)
+	if _active_persistent_waves.size() >= active_limit:
+		var oldest_wave: Node2D = _active_persistent_waves[0]
+		_active_persistent_waves.remove_at(0)
+		if is_instance_valid(oldest_wave):
+			oldest_wave.queue_free()
+
+	var wave := PERSISTENT_WAVE_SCENE.instantiate() as Node2D
+	var wave_parameters: Dictionary = parameters.duplicate(true)
+	wave_parameters["damage"] = hit_damage
+	wave.connect("hit_requested", Callable(self, "_on_persistent_wave_hit"))
+	add_child(wave)
+	wave.call("setup", spawn_position, direction, wave_parameters)
+	_active_persistent_waves.append(wave)
+
+
+func _remove_invalid_persistent_waves() -> void:
+	for index in range(_active_persistent_waves.size() - 1, -1, -1):
+		if not is_instance_valid(_active_persistent_waves[index]):
+			_active_persistent_waves.remove_at(index)
+
+
+func _on_persistent_wave_hit(enemy: Node2D, damage: int, effect_id: String, effect_power: float, first_impact: bool) -> void:
+	if not is_instance_valid(enemy):
+		return
+	if enemy.has_method("take_damage"):
+		enemy.call("take_damage", damage)
+	if enemy.has_method("apply_elemental_effect") and effect_id != "direct":
+		enemy.call("apply_elemental_effect", effect_id, effect_power, damage, _element_effect_duration_multiplier)
+
+	var visual_profile: Dictionary = _get_spell_visual_profile()
+	var impact_color: Color = visual_profile.get("impact_color", Color(0.96, 0.48, 1.0))
+	_spawn_impact_ring(enemy.global_position, Color(impact_color.r, impact_color.g, impact_color.b, 0.58), 4.0, 22.0, 0.18, 1.6)
+	if first_impact and projectile_explosion_radius > 0.0 and projectile_explosion_damage_multiplier > 0.0:
+		_on_projectile_explosion_requested(
+			enemy.global_position,
+			projectile_explosion_radius * 0.58,
+			maxi(1, int(round(float(damage) * projectile_explosion_damage_multiplier * 0.52)))
+		)
 
 
 func _cast_area_spell() -> void:
@@ -1436,6 +1566,8 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 				minimum_interval = area_min_cast_interval
 			elif _is_slash_delivery():
 				minimum_interval = slash_min_cast_interval
+			elif _is_persistent_waves_delivery():
+				minimum_interval = wave_min_cast_interval
 			auto_fire_interval = maxf(auto_fire_interval * float(values.get("interval_multiplier", 0.88)), minimum_interval)
 			if is_instance_valid(_auto_fire_timer):
 				_auto_fire_timer.wait_time = auto_fire_interval
@@ -1456,6 +1588,8 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 				_area_range_bonus += 56.0
 			elif _is_slash_delivery():
 				_slash_range_bonus = minf(_slash_range_bonus + 48.0, slash_max_range - slash_range * 0.5)
+			elif _is_persistent_waves_delivery():
+				_wave_speed_bonus += float(values.get("projectile_speed_bonus", 80.0))
 		"initial_fragmentation":
 			if _is_chain_lightning_delivery():
 				_chain_bonus_hits = mini(_chain_bonus_hits + int(values.get("projectile_count_bonus", 1)), chain_max_hits_cap - chain_max_hits)
@@ -1464,6 +1598,8 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 			elif _is_slash_delivery():
 				var slash_target_bonus_cap := maxi(slash_max_targets - slash_targets, 0)
 				_slash_targets_bonus = mini(_slash_targets_bonus + int(values.get("projectile_count_bonus", 1)), slash_target_bonus_cap)
+			elif _is_persistent_waves_delivery():
+				_wave_width_multiplier *= 1.18
 			else:
 				projectile_count = mini(projectile_count + int(values.get("projectile_count_bonus", 1)), max_projectile_count)
 		"piercing":
@@ -1487,6 +1623,12 @@ func _apply_upgrade(upgrade: Dictionary) -> void:
 				_area_duration_multiplier = maxf(_area_duration_multiplier * 0.9, 0.55)
 			elif _is_slash_delivery():
 				_slash_size_multiplier = minf(_slash_size_multiplier * 1.2, slash_max_size_multiplier)
+				auto_fire_interval *= 1.1
+				if is_instance_valid(_auto_fire_timer):
+					_auto_fire_timer.wait_time = auto_fire_interval
+			elif _is_persistent_waves_delivery():
+				_wave_width_multiplier *= 1.2
+				_wave_speed_multiplier *= float(values.get("speed_multiplier", 0.85))
 				auto_fire_interval *= 1.1
 				if is_instance_valid(_auto_fire_timer):
 					_auto_fire_timer.wait_time = auto_fire_interval
@@ -1592,6 +1734,10 @@ func _create_upgrade_data() -> Array[Dictionary]:
 					"description": "+5 damage per cut.",
 					"impact_text": "+5 damage per cut",
 				},
+				"persistent_waves": {
+					"description": "+5 damage per Persistent Wave hit.",
+					"impact_text": "+5 Wave damage",
+				},
 			},
 		},
 		{
@@ -1617,6 +1763,10 @@ func _create_upgrade_data() -> Array[Dictionary]:
 				"slash": {
 					"description": "Slashes execute 16% faster, respecting the minimum interval.",
 					"impact_text": "-16% Slash interval",
+				},
+				"persistent_waves": {
+					"description": "Persistent Waves cast 16% faster, respecting the minimum interval.",
+					"impact_text": "-16% Wave interval",
 				},
 			},
 		},
@@ -1672,6 +1822,11 @@ func _create_upgrade_data() -> Array[Dictionary]:
 					"description": "Increases Slash targeting range.",
 					"impact_text": "+48 Slash range",
 				},
+				"persistent_waves": {
+					"name": "Swift Wave",
+					"description": "Increases Persistent Wave travel speed.",
+					"impact_text": "+80 Wave speed",
+				},
 			},
 		},
 		{
@@ -1685,7 +1840,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 			"values": {
 				"projectile_count_bonus": 1,
 			},
-			"max_stacks_by_delivery": {"chain_lightning": 2, "area": 3, "slash": 3},
+			"max_stacks_by_delivery": {"chain_lightning": 2, "area": 3, "slash": 3, "persistent_waves": 3},
 			"delivery_effects": {
 				"chain_lightning": {
 					"name": "Chain Fragmentation",
@@ -1701,6 +1856,11 @@ func _create_upgrade_data() -> Array[Dictionary]:
 					"name": "Fragmented Cuts",
 					"description": "Hits +1 nearby target per Slash. 3 stack limit.",
 					"impact_text": "+1 target per cut",
+				},
+				"persistent_waves": {
+					"name": "Expanded Crest",
+					"description": "Increases Persistent Wave width. 3 stack limit.",
+					"impact_text": "+18% Wave width",
 				},
 			},
 		},
@@ -1764,6 +1924,10 @@ func _create_upgrade_data() -> Array[Dictionary]:
 					"description": "The first cut creates a reduced arcane explosion.",
 					"impact_text": "Explosion on first cut",
 				},
+				"persistent_waves": {
+					"description": "The first enemy hit by each wave creates a reduced arcane explosion.",
+					"impact_text": "Explosion on first Wave hit",
+				},
 			},
 		},
 		{
@@ -1779,7 +1943,7 @@ func _create_upgrade_data() -> Array[Dictionary]:
 				"speed_multiplier": 0.85,
 				"size_bonus": 0.2,
 			},
-			"max_stacks_by_delivery": {"chain_lightning": 2, "area": 2, "slash": 2},
+			"max_stacks_by_delivery": {"chain_lightning": 2, "area": 2, "slash": 2, "persistent_waves": 2},
 			"delivery_effects": {
 				"chain_lightning": {
 					"name": "Heavy Discharge",
@@ -1796,6 +1960,11 @@ func _create_upgrade_data() -> Array[Dictionary]:
 					"description": "+40% damage and a larger cut with slower cadence.",
 					"impact_text": "+40% damage, +20% size",
 				},
+				"persistent_waves": {
+					"name": "Heavy Wave",
+					"description": "+40% damage, wider Persistent Waves, slower travel and cadence.",
+					"impact_text": "+40% damage, +20% width",
+				},
 			},
 		},
 		{
@@ -1810,8 +1979,8 @@ func _create_upgrade_data() -> Array[Dictionary]:
 				"shot_interval": 4,
 				"damage_multiplier_bonus": 0.25,
 			},
-			"max_stacks_by_delivery": {"chain_lightning": 2, "slash": 2},
-			"compatible_deliveries": ["simple_projectile", "chain_lightning", "slash"],
+			"max_stacks_by_delivery": {"chain_lightning": 2, "slash": 2, "persistent_waves": 2},
+			"compatible_deliveries": ["simple_projectile", "chain_lightning", "slash", "persistent_waves"],
 			"delivery_effects": {
 				"chain_lightning": {
 					"name": "Resonant Echo",
@@ -1822,6 +1991,11 @@ func _create_upgrade_data() -> Array[Dictionary]:
 					"name": "Cutting Echo",
 					"description": "Every 4 Slashes, performs an extra strong cut on another nearby target.",
 					"impact_text": "Echo: extra strong cut",
+				},
+				"persistent_waves": {
+					"name": "Wave Echo",
+					"description": "Every 4 casts, launches a smaller extra wave at a slight angle.",
+					"impact_text": "Echo: extra Wave",
 				},
 			},
 		},

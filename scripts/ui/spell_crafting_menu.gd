@@ -1,8 +1,8 @@
 extends Control
 
-@onready var shape_list: VBoxContainer = $Panel/Columns/ShapeColumn/Options
-@onready var element_list: VBoxContainer = $Panel/Columns/ElementColumn/Options
-@onready var delivery_list: VBoxContainer = $Panel/Columns/DeliveryColumn/Options
+@onready var shape_list: VBoxContainer = $Panel/Columns/ShapeColumn/OptionsScroll/Options
+@onready var element_list: VBoxContainer = $Panel/Columns/ElementColumn/OptionsScroll/Options
+@onready var delivery_list: VBoxContainer = $Panel/Columns/DeliveryColumn/OptionsScroll/Options
 @onready var preview: Control = $Panel/Preview
 @onready var selection_label: Label = $Panel/SelectionLabel
 @onready var detail_label: Label = $Panel/DetailLabel
@@ -76,6 +76,7 @@ func _get_locked_option_text(data: Dictionary) -> String:
 func _create_option_button(title: String, description: String, enabled: bool, compact: bool = false) -> Button:
 	var button := Button.new()
 	button.custom_minimum_size = Vector2(0.0, 46.0 if compact else 58.0)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.text = title if compact else title + "\n" + description
 	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT

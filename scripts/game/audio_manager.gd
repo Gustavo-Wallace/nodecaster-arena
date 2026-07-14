@@ -35,6 +35,10 @@ func play_area_cast() -> void:
 	_play("area_cast", -13.0, _random_pitch(0.96, 1.04), 0.12)
 
 
+func play_wave_cast() -> void:
+	_play("wave_cast", -12.0, _random_pitch(0.94, 1.05), 0.1)
+
+
 func play_slash_cast() -> void:
 	_play("slash_cast", -11.0, _random_pitch(0.94, 1.06), 0.08)
 
@@ -146,6 +150,7 @@ func _build_streams() -> void:
 		"shoot": _make_tone(880.0, 0.055, 0.42, "square", 220.0),
 		"chain_cast": _make_sequence([620.0, 930.0, 1340.0], 0.04, 0.32, "sine"),
 		"area_cast": _make_sequence([280.0, 420.0, 560.0], 0.055, 0.3, "sine"),
+		"wave_cast": _make_tone(380.0, 0.11, 0.32, "sine", 240.0),
 		"slash_cast": _make_sequence([190.0, 920.0], 0.035, 0.38, "saw"),
 		"enemy_hit": _make_noise(0.055, 0.34),
 		"enemy_death": _make_tone(440.0, 0.18, 0.42, "saw", -260.0),

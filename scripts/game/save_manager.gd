@@ -6,7 +6,7 @@ const SKILL_TREE_VERSION := 3
 const BASIC_CHARACTER_IDS := ["circle", "triangle", "square"]
 const BASIC_SPELL_SHAPE_IDS := ["circle", "triangle", "square"]
 const BASIC_ELEMENT_IDS := ["arcane", "fire", "ice", "lightning"]
-const BASIC_CAST_TYPE_IDS := ["simple_projectile", "chain_lightning", "area", "slash"]
+const BASIC_CAST_TYPE_IDS := ["simple_projectile", "chain_lightning", "area", "slash", "persistent_waves"]
 const BASIC_UPGRADE_IDS := [
 	"arcane_damage",
 	"unstable_cadence",
@@ -56,7 +56,7 @@ var skill_definitions := {
 	"unlock_star_shape": {"id": "unlock_star_shape", "name": "Star Shape", "description": "A future Spell Shape for multi-hit builds.", "branch": "shape_unlocks", "cost": 52, "prerequisites": ["unlock_diamond_shape"], "future": true, "position": Vector2(55.0, 430.0)},
 	"unlock_shadow_element": {"id": "unlock_shadow_element", "name": "Shadow Element", "description": "Unlocks Shadow: a dark, high-impact element.", "branch": "element_unlocks", "cost": 30, "prerequisites": ["unlock_matrix"], "effect_type": "unlock_element", "target_id": "shadow", "position": Vector2(270.0, 705.0)},
 	"unlock_light_element": {"id": "unlock_light_element", "name": "Light Element", "description": "A future healing and elite-focused element.", "branch": "element_unlocks", "cost": 56, "prerequisites": ["unlock_shadow_element"], "future": true, "position": Vector2(55.0, 805.0)},
-	"unlock_persistent_waves": {"id": "unlock_persistent_waves", "name": "Persistent Waves", "description": "Future Cast Type. Coming soon.", "branch": "cast_unlocks", "cost": 58, "prerequisites": ["unlock_matrix"], "future": true, "position": Vector2(480.0, 930.0)},
+	"unlock_persistent_waves": {"id": "unlock_persistent_waves", "name": "Persistent Waves", "description": "Implemented Cast Type. Available in the Arcane Workshop during development.", "branch": "cast_unlocks", "cost": 58, "prerequisites": ["unlock_matrix"], "implemented": true, "position": Vector2(480.0, 930.0)},
 	"unlock_summoning": {"id": "unlock_summoning", "name": "Summoning", "description": "Future Cast Type for player echoes. Coming soon.", "branch": "cast_unlocks", "cost": 78, "prerequisites": ["unlock_persistent_waves"], "future": true, "position": Vector2(650.0, 1040.0)},
 	"unlock_orbitals": {"id": "unlock_orbitals", "name": "Orbitals", "description": "Future Cast Type. Coming soon.", "branch": "cast_unlocks", "cost": 70, "prerequisites": ["unlock_matrix"], "future": true, "position": Vector2(790.0, 910.0)},
 	"unlock_dual_casting": {"id": "unlock_dual_casting", "name": "Dual Casting", "description": "Late-game Cast Type. Coming soon.", "branch": "cast_unlocks", "cost": 96, "prerequisites": ["unlock_orbitals"], "future": true, "position": Vector2(960.0, 860.0)},
