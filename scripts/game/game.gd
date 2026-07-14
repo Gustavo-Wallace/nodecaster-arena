@@ -32,6 +32,7 @@ const HEXAGON_BOSS_SCENE := preload("res://scenes/enemies/hexagon_boss.tscn")
 const RUN_RESULT_PANEL_SCENE := preload("res://scenes/ui/run_result_panel.tscn")
 const UNSTABLE_FIELD_AURA_SCRIPT := preload("res://scripts/effects/unstable_field_aura.gd")
 const RUN_UPGRADE_DATA := preload("res://scripts/game/run_upgrade_data.gd")
+const NEON_STYLE := preload("res://scripts/ui/neon_style.gd")
 const PLAYABLE_CAST_TYPE_IDS := ["simple_projectile", "chain_lightning", "area", "slash", "persistent_waves", "summon"]
 
 @export var arena_position: Vector2 = Vector2(96.0, 72.0)
@@ -275,11 +276,28 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _draw() -> void:
-	draw_rect(arena_rect, Color(0.045, 0.055, 0.07), true)
-	draw_rect(arena_rect, Color(0.26, 0.46, 0.62), false, 3.0)
+	# The oversized base keeps the viewport dark while the arena remains a distinct neon board.
+	draw_rect(arena_rect.grow(4096.0), NEON_STYLE.BACKGROUND, true)
+	draw_rect(arena_rect, NEON_STYLE.ARENA_FILL, true)
 
-	var inner_rect := arena_rect.grow(-8.0)
-	draw_rect(inner_rect, Color(0.09, 0.13, 0.16), false, 1.0)
+	var grid_spacing := 72.0
+	var grid_x := floorf(arena_rect.position.x / grid_spacing) * grid_spacing
+	while grid_x <= arena_rect.end.x:
+		draw_line(Vector2(grid_x, arena_rect.position.y), Vector2(grid_x, arena_rect.end.y), NEON_STYLE.ARENA_GRID, 1.0)
+		grid_x += grid_spacing
+	var grid_y := floorf(arena_rect.position.y / grid_spacing) * grid_spacing
+	while grid_y <= arena_rect.end.y:
+		draw_line(Vector2(arena_rect.position.x, grid_y), Vector2(arena_rect.end.x, grid_y), NEON_STYLE.ARENA_GRID, 1.0)
+		grid_y += grid_spacing
+
+	var center := arena_rect.get_center()
+	draw_arc(center, 70.0, 0.0, TAU, 48, Color(NEON_STYLE.CYAN.r, NEON_STYLE.CYAN.g, NEON_STYLE.CYAN.b, 0.07), 1.0, true)
+	draw_arc(center, 142.0, 0.0, TAU, 64, Color(NEON_STYLE.MAGENTA.r, NEON_STYLE.MAGENTA.g, NEON_STYLE.MAGENTA.b, 0.045), 1.0, true)
+
+	draw_rect(arena_rect.grow(4.0), NEON_STYLE.ARENA_BORDER_GLOW, false, 9.0)
+	draw_rect(arena_rect, NEON_STYLE.ARENA_BORDER, false, 2.4)
+	var inner_rect := arena_rect.grow(-9.0)
+	draw_rect(inner_rect, Color(NEON_STYLE.CYAN.r, NEON_STYLE.CYAN.g, NEON_STYLE.CYAN.b, 0.22), false, 1.0)
 
 
 func _configure_arena_to_viewport() -> void:

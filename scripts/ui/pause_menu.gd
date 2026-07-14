@@ -1,5 +1,7 @@
 extends Control
 
+const NEON_STYLE := preload("res://scripts/ui/neon_style.gd")
+
 signal resume_requested
 signal restart_requested
 signal main_menu_requested
@@ -25,6 +27,7 @@ var _loading_settings := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_apply_neon_styles()
 	hide()
 	options_panel.hide()
 	resume_button.pressed.connect(_on_resume_pressed)
@@ -38,6 +41,22 @@ func _ready() -> void:
 
 	for button in [resume_button, options_button, restart_button, main_menu_button, options_back_button]:
 		button.focus_mode = Control.FOCUS_NONE
+
+
+func _apply_neon_styles() -> void:
+	pause_panel.add_theme_stylebox_override("panel", NEON_STYLE.panel_style(Color(0.014, 0.03, 0.065, 0.98), Color(NEON_STYLE.MAGENTA.r, NEON_STYLE.MAGENTA.g, NEON_STYLE.MAGENTA.b, 0.74), 1, 8))
+	options_panel.add_theme_stylebox_override("panel", NEON_STYLE.panel_style(Color(0.014, 0.03, 0.065, 0.98), Color(NEON_STYLE.CYAN.r, NEON_STYLE.CYAN.g, NEON_STYLE.CYAN.b, 0.74), 1, 8))
+	for label in [status_label, master_value_label, sfx_value_label, options_status_label]:
+		label.add_theme_color_override("font_color", NEON_STYLE.TEXT_MUTED)
+	for title_path in ["PausePanel/TitleLabel", "OptionsPanel/TitleLabel"]:
+		var title: Label = get_node(title_path) as Label
+		if title != null:
+			title.add_theme_color_override("font_color", NEON_STYLE.TEXT_PRIMARY)
+	for button in [resume_button, options_button, restart_button, main_menu_button, options_back_button]:
+		button.add_theme_color_override("font_color", NEON_STYLE.TEXT_PRIMARY)
+		button.add_theme_stylebox_override("normal", NEON_STYLE.button_style(Color(0.025, 0.065, 0.11, 0.98), Color(NEON_STYLE.CYAN.r, NEON_STYLE.CYAN.g, NEON_STYLE.CYAN.b, 0.58)))
+		button.add_theme_stylebox_override("hover", NEON_STYLE.button_style(Color(0.06, 0.12, 0.18, 1.0), NEON_STYLE.CYAN))
+		button.add_theme_stylebox_override("pressed", NEON_STYLE.button_style(Color(0.03, 0.04, 0.1, 1.0), NEON_STYLE.MAGENTA))
 
 
 func open_menu() -> void:

@@ -42,6 +42,7 @@ func _draw() -> void:
 	var alpha := 1.0 - progress
 	var ring_color := Color(color.r, color.g, color.b, 0.55 * alpha)
 
+	draw_circle(Vector2.ZERO, lerpf(start_radius * 2.0, end_radius * 1.12, progress), Color(color.r, color.g, color.b, 0.09 * alpha))
 	draw_arc(Vector2.ZERO, lerpf(start_radius, end_radius, progress), 0.0, TAU, 36, ring_color, 2.0, true)
 
 	for particle in _particles:
@@ -49,6 +50,7 @@ func _draw() -> void:
 		var distance: float = lerpf(start_radius, float(particle["distance"]), progress)
 		var size: float = lerpf(float(particle["size"]), 1.0, progress)
 		var particle_color := Color(color.r, color.g, color.b, alpha)
+		draw_circle(direction * distance, size * 1.85, Color(color.r, color.g, color.b, alpha * 0.12))
 		draw_circle(direction * distance, size, particle_color)
 
 

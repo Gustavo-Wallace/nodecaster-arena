@@ -128,8 +128,9 @@ func _draw() -> void:
 			draw_line(Vector2(-trail_length, 0.0), Vector2(-draw_radius * 0.5, 0.0), trail_color, trail_width)
 			draw_line(Vector2(-trail_length * 0.62, 0.0), Vector2(-draw_radius * 0.2, 0.0), Color(outline_color.r, outline_color.g, outline_color.b, 0.22), maxf(1.0, trail_width * 0.42))
 
-	if glow_strength > 0.0:
-		draw_circle(Vector2.ZERO, draw_radius * (1.45 + glow_strength * 0.3), Color(fill_color.r, fill_color.g, fill_color.b, 0.09 + glow_strength * 0.08))
+	var neon_glow := 0.1 + glow_strength * 0.08
+	draw_circle(Vector2.ZERO, draw_radius * (1.45 + glow_strength * 0.3), Color(fill_color.r, fill_color.g, fill_color.b, neon_glow))
+	draw_arc(Vector2.ZERO, draw_radius * 1.16, 0.0, TAU, 20, Color(outline_color.r, outline_color.g, outline_color.b, 0.22 + glow_strength * 0.1), 0.9, true)
 
 	match visual_shape:
 		"triangle":

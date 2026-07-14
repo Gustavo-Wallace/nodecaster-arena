@@ -64,6 +64,7 @@ func _is_far_outside_view() -> bool:
 
 func _draw() -> void:
 	var trail_length := clampf(speed * 0.075, 24.0, 58.0)
+	draw_circle(Vector2.ZERO, radius * 1.72, Color(fill_color.r, fill_color.g, fill_color.b, 0.1))
 	draw_line(Vector2(-trail_length, 0.0), Vector2(-radius * 0.45, 0.0), Color(fill_color.r, fill_color.g, fill_color.b, 0.32), maxf(2.0, radius * 0.58))
 	draw_line(Vector2(-trail_length * 0.55, 0.0), Vector2(-radius * 0.2, 0.0), Color(outline_color.r, outline_color.g, outline_color.b, 0.2), 1.5)
 	draw_circle(Vector2.ZERO, radius, fill_color)

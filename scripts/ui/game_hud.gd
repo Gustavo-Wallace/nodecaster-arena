@@ -2,7 +2,11 @@ extends Control
 
 signal graph_requested
 
+const NEON_STYLE := preload("res://scripts/ui/neon_style.gd")
+
+@onready var hud_back: Panel = $HudBack
 @onready var health_label: Label = $HealthLabel
+@onready var health_bar_back: ColorRect = $HealthBarBack
 @onready var health_bar_fill: ColorRect = $HealthBarFill
 @onready var wave_label: Label = $WaveLabel
 @onready var enemies_label: Label = $EnemiesLabel
@@ -21,19 +25,24 @@ var _message_tween: Tween
 
 
 func _ready() -> void:
+	hud_back.add_theme_stylebox_override("panel", NEON_STYLE.panel_style(Color(0.014, 0.032, 0.067, 0.9), Color(NEON_STYLE.CYAN.r, NEON_STYLE.CYAN.g, NEON_STYLE.CYAN.b, 0.56), 1, 6))
+	health_bar_back.color = Color(0.025, 0.06, 0.09, 0.96)
 	for label in [health_label, wave_label, enemies_label, score_label, time_label, meta_label, build_label, message_label]:
-		label.add_theme_color_override("font_color", Color(0.86, 0.96, 1.0))
+		label.add_theme_color_override("font_color", NEON_STYLE.TEXT_PRIMARY)
 		label.add_theme_font_size_override("font_size", 20)
 
-	wave_label.add_theme_color_override("font_color", Color(1.0, 0.92, 0.58))
-	message_label.add_theme_color_override("font_color", Color(1.0, 0.92, 0.48))
+	wave_label.add_theme_color_override("font_color", NEON_STYLE.WARNING)
+	message_label.add_theme_color_override("font_color", NEON_STYLE.MAGENTA)
 	message_label.add_theme_font_size_override("font_size", 24)
-	meta_label.add_theme_color_override("font_color", Color(0.56, 0.9, 1.0))
+	meta_label.add_theme_color_override("font_color", NEON_STYLE.CYAN)
 	meta_label.add_theme_font_size_override("font_size", 15)
-	build_label.add_theme_color_override("font_color", Color(0.76, 0.76, 1.0))
+	build_label.add_theme_color_override("font_color", Color(0.72, 0.72, 1.0, 1.0))
 	build_label.add_theme_font_size_override("font_size", 14)
 	graph_button.pressed.connect(_on_graph_pressed)
 	graph_button.focus_mode = Control.FOCUS_NONE
+	graph_button.add_theme_color_override("font_color", NEON_STYLE.TEXT_PRIMARY)
+	graph_button.add_theme_stylebox_override("normal", NEON_STYLE.button_style(Color(0.025, 0.07, 0.11, 0.96), Color(NEON_STYLE.CYAN.r, NEON_STYLE.CYAN.g, NEON_STYLE.CYAN.b, 0.72)))
+	graph_button.add_theme_stylebox_override("hover", NEON_STYLE.button_style(Color(0.05, 0.12, 0.18, 1.0), NEON_STYLE.CYAN))
 	set_wave_info(0, 0, 0)
 	set_wave_message("")
 	set_meta_info("")
@@ -63,11 +72,11 @@ func _set_health_text(current_health: int, max_health: int) -> void:
 
 	health_bar_fill.size = Vector2(HEALTH_BAR_WIDTH * health_ratio, health_bar_fill.size.y)
 	if health_ratio <= 0.3:
-		health_bar_fill.color = Color(1.0, 0.26, 0.22)
+		health_bar_fill.color = NEON_STYLE.DANGER
 	elif health_ratio <= 0.6:
-		health_bar_fill.color = Color(1.0, 0.72, 0.28)
+		health_bar_fill.color = NEON_STYLE.WARNING
 	else:
-		health_bar_fill.color = Color(0.32, 0.95, 0.62)
+		health_bar_fill.color = NEON_STYLE.HEALTH
 
 	if _last_health >= 0 and current_health < _last_health:
 		_flash_health_bar()

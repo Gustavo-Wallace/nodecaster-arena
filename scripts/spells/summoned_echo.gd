@@ -111,6 +111,7 @@ func _draw() -> void:
 	var fill := Color(fill_color.r, fill_color.g, fill_color.b, 0.38 * alpha)
 	var outline := Color(outline_color.r, outline_color.g, outline_color.b, 0.9 * alpha)
 	var radius := 14.0
+	draw_circle(Vector2.ZERO, radius * 1.58, Color(fill_color.r, fill_color.g, fill_color.b, 0.09 * alpha))
 	match visual_shape:
 		"triangle":
 			var triangle := PackedVector2Array([Vector2(0.0, -radius), Vector2(radius * 0.86, radius * 0.72), Vector2(-radius * 0.86, radius * 0.72)])
@@ -129,5 +130,6 @@ func _draw() -> void:
 			draw_arc(Vector2.ZERO, radius, 0.0, TAU, 20, outline, 1.8, true)
 	if _bolt_time > 0.0:
 		var bolt_alpha := _bolt_time / 0.1
+		draw_line(_bolt_start, _bolt_end, Color(fill_color.r, fill_color.g, fill_color.b, bolt_alpha * 0.16), 8.0)
 		draw_line(_bolt_start, _bolt_end, Color(fill_color.r, fill_color.g, fill_color.b, bolt_alpha * 0.42), 4.4)
 		draw_line(_bolt_start, _bolt_end, Color(outline_color.r, outline_color.g, outline_color.b, bolt_alpha), 1.3)

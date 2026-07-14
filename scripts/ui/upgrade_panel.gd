@@ -1,9 +1,12 @@
 extends Control
 
+const NEON_STYLE := preload("res://scripts/ui/neon_style.gd")
+
 signal upgrade_selected(upgrade: Dictionary)
 signal reroll_requested
 
 @onready var title_label: Label = $Panel/TitleLabel
+@onready var panel: Panel = $Panel
 @onready var option_1_button: Button = $Panel/Option1Button
 @onready var option_2_button: Button = $Panel/Option2Button
 @onready var option_3_button: Button = $Panel/Option3Button
@@ -23,7 +26,8 @@ var _rerolls_left: int = 0
 func _ready() -> void:
 	hide()
 	option_buttons = [option_1_button, option_2_button, option_3_button, option_4_button]
-	title_label.add_theme_color_override("font_color", Color(0.9, 0.98, 1.0))
+	panel.add_theme_stylebox_override("panel", NEON_STYLE.panel_style(Color(0.014, 0.03, 0.065, 0.98), Color(NEON_STYLE.MAGENTA.r, NEON_STYLE.MAGENTA.g, NEON_STYLE.MAGENTA.b, 0.72), 1, 8))
+	title_label.add_theme_color_override("font_color", NEON_STYLE.TEXT_PRIMARY)
 	title_label.add_theme_font_size_override("font_size", 30)
 
 	for index in range(option_buttons.size()):
@@ -33,17 +37,18 @@ func _ready() -> void:
 
 	reroll_button.pressed.connect(_on_reroll_pressed)
 	reroll_button.focus_mode = Control.FOCUS_NONE
-	reroll_button.add_theme_stylebox_override("normal", _create_card_style(Color(0.08, 0.14, 0.17, 0.98), Color(0.4, 0.82, 1.0, 0.9)))
-	reroll_button.add_theme_stylebox_override("hover", _create_card_style(Color(0.12, 0.2, 0.24, 1.0), Color(0.75, 0.94, 1.0, 1.0)))
+	reroll_button.add_theme_color_override("font_color", NEON_STYLE.TEXT_PRIMARY)
+	reroll_button.add_theme_stylebox_override("normal", _create_card_style(Color(0.025, 0.07, 0.12, 0.98), Color(NEON_STYLE.CYAN.r, NEON_STYLE.CYAN.g, NEON_STYLE.CYAN.b, 0.82)))
+	reroll_button.add_theme_stylebox_override("hover", _create_card_style(Color(0.06, 0.13, 0.2, 1.0), NEON_STYLE.CYAN))
 
 
 func _setup_option_card(button: Button) -> void:
 	button.text = ""
 	button.clip_contents = true
 	button.focus_mode = Control.FOCUS_NONE
-	button.add_theme_stylebox_override("normal", _create_card_style(Color(0.09, 0.105, 0.13, 0.96), Color(0.34, 0.42, 0.52, 0.85)))
-	button.add_theme_stylebox_override("hover", _create_card_style(Color(0.12, 0.14, 0.17, 0.98), Color(0.72, 0.88, 1.0, 0.95)))
-	button.add_theme_stylebox_override("pressed", _create_card_style(Color(0.07, 0.08, 0.1, 0.98), Color(1.0, 0.9, 0.48, 1.0)))
+	button.add_theme_stylebox_override("normal", _create_card_style(Color(0.018, 0.045, 0.082, 0.98), Color(0.18, 0.48, 0.68, 0.72)))
+	button.add_theme_stylebox_override("hover", _create_card_style(Color(0.045, 0.1, 0.16, 1.0), NEON_STYLE.CYAN))
+	button.add_theme_stylebox_override("pressed", _create_card_style(Color(0.06, 0.025, 0.1, 1.0), NEON_STYLE.MAGENTA))
 	button.mouse_entered.connect(_on_option_hovered.bind(button, true))
 	button.mouse_exited.connect(_on_option_hovered.bind(button, false))
 

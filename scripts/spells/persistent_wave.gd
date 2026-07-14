@@ -108,6 +108,7 @@ func _draw() -> void:
 	var body_color := Color(fill_color.r, fill_color.g, fill_color.b, 0.18 * remaining_ratio)
 	var line_color := Color(outline_color.r, outline_color.g, outline_color.b, 0.88 * remaining_ratio)
 	var trail_color := Color(fill_color.r, fill_color.g, fill_color.b, 0.2 * remaining_ratio)
+	draw_circle(Vector2.ZERO, maxf(half_width, half_length) * 1.14, Color(fill_color.r, fill_color.g, fill_color.b, 0.055 * remaining_ratio))
 	draw_line(Vector2(-half_length * 1.55, 0.0), Vector2(-half_length * 0.32, 0.0), trail_color, maxf(2.0, half_width * 0.14), true)
 	match visual_shape:
 		"triangle":

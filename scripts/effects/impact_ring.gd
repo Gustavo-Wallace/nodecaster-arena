@@ -32,4 +32,5 @@ func _draw() -> void:
 	var progress := clampf(_time / maxf(duration, 0.001), 0.0, 1.0)
 	var alpha := pow(1.0 - progress, 1.6)
 	var radius := lerpf(start_radius, end_radius, progress)
+	draw_circle(Vector2.ZERO, radius * 1.2, Color(color.r, color.g, color.b, color.a * alpha * 0.08))
 	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, Color(color.r, color.g, color.b, color.a * alpha), width * (1.0 - progress * 0.45), true)

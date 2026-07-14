@@ -1,9 +1,12 @@
 extends Control
 
+const NEON_STYLE := preload("res://scripts/ui/neon_style.gd")
+
 signal restart_requested
 signal main_menu_requested
 
 @onready var title_label: Label = $Panel/TitleLabel
+@onready var panel: Panel = $Panel
 @onready var subtitle_label: Label = $Panel/SubtitleLabel
 @onready var scroll_container: ScrollContainer = $Panel/ScrollContainer
 @onready var stats_label: Label = $Panel/ScrollContainer/Content/SummaryRow/StatsLabel
@@ -17,22 +20,28 @@ var _open_tween: Tween
 
 func _ready() -> void:
 	hide()
+	panel.add_theme_stylebox_override("panel", NEON_STYLE.panel_style(Color(0.014, 0.03, 0.065, 0.98), Color(NEON_STYLE.CYAN.r, NEON_STYLE.CYAN.g, NEON_STYLE.CYAN.b, 0.72), 1, 8))
 	title_label.add_theme_font_size_override("font_size", 34)
-	title_label.add_theme_color_override("font_color", Color(0.9, 0.98, 1.0))
+	title_label.add_theme_color_override("font_color", NEON_STYLE.TEXT_PRIMARY)
 
 	for label in [subtitle_label, stats_label, kills_label, build_label]:
 		label.add_theme_font_size_override("font_size", 17)
-		label.add_theme_color_override("font_color", Color(0.82, 0.92, 1.0))
+		label.add_theme_color_override("font_color", NEON_STYLE.TEXT_PRIMARY)
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 	restart_button.pressed.connect(_on_restart_pressed)
 	menu_button.pressed.connect(_on_menu_pressed)
+	for button in [restart_button, menu_button]:
+		button.focus_mode = Control.FOCUS_NONE
+		button.add_theme_color_override("font_color", NEON_STYLE.TEXT_PRIMARY)
+		button.add_theme_stylebox_override("normal", NEON_STYLE.button_style(Color(0.025, 0.065, 0.11, 0.98), Color(NEON_STYLE.CYAN.r, NEON_STYLE.CYAN.g, NEON_STYLE.CYAN.b, 0.62)))
+		button.add_theme_stylebox_override("hover", NEON_STYLE.button_style(Color(0.06, 0.12, 0.18, 1.0), NEON_STYLE.CYAN))
 
 
 func show_result(victory: bool, stats: Dictionary, max_wave: int) -> void:
 	scroll_container.scroll_vertical = 0
 	title_label.text = "VICTORY" if victory else "DEFEAT"
-	title_label.add_theme_color_override("font_color", Color(0.72, 1.0, 0.78) if victory else Color(1.0, 0.46, 0.46))
+	title_label.add_theme_color_override("font_color", NEON_STYLE.HEALTH if victory else NEON_STYLE.DANGER)
 	subtitle_label.text = "Simulation complete. You stabilized the core." if victory else "Core disintegrated. The arcane chain collapsed."
 
 	var wave_reached := int(stats.get("max_wave_reached", 0))

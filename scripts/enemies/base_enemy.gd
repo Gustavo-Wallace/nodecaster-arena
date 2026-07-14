@@ -220,10 +220,22 @@ func _draw() -> void:
 	if max_health > 0:
 		health_ratio = float(current_health) / float(max_health)
 
+	_draw_neon_halo()
 	_draw_enemy_shape(health_ratio)
 	_draw_elemental_feedback()
 	_draw_elite_feedback()
 	_draw_health_arc(health_ratio)
+
+
+func _draw_neon_halo() -> void:
+	var raw_fill: Variant = get("fill_color")
+	var halo_color := Color(1.0, 0.24, 0.34, 1.0)
+	if raw_fill is Color:
+		halo_color = raw_fill
+	var halo_alpha: float = 0.06 if elite_modifier_id.is_empty() else 0.12
+	draw_circle(Vector2.ZERO, radius * 1.48, Color(halo_color.r, halo_color.g, halo_color.b, halo_alpha))
+	if not elite_modifier_id.is_empty():
+		draw_arc(Vector2.ZERO, radius * 1.23, 0.0, TAU, 32, Color(halo_color.r, halo_color.g, halo_color.b, 0.42), 1.2, true)
 
 
 func _draw_elemental_feedback() -> void:

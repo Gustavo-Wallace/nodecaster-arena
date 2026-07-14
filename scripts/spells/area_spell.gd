@@ -71,6 +71,7 @@ func _draw() -> void:
 	var fill_alpha := 0.13 + _pulse_strength * 0.1
 	var fill := Color(fill_color.r, fill_color.g, fill_color.b, fill_alpha)
 	var outline := Color(outline_color.r, outline_color.g, outline_color.b, 0.8 + _pulse_strength * 0.16)
+	draw_circle(Vector2.ZERO, radius * pulse_scale * 1.13, Color(fill_color.r, fill_color.g, fill_color.b, 0.055 + _pulse_strength * 0.05))
 
 	match visual_shape:
 		"triangle":
@@ -91,3 +92,4 @@ func _draw() -> void:
 			draw_arc(Vector2.ZERO, radius * pulse_scale, 0.0, TAU, 40, outline, 2.4, true)
 
 	draw_arc(Vector2.ZERO, radius * (0.55 + _pulse_strength * 0.25), 0.0, TAU, 28, Color(fill_color.r, fill_color.g, fill_color.b, 0.3 + _pulse_strength * 0.22), 1.4, true)
+	draw_arc(Vector2.ZERO, radius * pulse_scale * 1.06, 0.0, TAU, 40, Color(fill_color.r, fill_color.g, fill_color.b, 0.22), 1.0, true)

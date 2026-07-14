@@ -189,6 +189,10 @@ func _update_collision_radius() -> void:
 
 
 func _draw() -> void:
+	var halo_color := Color(fill_color.r, fill_color.g, fill_color.b, 0.12)
+	var rim_color := Color(outline_color.r, outline_color.g, outline_color.b, 0.34)
+	draw_circle(Vector2.ZERO, radius * 1.62, halo_color)
+	draw_arc(Vector2.ZERO, radius * 1.28, 0.0, TAU, 40, rim_color, 1.4, true)
 	match visual_shape:
 		"triangle":
 			var points := PackedVector2Array([
@@ -216,7 +220,9 @@ func _draw() -> void:
 			draw_circle(Vector2.ZERO, radius, fill_color)
 			draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48, outline_color, 2.5, true)
 
-	draw_circle(Vector2.ZERO, radius * 0.28, Color(1.0, 1.0, 1.0, 0.9))
+	draw_circle(Vector2.ZERO, radius * 0.42, Color(fill_color.r, fill_color.g, fill_color.b, 0.2))
+	draw_circle(Vector2.ZERO, radius * 0.25, Color(outline_color.r, outline_color.g, outline_color.b, 0.94))
 	if shield_charges > 0:
+		draw_circle(Vector2.ZERO, radius + 13.0, Color(0.32, 0.9, 1.0, 0.08))
 		draw_arc(Vector2.ZERO, radius + 8.0, 0.0, TAU, 40, Color(0.46, 0.94, 1.0, 0.9), 2.5, true)
 		draw_arc(Vector2.ZERO, radius + 12.0, -PI * 0.6, PI * 0.35, 20, Color(0.8, 1.0, 1.0, 0.55), 1.5, true)
