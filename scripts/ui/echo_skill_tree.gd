@@ -1,5 +1,7 @@
 extends Control
 
+const NEON_STYLE := preload("res://scripts/ui/neon_style.gd")
+
 const SECTION_LAYOUT := [
 	{
 		"panel": "UnlocksPanel",
@@ -46,6 +48,9 @@ const SECTION_LAYOUT := [
 ]
 
 @onready var ecos_label: Label = $Header/EcosLabel
+@onready var header: Panel = $Header
+@onready var echo_root: PanelContainer = $Main/BoardScroll/Board/EchoRoot
+@onready var details_panel: Panel = $Main/DetailsPanel
 @onready var back_button: Button = $Header/BackButton
 @onready var center_button: Button = $Header/CenterButton
 @onready var board_scroll: ScrollContainer = $Main/BoardScroll
@@ -63,6 +68,7 @@ var _selected_skill_id: String = ""
 
 
 func _ready() -> void:
+	_apply_neon_shell()
 	back_button.pressed.connect(_on_back_pressed)
 	center_button.pressed.connect(_on_center_pressed)
 	buy_button.pressed.connect(_on_buy_pressed)
@@ -71,6 +77,30 @@ func _ready() -> void:
 	_setup_button_feedback(buy_button)
 	_refresh_tree(false)
 	call_deferred("_center_board")
+
+
+func _apply_neon_shell() -> void:
+	NEON_STYLE.apply_panel(header, NEON_STYLE.MAGENTA)
+	NEON_STYLE.apply_panel(details_panel, NEON_STYLE.CYAN)
+	echo_root.add_theme_stylebox_override("panel", NEON_STYLE.panel_style(Color(0.025, 0.06, 0.11, 0.98), Color(NEON_STYLE.MAGENTA.r, NEON_STYLE.MAGENTA.g, NEON_STYLE.MAGENTA.b, 0.82), 1, 8))
+	for panel_data in [
+		{"path": "Main/BoardScroll/Board/Sections/UnlocksPanel", "accent": NEON_STYLE.CYAN},
+		{"path": "Main/BoardScroll/Board/Sections/CorePanel", "accent": NEON_STYLE.HEALTH},
+		{"path": "Main/BoardScroll/Board/Sections/ElementsPanel", "accent": NEON_STYLE.MAGENTA},
+		{"path": "Main/BoardScroll/Board/Sections/CastTypesPanel", "accent": NEON_STYLE.WARNING},
+	]:
+		var section_panel: PanelContainer = get_node(str(panel_data["path"])) as PanelContainer
+		var accent: Color = panel_data["accent"]
+		if section_panel != null:
+			section_panel.add_theme_stylebox_override("panel", NEON_STYLE.panel_style(Color(0.014, 0.034, 0.066, 0.98), Color(accent.r, accent.g, accent.b, 0.62), 1, 7))
+	for label in [ecos_label, name_label, description_label, cost_label, status_label, prerequisites_label]:
+		label.add_theme_color_override("font_color", NEON_STYLE.TEXT_PRIMARY)
+	($Header/TitleLabel as Label).add_theme_color_override("font_color", NEON_STYLE.TEXT_PRIMARY)
+	($Main/BoardScroll/Board/EchoRoot/Content/Title as Label).add_theme_color_override("font_color", NEON_STYLE.MAGENTA)
+	($Main/BoardScroll/Board/EchoRoot/Content/Subtitle as Label).add_theme_color_override("font_color", NEON_STYLE.TEXT_MUTED)
+	NEON_STYLE.apply_button(back_button)
+	NEON_STYLE.apply_button(center_button, NEON_STYLE.MAGENTA)
+	NEON_STYLE.apply_button(buy_button, NEON_STYLE.WARNING)
 
 
 func _refresh_tree(keep_selection: bool = true) -> void:
@@ -365,6 +395,9 @@ func _create_node_style(bg_color: Color, border_color: Color, corner_radius: int
 	style.corner_radius_top_right = corner_radius
 	style.corner_radius_bottom_left = corner_radius
 	style.corner_radius_bottom_right = corner_radius
+	style.shadow_color = Color(border_color.r, border_color.g, border_color.b, 0.16)
+	style.shadow_size = 5
+	style.shadow_offset = Vector2(0.0, 1.0)
 	return style
 
 

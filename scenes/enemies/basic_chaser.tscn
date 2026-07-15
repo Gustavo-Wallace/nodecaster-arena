@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://gl7xixmndco1"]
 
-[ext_resource type="Script" path="res://scripts/enemies/basic_chaser.gd" id="1_s7ul4"]
+[ext_resource type="Script" uid="uid://bgr501qw8ypnd" path="res://scripts/enemies/basic_chaser.gd" id="1_s7ul4"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_h4bdi"]
 radius = 16.0

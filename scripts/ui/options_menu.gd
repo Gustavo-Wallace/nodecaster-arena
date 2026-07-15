@@ -1,5 +1,9 @@
 extends Control
 
+const NEON_STYLE := preload("res://scripts/ui/neon_style.gd")
+
+@onready var panel: Panel = $Panel
+@onready var title_label: Label = $Panel/TitleLabel
 @onready var master_value_label: Label = $Panel/MasterValueLabel
 @onready var master_slider: HSlider = $Panel/MasterSlider
 @onready var sfx_value_label: Label = $Panel/SfxValueLabel
@@ -16,6 +20,17 @@ var _loading_values := false
 
 
 func _ready() -> void:
+	NEON_STYLE.apply_panel(panel, NEON_STYLE.CYAN)
+	NEON_STYLE.apply_panel(confirmation_panel, NEON_STYLE.DANGER)
+	title_label.add_theme_color_override("font_color", NEON_STYLE.TEXT_PRIMARY)
+	for label in [master_value_label, sfx_value_label, status_label]:
+		label.add_theme_color_override("font_color", NEON_STYLE.TEXT_MUTED)
+	for label_path in ["Panel/MasterLabel", "Panel/SfxLabel", "Panel/FullscreenCheck", "ConfirmationPanel/ConfirmLabel"]:
+		var label: Control = get_node(label_path) as Control
+		if label != null:
+			label.add_theme_color_override("font_color", NEON_STYLE.TEXT_PRIMARY)
+	for slider in [master_slider, sfx_slider]:
+		slider.modulate = Color(NEON_STYLE.CYAN.r, NEON_STYLE.CYAN.g, NEON_STYLE.CYAN.b, 1.0)
 	master_slider.value_changed.connect(_on_master_volume_changed)
 	sfx_slider.value_changed.connect(_on_sfx_volume_changed)
 	fullscreen_check.toggled.connect(_on_fullscreen_toggled)
@@ -25,6 +40,7 @@ func _ready() -> void:
 	cancel_reset_button.pressed.connect(_on_cancel_reset_pressed)
 
 	for button in [reset_button, back_button, confirm_reset_button, cancel_reset_button]:
+		NEON_STYLE.apply_button(button, NEON_STYLE.DANGER if button == reset_button or button == confirm_reset_button else NEON_STYLE.CYAN, button == reset_button or button == confirm_reset_button)
 		_setup_button_feedback(button)
 
 	confirmation_panel.hide()

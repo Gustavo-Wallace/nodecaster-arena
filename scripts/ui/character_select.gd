@@ -1,6 +1,7 @@
 extends Control
 
 const SHAPE_PREVIEW_SCRIPT := preload("res://scripts/ui/shape_preview.gd")
+const NEON_STYLE := preload("res://scripts/ui/neon_style.gd")
 const NEUTRAL_FORM_FILL := Color(0.38, 0.48, 0.58, 1.0)
 const NEUTRAL_FORM_OUTLINE := Color(0.82, 0.9, 0.98, 1.0)
 const FALLBACK_CHARACTERS := [
@@ -47,9 +48,16 @@ const FALLBACK_CHARACTERS := [
 
 @onready var cards_row: HBoxContainer = $Panel/CardsRow
 @onready var back_button: Button = $Panel/BackButton
+@onready var panel: Panel = $Panel
+@onready var title_label: Label = $Panel/TitleLabel
+@onready var subtitle_label: Label = $Panel/SubtitleLabel
 
 
 func _ready() -> void:
+	NEON_STYLE.apply_panel(panel, NEON_STYLE.MAGENTA)
+	NEON_STYLE.apply_button(back_button)
+	title_label.add_theme_color_override("font_color", NEON_STYLE.TEXT_PRIMARY)
+	subtitle_label.add_theme_color_override("font_color", NEON_STYLE.TEXT_MUTED)
 	back_button.pressed.connect(_on_back_pressed)
 	_setup_button_feedback(back_button)
 	_build_cards()
@@ -71,6 +79,8 @@ func _create_character_card(character: Dictionary) -> PanelContainer:
 	var unlocked := bool(character.get("unlocked", true))
 	if not unlocked:
 		card.modulate = Color(0.72, 0.76, 0.82, 1.0)
+	var card_accent: Color = NEON_STYLE.CYAN if unlocked else Color(0.3, 0.36, 0.44, 1.0)
+	card.add_theme_stylebox_override("panel", NEON_STYLE.panel_style(Color(0.018, 0.044, 0.08, 0.98), Color(card_accent.r, card_accent.g, card_accent.b, 0.7), 1, 7))
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 18)
@@ -87,13 +97,13 @@ func _create_character_card(character: Dictionary) -> PanelContainer:
 	title.text = str(character.get("display_name", "Form"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 24)
-	title.add_theme_color_override("font_color", Color(0.88, 0.98, 1.0))
+	title.add_theme_color_override("font_color", NEON_STYLE.TEXT_PRIMARY)
 	layout.add_child(title)
 
 	var profile := Label.new()
 	profile.text = str(character.get("profile", ""))
 	profile.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	profile.add_theme_color_override("font_color", Color(1.0, 0.92, 0.54))
+	profile.add_theme_color_override("font_color", NEON_STYLE.WARNING)
 	layout.add_child(profile)
 
 	var preview := Control.new()
@@ -106,7 +116,7 @@ func _create_character_card(character: Dictionary) -> PanelContainer:
 	description.text = str(character.get("description", ""))
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	description.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	description.add_theme_color_override("font_color", Color(0.78, 0.88, 0.94))
+	description.add_theme_color_override("font_color", NEON_STYLE.TEXT_MUTED)
 	layout.add_child(description)
 
 	var stats := Label.new()
@@ -119,12 +129,13 @@ func _create_character_card(character: Dictionary) -> PanelContainer:
 	if not unlocked:
 		stats.text += "\nLocked: %d Echoes" % int(character.get("unlock_cost", 0))
 	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	stats.add_theme_color_override("font_color", Color(0.86, 0.96, 1.0))
+	stats.add_theme_color_override("font_color", NEON_STYLE.TEXT_PRIMARY)
 	layout.add_child(stats)
 
 	var choose_button := Button.new()
 	choose_button.text = "Choose" if unlocked else "Locked"
 	choose_button.disabled = not unlocked
+	NEON_STYLE.apply_button(choose_button, NEON_STYLE.MAGENTA)
 	if unlocked:
 		choose_button.pressed.connect(_on_character_chosen.bind(str(character.get("id", "circle"))))
 		_setup_button_feedback(choose_button)

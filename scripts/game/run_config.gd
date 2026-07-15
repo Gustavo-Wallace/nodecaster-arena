@@ -188,7 +188,7 @@ func _decorate_spell_options(options: Array[Dictionary], option_kind: String) ->
 	for option in options:
 		var data: Dictionary = option.duplicate(true)
 		var option_id := str(data.get("id", ""))
-		var future := not bool(data.get("available", true))
+		var future := bool(data.get("coming_soon", false)) or not bool(data.get("available", true))
 		var unlocked := false
 		match option_kind:
 			"shape":
@@ -197,8 +197,18 @@ func _decorate_spell_options(options: Array[Dictionary], option_kind: String) ->
 				unlocked = is_element_unlocked(option_id)
 			_:
 				unlocked = is_cast_type_unlocked(option_id)
+		var availability_state: String = "available"
+		var status_message: String = "Available"
+		if future:
+			availability_state = "coming_soon"
+			status_message = "Coming Soon"
+		elif not unlocked:
+			availability_state = "locked"
+			status_message = "Unlock in Echo Tree"
 		data["unlocked"] = unlocked
 		data["future"] = future
-		data["available"] = unlocked and not future
+		data["availability_state"] = availability_state
+		data["status_message"] = status_message
+		data["available"] = availability_state == "available"
 		decorated.append(data)
 	return decorated

@@ -1,5 +1,7 @@
 extends Node2D
 
+const NEON_STYLE := preload("res://scripts/ui/neon_style.gd")
+
 @export var duration: float = 0.72
 @export var rise_distance: float = 38.0
 @export var drift: Vector2 = Vector2.ZERO
@@ -48,7 +50,7 @@ func _process(delta: float) -> void:
 func _apply_label() -> void:
 	label.text = _text
 	label.add_theme_color_override("font_color", _color)
-	label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.75))
+	label.add_theme_color_override("font_shadow_color", Color(NEON_STYLE.BACKGROUND.r, NEON_STYLE.BACKGROUND.g, NEON_STYLE.BACKGROUND.b, 0.94))
 	label.add_theme_constant_override("shadow_offset_x", 1)
 	label.add_theme_constant_override("shadow_offset_y", 1)
 	label.add_theme_font_size_override("font_size", 18)

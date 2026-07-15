@@ -44,3 +44,21 @@ static func button_style(background: Color, border: Color) -> StyleBoxFlat:
 	style.shadow_color = Color(border.r, border.g, border.b, 0.2)
 	style.shadow_size = 6
 	return style
+
+
+static func apply_button(button: Button, accent: Color = CYAN, danger: bool = false) -> void:
+	var normal_background := Color(0.025, 0.06, 0.11, 0.98)
+	var hover_background := Color(0.055, 0.12, 0.18, 1.0)
+	if danger:
+		normal_background = Color(0.12, 0.025, 0.06, 0.98)
+		hover_background = Color(0.2, 0.04, 0.08, 1.0)
+	button.focus_mode = Control.FOCUS_NONE
+	button.add_theme_color_override("font_color", TEXT_PRIMARY)
+	button.add_theme_stylebox_override("normal", button_style(normal_background, Color(accent.r, accent.g, accent.b, 0.68)))
+	button.add_theme_stylebox_override("hover", button_style(hover_background, accent))
+	button.add_theme_stylebox_override("pressed", button_style(normal_background.darkened(0.14), MAGENTA if not danger else DANGER))
+	button.add_theme_stylebox_override("disabled", button_style(Color(0.018, 0.028, 0.045, 0.78), Color(0.16, 0.24, 0.34, 0.7)))
+
+
+static func apply_panel(panel: Panel, accent: Color = CYAN) -> void:
+	panel.add_theme_stylebox_override("panel", panel_style(PANEL, Color(accent.r, accent.g, accent.b, 0.72), 1, 8))

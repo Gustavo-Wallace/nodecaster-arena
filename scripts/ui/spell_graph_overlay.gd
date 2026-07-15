@@ -1,5 +1,7 @@
 extends Control
 
+const NEON_STYLE := preload("res://scripts/ui/neon_style.gd")
+
 signal close_requested
 
 const NODE_SIZE := Vector2(118.0, 38.0)
@@ -21,6 +23,7 @@ const BRANCH_COLORS := {
 }
 
 @onready var title_label: Label = $Panel/TitleLabel
+@onready var panel: Panel = $Panel
 @onready var summary_label: Label = $Panel/SummaryLabel
 @onready var synergy_label: Label = $Panel/SynergyLabel
 @onready var close_button: Button = $Panel/CloseButton
@@ -35,14 +38,16 @@ var _open_tween: Tween
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	hide()
+	NEON_STYLE.apply_panel(panel, NEON_STYLE.MAGENTA)
+	NEON_STYLE.apply_button(close_button)
 	close_button.pressed.connect(_on_close_pressed)
 	close_button.focus_mode = Control.FOCUS_NONE
 	title_label.add_theme_font_size_override("font_size", 28)
-	title_label.add_theme_color_override("font_color", Color(0.9, 0.98, 1.0))
+	title_label.add_theme_color_override("font_color", NEON_STYLE.TEXT_PRIMARY)
 	summary_label.add_theme_font_size_override("font_size", 14)
-	summary_label.add_theme_color_override("font_color", Color(0.68, 0.84, 1.0))
+	summary_label.add_theme_color_override("font_color", NEON_STYLE.TEXT_MUTED)
 	synergy_label.add_theme_font_size_override("font_size", 16)
-	synergy_label.add_theme_color_override("font_color", Color(1.0, 0.88, 0.48))
+	synergy_label.add_theme_color_override("font_color", NEON_STYLE.WARNING)
 	set_graph_data({}, [])
 
 
@@ -159,11 +164,17 @@ func _create_branch_nodes(branch: String) -> void:
 
 func _create_connection(start: Vector2, end: Vector2, color: Color) -> void:
 	var line := Line2D.new()
-	line.width = 3.0
-	line.default_color = Color(color.r, color.g, color.b, 0.8)
+	line.width = 4.0
+	line.default_color = Color(color.r, color.g, color.b, 0.34)
 	line.add_point(start)
 	line.add_point(end)
 	graph_canvas.add_child(line)
+	var core_line := Line2D.new()
+	core_line.width = 1.4
+	core_line.default_color = Color(color.r, color.g, color.b, 0.96)
+	core_line.add_point(start)
+	core_line.add_point(end)
+	graph_canvas.add_child(core_line)
 
 
 func _create_node_card(text: String, color: Color, node_size: Vector2, font_size: int) -> PanelContainer:
@@ -195,6 +206,8 @@ func _create_node_style(color: Color) -> StyleBoxFlat:
 	style.corner_radius_top_right = 14
 	style.corner_radius_bottom_left = 14
 	style.corner_radius_bottom_right = 14
+	style.shadow_color = Color(color.r, color.g, color.b, 0.2)
+	style.shadow_size = 7
 	return style
 
 

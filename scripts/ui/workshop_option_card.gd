@@ -2,6 +2,7 @@ class_name WorkshopOptionCard
 extends Button
 
 const NEUTRAL_SHAPE_COLOR := Color(0.72, 0.82, 0.92, 1.0)
+const NEON_STYLE := preload("res://scripts/ui/neon_style.gd")
 
 var _option_kind: String = "shape"
 var _option_id: String = "circle"
@@ -12,6 +13,8 @@ var _accent_color: Color = Color(0.4, 0.86, 1.0)
 var _is_locked: bool = false
 var _is_future: bool = false
 var _is_selected: bool = false
+var _availability_state: String = "available"
+var _status_message: String = "Available"
 
 
 func _ready() -> void:
@@ -24,8 +27,10 @@ func configure(option_kind: String, data: Dictionary, description: String, detai
 	_title = str(data.get("display_name", "Unknown"))
 	_description = description
 	_details = details
-	_is_locked = not bool(data.get("available", false))
-	_is_future = bool(data.get("future", false))
+	_availability_state = str(data.get("availability_state", "available"))
+	_is_locked = _availability_state != "available"
+	_is_future = _availability_state == "coming_soon"
+	_status_message = str(data.get("status_message", "Coming Soon" if _is_future else "Unlock in Echo Tree"))
 	if _option_kind == "shape":
 		_accent_color = NEUTRAL_SHAPE_COLOR
 	else:
@@ -55,16 +60,14 @@ func _get_card_height() -> float:
 func _get_tooltip_text() -> String:
 	if not _is_locked:
 		return _title
-	if _is_future:
-		return "%s: Coming Soon" % _title
-	return "%s: Unlock in Echo Tree" % _title
+	return "%s: %s" % [_title, _status_message]
 
 
 func _update_style() -> void:
-	var border_color: Color = _accent_color if _is_selected else Color(0.2, 0.28, 0.36, 0.95)
-	var normal_color: Color = Color(0.055, 0.075, 0.105, 0.98)
+	var border_color: Color = _accent_color if _is_selected else Color(NEON_STYLE.CYAN.r, NEON_STYLE.CYAN.g, NEON_STYLE.CYAN.b, 0.28)
+	var normal_color: Color = Color(0.018, 0.043, 0.08, 0.98)
 	if _is_selected:
-		normal_color = Color(0.08, 0.13, 0.17, 1.0)
+		normal_color = Color(_accent_color.r * 0.13, _accent_color.g * 0.13, _accent_color.b * 0.13, 1.0)
 	if _is_locked:
 		normal_color = Color(0.035, 0.045, 0.06, 0.88)
 		border_color = Color(0.14, 0.17, 0.21, 0.8)
@@ -81,6 +84,8 @@ func _create_style(background_color: Color, border_color: Color, border_width: f
 	style.border_color = border_color
 	style.set_border_width_all(int(round(border_width)))
 	style.set_corner_radius_all(6)
+	style.shadow_color = Color(border_color.r, border_color.g, border_color.b, 0.16)
+	style.shadow_size = 6
 	style.content_margin_left = 10.0
 	style.content_margin_right = 10.0
 	style.content_margin_top = 8.0
@@ -93,12 +98,13 @@ func _draw() -> void:
 	var title_color: Color = _accent_color if not _is_locked else Color(0.42, 0.47, 0.54, 1.0)
 	var body_color: Color = Color(0.78, 0.85, 0.92, 1.0) if not _is_locked else Color(0.37, 0.42, 0.48, 1.0)
 	var icon_center := Vector2(size.x - 27.0, 27.0)
+	if _is_selected:
+		draw_circle(icon_center, 29.0, Color(_accent_color.r, _accent_color.g, _accent_color.b, 0.08))
 	_draw_icon(icon_center, title_color)
 
 	draw_string(font, Vector2(12.0, 23.0), _title, HORIZONTAL_ALIGNMENT_LEFT, size.x - 54.0, 15, title_color)
 	if _is_locked:
-		var lock_text := "COMING SOON" if _is_future else "LOCKED - ECHO TREE"
-		draw_string(font, Vector2(12.0, 47.0), lock_text, HORIZONTAL_ALIGNMENT_LEFT, size.x - 20.0, 12, body_color)
+		draw_string(font, Vector2(12.0, 47.0), _status_message.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, size.x - 20.0, 12, body_color)
 		return
 
 	draw_string(font, Vector2(12.0, 45.0), _description, HORIZONTAL_ALIGNMENT_LEFT, size.x - 54.0, 12, body_color)

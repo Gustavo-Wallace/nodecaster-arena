@@ -1,5 +1,10 @@
 extends Control
 
+const NEON_STYLE := preload("res://scripts/ui/neon_style.gd")
+
+@onready var panel: Panel = $Panel
+@onready var title_label: Label = $Panel/TitleLabel
+@onready var subtitle_label: Label = $Panel/SubtitleLabel
 @onready var play_button: Button = $Panel/PlayButton
 @onready var progress_button: Button = $Panel/ProgressButton
 @onready var options_button: Button = $Panel/OptionsButton
@@ -8,24 +13,34 @@ extends Control
 
 
 func _ready() -> void:
+	NEON_STYLE.apply_panel(panel, NEON_STYLE.MAGENTA)
+	title_label.add_theme_color_override("font_color", NEON_STYLE.TEXT_PRIMARY)
+	title_label.add_theme_color_override("font_outline_color", Color(NEON_STYLE.MAGENTA.r, NEON_STYLE.MAGENTA.g, NEON_STYLE.MAGENTA.b, 0.34))
+	title_label.add_theme_constant_override("outline_size", 2)
+	subtitle_label.add_theme_color_override("font_color", NEON_STYLE.TEXT_MUTED)
+	meta_label.add_theme_color_override("font_color", NEON_STYLE.CYAN)
 	play_button.pressed.connect(_on_play_pressed)
 	progress_button.pressed.connect(_on_progress_pressed)
 	options_button.pressed.connect(_on_options_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
 	for button in [play_button, progress_button, options_button, quit_button]:
+		NEON_STYLE.apply_button(button, NEON_STYLE.MAGENTA if button == play_button else NEON_STYLE.CYAN, button == quit_button)
 		_setup_button_feedback(button)
 	_update_meta_label()
 
 
 func _draw() -> void:
-	draw_circle(Vector2(130.0, 120.0), 42.0, Color(0.14, 0.46, 0.62, 0.28))
-	draw_rect(Rect2(Vector2(1060.0, 120.0), Vector2(74.0, 74.0)), Color(0.24, 0.62, 0.38, 0.22), true)
+	draw_circle(Vector2(130.0, 120.0), 84.0, Color(NEON_STYLE.CYAN.r, NEON_STYLE.CYAN.g, NEON_STYLE.CYAN.b, 0.06))
+	draw_arc(Vector2(130.0, 120.0), 42.0, 0.0, TAU, 36, Color(NEON_STYLE.CYAN.r, NEON_STYLE.CYAN.g, NEON_STYLE.CYAN.b, 0.42), 2.0, true)
+	draw_rect(Rect2(Vector2(1060.0, 120.0), Vector2(74.0, 74.0)), Color(NEON_STYLE.HEALTH.r, NEON_STYLE.HEALTH.g, NEON_STYLE.HEALTH.b, 0.14), true)
+	draw_rect(Rect2(Vector2(1050.0, 110.0), Vector2(94.0, 94.0)), Color(NEON_STYLE.HEALTH.r, NEON_STYLE.HEALTH.g, NEON_STYLE.HEALTH.b, 0.32), false, 2.0)
 	var points := PackedVector2Array([
 		Vector2(1040.0, 560.0),
 		Vector2(1115.0, 660.0),
 		Vector2(965.0, 660.0),
 	])
-	draw_colored_polygon(points, Color(0.62, 0.25, 0.72, 0.22))
+	draw_colored_polygon(points, Color(NEON_STYLE.MAGENTA.r, NEON_STYLE.MAGENTA.g, NEON_STYLE.MAGENTA.b, 0.13))
+	draw_polyline(PackedVector2Array([points[0], points[1], points[2], points[0]]), Color(NEON_STYLE.MAGENTA.r, NEON_STYLE.MAGENTA.g, NEON_STYLE.MAGENTA.b, 0.45), 2.0, true)
 
 
 func _on_play_pressed() -> void:

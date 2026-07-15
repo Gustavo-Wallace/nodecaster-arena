@@ -2,6 +2,8 @@ extends Control
 
 const TARGET_FILL := Color(0.38, 0.44, 0.53, 0.28)
 const TARGET_OUTLINE := Color(0.6, 0.68, 0.78, 0.74)
+const SUPPORTED_SHAPES := ["circle", "triangle", "square", "diamond", "star", "pentagon"]
+const SUPPORTED_CAST_TYPES := ["simple_projectile", "chain_lightning", "area", "slash", "persistent_waves", "summon"]
 
 @export var visual_shape: String = "circle"
 @export var fill_color: Color = Color(0.18, 0.78, 1.0)
@@ -13,12 +15,22 @@ var _preview_time: float = 0.0
 
 
 func setup(shape: String, fill: Color, outline: Color, cast_type: String = "", caster_shape: String = "circle") -> void:
-	visual_shape = shape
+	visual_shape = _resolve_shape(shape)
 	fill_color = fill
 	outline_color = outline
-	cast_type_id = cast_type
-	caster_shape_id = caster_shape
+	cast_type_id = _resolve_cast_type(cast_type)
+	caster_shape_id = _resolve_shape(caster_shape)
 	queue_redraw()
+
+
+func _resolve_shape(shape_id: String) -> String:
+	return shape_id if shape_id in SUPPORTED_SHAPES else "circle"
+
+
+func _resolve_cast_type(cast_type: String) -> String:
+	if cast_type.is_empty() or cast_type in SUPPORTED_CAST_TYPES:
+		return cast_type
+	return "simple_projectile"
 
 
 func _process(delta: float) -> void:

@@ -1,43 +1,13 @@
 extends Control
 
 const WORKSHOP_OPTION_CARD_SCRIPT := preload("res://scripts/ui/workshop_option_card.gd")
-
-const SHAPE_CARD_COPY := {
-	"circle": {"description": "Balanced and stable.", "details": ["Flexible all-round matrix."]},
-	"triangle": {"description": "Fast and aggressive.", "details": ["Quick casts, focused pressure."]},
-	"square": {"description": "Heavy and wide.", "details": ["Large, durable spell patterns."]},
-	"diamond": {"description": "Precise and quick.", "details": ["Fast rhythm, focused output."]},
-	"star": {"description": "Chaotic multi-hit form.", "details": ["Reserved for future matrices."]},
-	"pentagon": {"description": "Experimental matrix pattern.", "details": ["Reserved for future matrices."]},
-}
-
-const ELEMENT_CARD_COPY := {
-	"arcane": {"description": "Pure direct energy.", "details": ["Clean impact, no status effect."]},
-	"fire": {"description": "Burns enemies over time.", "details": ["Adds brief damage after impact."]},
-	"ice": {"description": "Slows enemies briefly.", "details": ["Creates room through control."]},
-	"electric": {"description": "Sparks and chains energy.", "details": ["Boosts chain links and field pulses."]},
-	"shadow": {"description": "Amplifies direct impact.", "details": ["A stronger violet direct hit."]},
-}
-
-const DELIVERY_CARD_COPY := {
-	"simple_projectile": ["Strong: Flexible direct fire", "Weak: Modest group clear", "Scales: Pierce / Ricochet / Speed"],
-	"chain_lightning": ["Strong: Cluster clear", "Weak: Isolated targets", "Scales: Links / Range / Falloff"],
-	"area": ["Strong: Space control", "Weak: Enemies can leave", "Scales: Size / Duration / Tick rate"],
-	"slash": ["Strong: Close burst", "Weak: Limited reach", "Scales: Range / Targets / Cadence"],
-	"persistent_waves": ["Strong: Lined-up groups", "Weak: Scattered targets", "Scales: Width / Speed / Lifetime"],
-	"summon": ["Strong: Persistent damage", "Weak: Slow early clear", "Scales: Count / Speed / Lifetime"],
-}
-
-const DELIVERY_CARD_DESCRIPTIONS := {
-	"simple_projectile": "Automatic focused fire.",
-	"chain_lightning": "Links nearby targets.",
-	"area": "Pulsing zone control.",
-	"slash": "Instant close-range cut.",
-	"persistent_waves": "Moving directional waves.",
-	"summon": "Reflections attack nearby targets.",
-}
+const NEON_STYLE := preload("res://scripts/ui/neon_style.gd")
 
 @onready var shape_list: VBoxContainer = $Panel/Columns/ShapeColumn/OptionsScroll/Options
+@onready var panel: Panel = $Panel
+@onready var preview_panel: Panel = $Panel/PreviewPanel
+@onready var title_label: Label = $Panel/TitleLabel
+@onready var subtitle_label: Label = $Panel/SubtitleLabel
 @onready var element_list: VBoxContainer = $Panel/Columns/ElementColumn/OptionsScroll/Options
 @onready var delivery_list: VBoxContainer = $Panel/Columns/DeliveryColumn/OptionsScroll/Options
 @onready var preview: Control = $Panel/PreviewPanel/Preview
@@ -53,6 +23,14 @@ var _delivery_buttons: Dictionary = {}
 
 
 func _ready() -> void:
+	NEON_STYLE.apply_panel(panel, NEON_STYLE.MAGENTA)
+	NEON_STYLE.apply_panel(preview_panel, NEON_STYLE.CYAN)
+	NEON_STYLE.apply_button(start_button, NEON_STYLE.MAGENTA)
+	NEON_STYLE.apply_button(back_button)
+	title_label.add_theme_color_override("font_color", NEON_STYLE.TEXT_PRIMARY)
+	subtitle_label.add_theme_color_override("font_color", NEON_STYLE.TEXT_MUTED)
+	formula_label.add_theme_color_override("font_color", NEON_STYLE.CYAN)
+	summary_label.add_theme_color_override("font_color", NEON_STYLE.TEXT_PRIMARY)
 	_run_config = get_node_or_null("/root/RunConfig")
 	start_button.pressed.connect(_on_start_pressed)
 	back_button.pressed.connect(_on_back_pressed)
@@ -105,24 +83,17 @@ func _create_option_card(option_kind: String, data: Dictionary) -> Button:
 
 
 func _get_card_content(option_kind: String, data: Dictionary) -> Dictionary:
-	var option_id: String = str(data.get("id", ""))
-	match option_kind:
-		"shape":
-			var shape_content: Dictionary = SHAPE_CARD_COPY.get(option_id, {"description": str(data.get("description", "")), "details": []})
-			return shape_content
-		"element":
-			var element_content: Dictionary = ELEMENT_CARD_COPY.get(option_id, {"description": str(data.get("description", "")), "details": []})
-			return element_content
-		_:
-			var details: Array[String] = []
-			for detail_value in DELIVERY_CARD_COPY.get(option_id, []):
-				details.append(str(detail_value))
-			if details.is_empty():
-				details.append("Coming in a future matrix.")
-			return {
-				"description": str(DELIVERY_CARD_DESCRIPTIONS.get(option_id, data.get("description", ""))),
-				"details": details,
-			}
+	var description: String = str(data.get("short_summary", data.get("playstyle_summary", data.get("description", ""))))
+	var details: Array[String] = []
+	if option_kind == "cast_type":
+		details.append("STRONG: %s" % str(data.get("strengths", "Future matrix behavior.")))
+		details.append("WEAK: %s" % str(data.get("weaknesses", "Not available yet.")))
+		details.append("SCALES: %s" % str(data.get("scaling_keywords", "Future upgrades.")))
+	else:
+		var modifier_text: String = str(data.get("modifiers_text", data.get("description", "")))
+		if not modifier_text.is_empty():
+			details.append(modifier_text)
+	return {"description": description, "details": details}
 
 
 func _on_shape_selected(shape_id: String) -> void:
@@ -151,6 +122,7 @@ func _refresh_selection() -> void:
 	var summary: Dictionary = blueprint.get_summary()
 	var shape: Dictionary = blueprint.get_shape_data()
 	var element: Dictionary = blueprint.get_element_data()
+	var delivery: Dictionary = blueprint.get_delivery_data()
 	var character_data: Dictionary = _run_config.call("get_selected_character_data")
 	var shape_name: String = str(summary.get("shape_name", "Circle"))
 	var element_name: String = str(summary.get("element_name", "Arcane"))
@@ -158,13 +130,13 @@ func _refresh_selection() -> void:
 	var delivery_id: String = str(summary.get("delivery_id", "simple_projectile"))
 
 	formula_label.text = "SPELL: %s + %s + %s" % [shape_name, element_name, delivery_name]
-	summary_label.text = _format_spell_summary(shape_name, element_name, delivery_name, delivery_id)
+	summary_label.text = _format_spell_summary(shape_name, element_name, delivery_name, delivery)
 	preview.call(
 		"setup",
-		str(shape.get("visual_shape", "circle")),
+		str(shape.get("preview_id", shape.get("visual_shape", "circle"))),
 		element.get("primary_color", Color.WHITE),
 		element.get("secondary_color", Color.WHITE),
-		delivery_id,
+		str(delivery.get("preview_id", delivery_id)),
 		str(character_data.get("visual_shape", "circle"))
 	)
 	_refresh_button_states(_shape_buttons, str(summary.get("shape_id", "circle")))
@@ -172,17 +144,9 @@ func _refresh_selection() -> void:
 	_refresh_button_states(_delivery_buttons, delivery_id)
 
 
-func _format_spell_summary(shape_name: String, element_name: String, delivery_name: String, delivery_id: String) -> String:
-	var cast_phrases: Dictionary = {
-		"simple_projectile": "as a focused projectile.",
-		"chain_lightning": "as jumping arcs of energy.",
-		"area": "as a pulsing field.",
-		"slash": "as a rapid cutting arc.",
-		"persistent_waves": "as moving waves.",
-		"summon": "through temporary Reflections.",
-	}
-	var cast_phrase: String = str(cast_phrases.get(delivery_id, "through an unstable matrix."))
-	return "CURRENT SPELL\nShape: %s\nElement: %s\nCast Type: %s\n\nA %s %s spell cast %s" % [
+func _format_spell_summary(shape_name: String, element_name: String, delivery_name: String, delivery: Dictionary) -> String:
+	var cast_phrase: String = str(delivery.get("short_summary", delivery.get("playstyle_summary", delivery.get("description", "An unstable matrix."))))
+	return "CURRENT SPELL\nShape: %s\nElement: %s\nCast Type: %s\n\nA %s %s spell. %s" % [
 		shape_name,
 		element_name,
 		delivery_name,
