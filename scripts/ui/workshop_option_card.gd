@@ -151,6 +151,7 @@ func _draw_shape_icon(center: Vector2, radius: float, color: Color) -> void:
 				var point_radius: float = radius if index % 2 == 0 else radius * 0.48
 				star.append(center + Vector2(cos(angle), sin(angle)) * point_radius)
 			draw_colored_polygon(star, color)
+			draw_polyline(PackedVector2Array([star[0], star[1], star[2], star[3], star[4], star[5], star[6], star[7], star[8], star[9], star[0]]), Color.WHITE, 1.2)
 		"pentagon":
 			var pentagon := PackedVector2Array()
 			for index in 5:
@@ -177,7 +178,13 @@ func _draw_element_icon(center: Vector2, color: Color) -> void:
 			draw_colored_polygon(bolt, color)
 		"shadow":
 			draw_circle(center, 12.0, color)
-			draw_circle(center + Vector2(5.0, -4.0), 10.0, Color(0.055, 0.075, 0.105, 1.0))
+			draw_circle(center + Vector2(5.0, -4.0), 10.0, Color(0.025, 0.035, 0.075, 1.0))
+			draw_arc(center, 15.0, PI * 0.35, PI * 1.5, 16, Color.WHITE, 1.1, true)
+		"poison":	
+			draw_circle(center, 11.0, color)
+			draw_circle(center + Vector2(-10.0, 8.0), 3.2, color.lightened(0.18))
+			draw_circle(center + Vector2(10.0, 7.0), 2.4, color.lightened(0.18))
+			draw_arc(center, 14.0, -PI * 0.72, PI * 0.18, 16, Color.WHITE, 1.1, true)
 		_:
 			draw_circle(center, 12.0, color)
 			draw_arc(center, 15.0, 0.0, TAU, 20, Color.WHITE, 1.1, true)

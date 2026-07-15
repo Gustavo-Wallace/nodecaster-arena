@@ -1,5 +1,6 @@
 extends Control
 
+const SLASH_GEOMETRY := preload("res://scripts/spells/slash_visual_geometry.gd")
 const TARGET_FILL := Color(0.38, 0.44, 0.53, 0.28)
 const TARGET_OUTLINE := Color(0.6, 0.68, 0.78, 0.74)
 const SUPPORTED_SHAPES := ["circle", "triangle", "square", "diamond", "star", "pentagon"]
@@ -128,9 +129,14 @@ func _build_preview_chain_line(impact_points: PackedVector2Array) -> PackedVecto
 		var direction: Vector2 = start.direction_to(end)
 		var perpendicular := Vector2(-direction.y, direction.x)
 		var segment_count: int = 3 if visual_shape == "triangle" else 2
+		if visual_shape == "star":
+			segment_count = 4
 		for point_index in range(1, segment_count):
 			var progress: float = float(point_index) / float(segment_count)
-			var jitter: float = sin(_preview_time * 10.0 + float(segment_index * 3 + point_index)) * (10.0 if visual_shape == "triangle" else 6.0)
+			var jitter_amount: float = 10.0 if visual_shape == "triangle" else 6.0
+			if visual_shape == "star":
+				jitter_amount = 16.0
+			var jitter: float = sin(_preview_time * 10.0 + float(segment_index * 3 + point_index)) * jitter_amount
 			chain_points.append(start.lerp(end, progress) + perpendicular * jitter)
 		chain_points.append(end)
 	return chain_points
@@ -146,7 +152,10 @@ func _draw_area_preview(field_center: Vector2, phase: float) -> void:
 	_draw_geometric_shape(field_center, field_radius * (0.46 + phase * 0.1), inner_field_color, outline_color, visual_shape, false)
 	var pulse_color: Color = fill_color
 	pulse_color.a = 0.3 + sin(phase * PI) * 0.22
-	draw_arc(field_center, field_radius * (0.55 + phase * 0.25), 0.0, TAU, 28, pulse_color, 1.4, true)
+	if visual_shape in ["diamond", "star"]:
+		_draw_geometric_shape(field_center, field_radius * (0.55 + phase * 0.25), Color(pulse_color.r, pulse_color.g, pulse_color.b, 0.0), pulse_color, visual_shape, false)
+	else:
+		draw_arc(field_center, field_radius * (0.55 + phase * 0.25), 0.0, TAU, 28, pulse_color, 1.4, true)
 
 
 func _draw_slash_preview(target: Vector2, phase: float) -> void:
@@ -160,35 +169,65 @@ func _draw_slash_preview(target: Vector2, phase: float) -> void:
 			_draw_precision_slash_preview(target, slash_length, slash_width, glow_color, core_color)
 		"square":
 			_draw_heavy_slash_preview(target, slash_length, slash_width, glow_color, core_color)
+		"diamond":
+			_draw_diamond_slash_preview(target, slash_length, slash_width, glow_color, core_color)
+		"star":
+			_draw_star_slash_preview(target, slash_length, slash_width, glow_color, core_color)
 		_:
 			_draw_arc_slash_preview(target, slash_length, slash_width, glow_color, core_color)
-	_draw_slash_sparks_preview(target, slash_length, phase)
+	if visual_shape == "circle":
+		_draw_slash_sparks_preview(target, slash_length, phase)
 
 
 func _draw_arc_slash_preview(target: Vector2, slash_length: float, slash_width: float, glow_color: Color, core_color: Color) -> void:
 	var arc_radius: float = slash_length * 0.54
 	draw_arc(target, arc_radius, -PI * 0.76, PI * 0.24, 24, glow_color, slash_width * 2.5, true)
 	draw_arc(target, arc_radius, -PI * 0.76, PI * 0.24, 24, core_color, slash_width, true)
+	var impact_center := target + Vector2(slash_length * 0.42, 0.0)
+	draw_circle(impact_center, slash_width * 1.45, Color(fill_color.r, fill_color.g, fill_color.b, glow_color.a * 1.6))
+	draw_arc(impact_center, slash_width * 1.65, 0.0, TAU, 16, core_color, maxf(1.0, slash_width * 0.18), true)
 
 
 func _draw_precision_slash_preview(target: Vector2, slash_length: float, slash_width: float, glow_color: Color, core_color: Color) -> void:
-	var wedge := PackedVector2Array([
-		target + Vector2(-slash_length * 0.56, -slash_width * 1.18),
-		target + Vector2(-slash_length * 0.56, slash_width * 1.18),
-		target + Vector2(slash_length * 0.66, 0.0),
-	])
-	var wedge_fill := Color(fill_color.r, fill_color.g, fill_color.b, glow_color.a * 2.15)
-	draw_colored_polygon(wedge, wedge_fill)
-	draw_polyline(PackedVector2Array([wedge[0], wedge[1], wedge[2], wedge[0]]), core_color, maxf(1.4, slash_width * 0.42))
-	draw_line(target + Vector2(-slash_length * 0.42, 0.0), wedge[2], core_color, maxf(1.0, slash_width * 0.34))
+	_draw_polygon_slash_preview("triangle", target, slash_length, slash_width, glow_color, core_color)
 
 
 func _draw_heavy_slash_preview(target: Vector2, slash_length: float, slash_width: float, glow_color: Color, core_color: Color) -> void:
-	var plate := Rect2(target + Vector2(-slash_length * 0.54, -slash_width * 1.35), Vector2(slash_length * 1.08, slash_width * 2.7))
-	var plate_fill := Color(fill_color.r, fill_color.g, fill_color.b, glow_color.a * 2.3)
-	draw_rect(plate, plate_fill, true)
-	draw_rect(plate, core_color, false, maxf(1.6, slash_width * 0.44))
-	draw_line(target + Vector2(slash_length * 0.46, -slash_width * 1.18), target + Vector2(slash_length * 0.46, slash_width * 1.18), core_color, maxf(1.1, slash_width * 0.36))
+	_draw_polygon_slash_preview("square", target, slash_length, slash_width, glow_color, core_color)
+
+
+func _draw_diamond_slash_preview(target: Vector2, slash_length: float, slash_width: float, glow_color: Color, core_color: Color) -> void:
+	_draw_polygon_slash_preview("diamond", target, slash_length, slash_width, glow_color, core_color)
+
+
+func _draw_star_slash_preview(target: Vector2, slash_length: float, slash_width: float, glow_color: Color, core_color: Color) -> void:
+	_draw_polygon_slash_preview("star", target, slash_length, slash_width, glow_color, core_color)
+
+
+func _draw_polygon_slash_preview(shape_id: String, target: Vector2, slash_length: float, slash_width: float, glow_color: Color, core_color: Color) -> void:
+	var polygon := SLASH_GEOMETRY.get_slash_polygon(shape_id, target, slash_length, slash_width)
+	if polygon.is_empty():
+		_draw_arc_slash_preview(target, slash_length, slash_width, glow_color, core_color)
+		return
+
+	draw_colored_polygon(polygon, Color(fill_color.r, fill_color.g, fill_color.b, glow_color.a * 2.25))
+	draw_polyline(SLASH_GEOMETRY.close_polygon(polygon), core_color, maxf(1.35, slash_width * 0.4))
+	_draw_shape_impact_preview(shape_id, target, slash_length, slash_width, glow_color, core_color)
+
+
+func _draw_shape_impact_preview(shape_id: String, target: Vector2, slash_length: float, slash_width: float, glow_color: Color, core_color: Color) -> void:
+	var impact_center := target + Vector2(slash_length * 0.62, 0.0)
+	var impact_size := maxf(3.0, slash_width * 0.95)
+	var impact := SLASH_GEOMETRY.get_impact_polygon(shape_id, impact_center, impact_size)
+	if impact.is_empty():
+		return
+
+	draw_colored_polygon(impact, Color(fill_color.r, fill_color.g, fill_color.b, glow_color.a * 2.6))
+	draw_polyline(SLASH_GEOMETRY.close_polygon(impact), core_color, maxf(1.0, slash_width * 0.22))
+	var fragment_offsets: Array[Vector2] = [Vector2(-impact_size * 1.2, -impact_size * 0.82), Vector2(impact_size * 0.52, impact_size * 0.94)]
+	for offset: Vector2 in fragment_offsets:
+		var fragment := SLASH_GEOMETRY.get_impact_polygon(shape_id, impact_center + offset, impact_size * 0.36)
+		draw_colored_polygon(fragment, Color(fill_color.r, fill_color.g, fill_color.b, glow_color.a * 1.7))
 
 
 func _draw_slash_sparks_preview(target: Vector2, slash_length: float, phase: float) -> void:
@@ -220,8 +259,29 @@ func _draw_wave_shape(wave_center: Vector2, wave_size: float) -> void:
 			var block := Rect2(wave_center - Vector2(6.0, wave_size), Vector2(12.0, wave_size * 2.0))
 			draw_rect(block, fill_color, true)
 			draw_rect(block, outline_color, false, 1.1)
+		"diamond":
+			var diamond := PackedVector2Array([
+				wave_center + Vector2(wave_size * 0.72, 0.0),
+				wave_center + Vector2(0.0, -wave_size),
+				wave_center + Vector2(-wave_size * 0.72, 0.0),
+				wave_center + Vector2(0.0, wave_size),
+			])
+			draw_colored_polygon(diamond, fill_color)
+			draw_polyline(PackedVector2Array([diamond[0], diamond[1], diamond[2], diamond[3], diamond[0]]), outline_color, 1.1)
+		"star":
+			_draw_star_wave_preview(wave_center, wave_size)
 		_:
 			_draw_spell_shape(wave_center, wave_size * 0.46, fill_color, outline_color)
+
+
+func _draw_star_wave_preview(center: Vector2, wave_size: float) -> void:
+	var star := PackedVector2Array()
+	for point_index in 10:
+		var angle: float = float(point_index) * TAU / 10.0
+		var radial_scale: float = 1.0 if point_index % 2 == 0 else 0.42
+		star.append(center + Vector2(cos(angle) * wave_size * 0.78 * radial_scale, sin(angle) * wave_size * radial_scale))
+	draw_colored_polygon(star, fill_color)
+	draw_polyline(PackedVector2Array([star[0], star[1], star[2], star[3], star[4], star[5], star[6], star[7], star[8], star[9], star[0]]), outline_color, 1.1)
 
 
 func _draw_summon_preview(source: Vector2, target: Vector2, phase: float) -> void:
@@ -277,6 +337,7 @@ func _draw_geometric_shape(position: Vector2, radius: float, fill: Color, outlin
 				var point_radius: float = radius if point_index % 2 == 0 else radius * 0.48
 				star.append(position + Vector2(cos(angle), sin(angle)) * point_radius)
 			draw_colored_polygon(star, fill)
+			draw_polyline(PackedVector2Array([star[0], star[1], star[2], star[3], star[4], star[5], star[6], star[7], star[8], star[9], star[0]]), outline, 2.0)
 		"pentagon":
 			var pentagon := PackedVector2Array()
 			for point_index in 5:

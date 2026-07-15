@@ -87,9 +87,46 @@ func _draw() -> void:
 			var square := Rect2(Vector2(-side, -side) * 0.5, Vector2(side, side))
 			draw_rect(square, fill, true)
 			draw_rect(square, outline, false, 2.4, true)
+		"diamond":
+			var diamond_radius := radius * pulse_scale
+			var diamond := PackedVector2Array([Vector2(0.0, -diamond_radius), Vector2(diamond_radius, 0.0), Vector2(0.0, diamond_radius), Vector2(-diamond_radius, 0.0)])
+			draw_colored_polygon(diamond, fill)
+			draw_polyline(PackedVector2Array([diamond[0], diamond[1], diamond[2], diamond[3], diamond[0]]), outline, 2.4, true)
+		"star":
+			var star := PackedVector2Array()
+			for point_index in 10:
+				var angle := -PI * 0.5 + float(point_index) * TAU / 10.0
+				var point_radius := radius * pulse_scale if point_index % 2 == 0 else radius * pulse_scale * 0.48
+				star.append(Vector2(cos(angle), sin(angle)) * point_radius)
+			draw_colored_polygon(star, fill)
+			draw_polyline(PackedVector2Array([star[0], star[1], star[2], star[3], star[4], star[5], star[6], star[7], star[8], star[9], star[0]]), outline, 2.4, true)
 		_:
 			draw_circle(Vector2.ZERO, radius * pulse_scale, fill)
 			draw_arc(Vector2.ZERO, radius * pulse_scale, 0.0, TAU, 40, outline, 2.4, true)
 
-	draw_arc(Vector2.ZERO, radius * (0.55 + _pulse_strength * 0.25), 0.0, TAU, 28, Color(fill_color.r, fill_color.g, fill_color.b, 0.3 + _pulse_strength * 0.22), 1.4, true)
-	draw_arc(Vector2.ZERO, radius * pulse_scale * 1.06, 0.0, TAU, 40, Color(fill_color.r, fill_color.g, fill_color.b, 0.22), 1.0, true)
+	var pulse_color := Color(fill_color.r, fill_color.g, fill_color.b, 0.3 + _pulse_strength * 0.22)
+	var outer_color := Color(fill_color.r, fill_color.g, fill_color.b, 0.22)
+	if visual_shape == "diamond":
+		_draw_diamond_pulse(radius * (0.55 + _pulse_strength * 0.25), pulse_color, 1.4)
+		_draw_diamond_pulse(radius * pulse_scale * 1.06, outer_color, 1.0)
+	elif visual_shape == "star":
+		_draw_star_pulse(radius * (0.55 + _pulse_strength * 0.25), pulse_color, 1.4)
+		_draw_star_pulse(radius * pulse_scale * 1.06, outer_color, 1.0)
+	else:
+		draw_arc(Vector2.ZERO, radius * (0.55 + _pulse_strength * 0.25), 0.0, TAU, 28, pulse_color, 1.4, true)
+		draw_arc(Vector2.ZERO, radius * pulse_scale * 1.06, 0.0, TAU, 40, outer_color, 1.0, true)
+
+
+func _draw_diamond_pulse(draw_radius: float, color: Color, width: float) -> void:
+	var diamond := PackedVector2Array([Vector2(0.0, -draw_radius), Vector2(draw_radius, 0.0), Vector2(0.0, draw_radius), Vector2(-draw_radius, 0.0), Vector2(0.0, -draw_radius)])
+	draw_polyline(diamond, color, width, true)
+
+
+func _draw_star_pulse(draw_radius: float, color: Color, width: float) -> void:
+	var star := PackedVector2Array()
+	for point_index in 10:
+		var angle: float = -PI * 0.5 + float(point_index) * TAU / 10.0
+		var point_radius: float = draw_radius if point_index % 2 == 0 else draw_radius * 0.48
+		star.append(Vector2(cos(angle), sin(angle)) * point_radius)
+	star.append(star[0])
+	draw_polyline(star, color, width, true)

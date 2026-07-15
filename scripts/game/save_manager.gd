@@ -4,8 +4,8 @@ const SAVE_PATH := "user://nodecaster_arena_save.cfg"
 const SKILL_TREE_VERSION := 3
 
 const BASIC_CHARACTER_IDS := ["circle", "triangle", "square"]
-const BASIC_SPELL_SHAPE_IDS := ["circle", "triangle", "square"]
-const BASIC_ELEMENT_IDS := ["arcane", "fire", "ice", "electric"]
+const BASIC_SPELL_SHAPE_IDS := ["circle", "triangle", "square", "diamond", "star"]
+const BASIC_ELEMENT_IDS := ["arcane", "fire", "ice", "electric", "shadow", "poison"]
 const BASIC_CAST_TYPE_IDS := ["simple_projectile", "chain_lightning", "area", "slash", "persistent_waves", "summon"]
 const BASIC_UPGRADE_IDS := [
 	"arcane_damage",
@@ -52,9 +52,10 @@ var skill_definitions := {
 	"directed_tuning": {"id": "directed_tuning", "name": "Directed Tuning", "description": "The first mutation panel always includes an offensive option.", "branch": "core", "cost": 28, "prerequisites": ["expanded_choices"], "effect_type": "force_first_offensive_option", "effect_value": 1, "position": Vector2(1610.0, 350.0)},
 
 	"unlock_matrix": {"id": "unlock_matrix", "name": "Unlock Matrix", "description": "Opens advanced branches for Spell Shapes, Elements, and Cast Types.", "branch": "unlocks", "cost": 20, "prerequisites": [], "position": Vector2(540.0, 655.0)},
-	"unlock_diamond_shape": {"id": "unlock_diamond_shape", "name": "Diamond Shape", "description": "Unlocks Diamond Spell Shape: rapid casts with slightly lower damage.", "branch": "shape_unlocks", "cost": 28, "prerequisites": ["unlock_matrix"], "effect_type": "unlock_spell_shape", "target_id": "diamond", "position": Vector2(270.0, 530.0)},
-	"unlock_star_shape": {"id": "unlock_star_shape", "name": "Star Shape", "description": "A future Spell Shape for multi-hit builds.", "branch": "shape_unlocks", "cost": 52, "prerequisites": ["unlock_diamond_shape"], "future": true, "position": Vector2(55.0, 430.0)},
-	"unlock_shadow_element": {"id": "unlock_shadow_element", "name": "Shadow Element", "description": "Unlocks Shadow: a dark, high-impact element.", "branch": "element_unlocks", "cost": 30, "prerequisites": ["unlock_matrix"], "effect_type": "unlock_element", "target_id": "shadow", "position": Vector2(270.0, 705.0)},
+	"unlock_diamond_shape": {"id": "unlock_diamond_shape", "name": "Diamond Shape", "description": "Implemented Shape. Available in the Arcane Workshop during development.", "branch": "shape_unlocks", "cost": 28, "prerequisites": ["unlock_matrix"], "implemented": true, "position": Vector2(270.0, 530.0)},
+	"unlock_star_shape": {"id": "unlock_star_shape", "name": "Star Shape", "description": "Implemented Shape for multi-hit builds. Available in the Arcane Workshop during development.", "branch": "shape_unlocks", "cost": 52, "prerequisites": ["unlock_diamond_shape"], "implemented": true, "position": Vector2(55.0, 430.0)},
+	"unlock_shadow_element": {"id": "unlock_shadow_element", "name": "Shadow Element", "description": "Implemented Element. Available in the Arcane Workshop during development.", "branch": "element_unlocks", "cost": 30, "prerequisites": ["unlock_matrix"], "implemented": true, "position": Vector2(270.0, 705.0)},
+	"unlock_poison_element": {"id": "unlock_poison_element", "name": "Poison Element", "description": "Implemented corrosive Element. Available in the Arcane Workshop during development.", "branch": "element_unlocks", "cost": 42, "prerequisites": ["unlock_shadow_element"], "implemented": true, "position": Vector2(100.0, 705.0)},
 	"unlock_light_element": {"id": "unlock_light_element", "name": "Light Element", "description": "A future healing and elite-focused element.", "branch": "element_unlocks", "cost": 56, "prerequisites": ["unlock_shadow_element"], "future": true, "position": Vector2(55.0, 805.0)},
 	"unlock_persistent_waves": {"id": "unlock_persistent_waves", "name": "Persistent Waves", "description": "Implemented Cast Type. Available in the Arcane Workshop during development.", "branch": "cast_unlocks", "cost": 58, "prerequisites": ["unlock_matrix"], "implemented": true, "position": Vector2(480.0, 930.0)},
 	"unlock_summoning": {"id": "unlock_summoning", "name": "Summoning", "description": "Implemented Cast Type for autonomous player Reflections.", "branch": "cast_unlocks", "cost": 78, "prerequisites": ["unlock_persistent_waves"], "implemented": true, "position": Vector2(650.0, 1040.0)},
@@ -417,6 +418,7 @@ func _get_ordered_skill_ids() -> Array[String]:
 		"unlock_diamond_shape",
 		"unlock_star_shape",
 		"unlock_shadow_element",
+		"unlock_poison_element",
 		"unlock_light_element",
 		"unlock_persistent_waves",
 		"unlock_summoning",

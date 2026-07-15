@@ -30,6 +30,11 @@ var _burn_tick_left: float = 0.0
 var _burn_damage: int = 0
 var _slow_time_left: float = 0.0
 var _slow_multiplier: float = 1.0
+var _poison_time_left: float = 0.0
+var _poison_tick_left: float = 0.0
+var _poison_damage: int = 0
+var _weaken_time_left: float = 0.0
+var _weaken_multiplier: float = 1.0
 var elite_modifier_id: String = ""
 var _elite_volatile_radius: float = 0.0
 var _elite_volatile_damage: int = 0
@@ -108,6 +113,14 @@ func apply_elemental_effect(effect_id: String, effect_power: float, source_damag
 		"slow":
 			_slow_time_left = maxf(_slow_time_left, 1.4 * duration_multiplier)
 			_slow_multiplier = minf(_slow_multiplier, clampf(effect_power, 0.35, 0.92))
+		"poison":
+			# Poison refreshes its duration and retains only the strongest active tick.
+			_poison_time_left = maxf(_poison_time_left, 2.0 * duration_multiplier)
+			_poison_tick_left = minf(_poison_tick_left, 0.2)
+			_poison_damage = maxi(_poison_damage, maxi(1, int(round(float(source_damage) * effect_power))))
+		"weaken":
+			_weaken_time_left = maxf(_weaken_time_left, 1.6 * duration_multiplier)
+			_weaken_multiplier = minf(_weaken_multiplier, clampf(effect_power, 0.55, 0.92))
 	queue_redraw()
 
 
@@ -125,6 +138,20 @@ func _update_elemental_effects(delta: float) -> void:
 		_slow_time_left = maxf(_slow_time_left - delta, 0.0)
 		if _slow_time_left <= 0.0:
 			_slow_multiplier = 1.0
+
+	if _poison_time_left > 0.0:
+		_poison_time_left = maxf(_poison_time_left - delta, 0.0)
+		_poison_tick_left = maxf(_poison_tick_left - delta, 0.0)
+		if _poison_tick_left <= 0.0 and _poison_damage > 0:
+			_poison_tick_left = 0.55
+			take_damage(_poison_damage)
+			if _is_dead:
+				return
+
+	if _weaken_time_left > 0.0:
+		_weaken_time_left = maxf(_weaken_time_left - delta, 0.0)
+		if _weaken_time_left <= 0.0:
+			_weaken_multiplier = 1.0
 
 	queue_redraw()
 
@@ -185,7 +212,8 @@ func _try_damage_player() -> void:
 		return
 
 	if player.has_method("take_damage"):
-		player.call("take_damage", contact_damage)
+		var reduced_damage := maxi(1, int(round(float(contact_damage) * _weaken_multiplier)))
+		player.call("take_damage", reduced_damage)
 		_contact_cooldown_left = contact_damage_cooldown
 
 
@@ -244,6 +272,17 @@ func _draw_elemental_feedback() -> void:
 		draw_arc(Vector2.ZERO, radius * pulse + 5.0, 0.0, TAU, 24, Color(1.0, 0.38, 0.1, 0.92), 2.0, true)
 	if _slow_time_left > 0.0:
 		draw_arc(Vector2.ZERO, radius + 8.0, 0.0, TAU, 24, Color(0.48, 0.88, 1.0, 0.88), 2.0, true)
+	if _poison_time_left > 0.0:
+		var poison_pulse := 1.0 + sin(float(Time.get_ticks_msec()) * 0.02) * 0.08
+		draw_arc(Vector2.ZERO, radius * poison_pulse + 7.0, 0.0, TAU, 24, Color(0.48, 1.0, 0.28, 0.9), 2.0, true)
+		for mote_index in 3:
+			var mote_angle := float(mote_index) * TAU / 3.0 + float(Time.get_ticks_msec()) * 0.002
+			var mote_position := Vector2(cos(mote_angle), sin(mote_angle)) * (radius + 10.0)
+			draw_circle(mote_position, 2.1, Color(0.72, 1.0, 0.42, 0.82))
+	if _weaken_time_left > 0.0:
+		var weaken_color := Color(0.72, 0.38, 1.0, 0.82)
+		draw_arc(Vector2.ZERO, radius + 11.0, -PI * 0.82, PI * 0.08, 16, weaken_color, 1.7, true)
+		draw_arc(Vector2.ZERO, radius + 11.0, PI * 0.28, PI * 1.18, 16, weaken_color, 1.7, true)
 
 
 func _draw_elite_feedback() -> void:

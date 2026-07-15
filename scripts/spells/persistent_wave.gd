@@ -157,7 +157,10 @@ func _draw_diamond_wave(center: Vector2, half_width: float, half_length: float, 
 
 
 func _draw_star_wave(center: Vector2, half_width: float, half_length: float, body_color: Color, line_color: Color) -> void:
-	_draw_circle_wave(center, half_width, body_color, line_color)
-	for offset in [-0.55, 0.0, 0.55]:
-		var origin := center + Vector2(offset * half_length, 0.0)
-		draw_line(origin + Vector2(0.0, -half_width * 0.72), origin + Vector2(0.0, half_width * 0.72), line_color, 1.4, true)
+	var star := PackedVector2Array()
+	for point_index in 10:
+		var angle: float = float(point_index) * TAU / 10.0
+		var radial_scale: float = 1.0 if point_index % 2 == 0 else 0.42
+		star.append(center + Vector2(cos(angle) * half_length * 1.25 * radial_scale, sin(angle) * half_width * 1.16 * radial_scale))
+	draw_colored_polygon(star, body_color)
+	draw_polyline(PackedVector2Array([star[0], star[1], star[2], star[3], star[4], star[5], star[6], star[7], star[8], star[9], star[0]]), line_color, 2.4, true)

@@ -10,7 +10,7 @@ const SECTION_LAYOUT := [
 		"groups": [
 			{"title": "UNLOCK MATRIX", "skills": ["unlock_matrix"]},
 			{"title": "SPELL SHAPES", "skills": ["unlock_diamond_shape", "unlock_star_shape"]},
-			{"title": "ELEMENTS", "skills": ["unlock_shadow_element", "unlock_light_element"]},
+			{"title": "ELEMENTS", "skills": ["unlock_shadow_element", "unlock_poison_element", "unlock_light_element"]},
 			{"title": "CAST TYPES", "skills": ["unlock_persistent_waves", "unlock_summoning", "unlock_orbitals", "unlock_dual_casting"]},
 		],
 	},
@@ -249,7 +249,7 @@ func _update_details() -> void:
 		buy_button.disabled = true
 	elif bool(skill.get("implemented", false)):
 		status_label.text = "Available in the Arcane Workshop."
-		cost_label.text = "Development Cast Type"
+		cost_label.text = "Development Content"
 		buy_button.text = "Implemented"
 		buy_button.disabled = true
 	elif bool(skill.get("future", false)):
@@ -304,6 +304,7 @@ func _get_short_node_label(skill: Dictionary) -> String:
 		"unlock_diamond_shape": return "Diamond"
 		"unlock_star_shape": return "Star"
 		"unlock_shadow_element": return "Shadow"
+		"unlock_poison_element": return "Poison"
 		"unlock_light_element": return "Light"
 		"unlock_persistent_waves": return "Waves"
 		"unlock_summoning": return "Summoning"

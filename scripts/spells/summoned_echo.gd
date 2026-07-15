@@ -125,6 +125,14 @@ func _draw() -> void:
 			var diamond := PackedVector2Array([Vector2(0.0, -radius), Vector2(radius, 0.0), Vector2(0.0, radius), Vector2(-radius, 0.0)])
 			draw_colored_polygon(diamond, fill)
 			draw_polyline(PackedVector2Array([diamond[0], diamond[1], diamond[2], diamond[3], diamond[0]]), outline, 1.8, true)
+		"star":
+			var star := PackedVector2Array()
+			for point_index in 10:
+				var angle := -PI * 0.5 + float(point_index) * TAU / 10.0
+				var point_radius := radius if point_index % 2 == 0 else radius * 0.48
+				star.append(Vector2(cos(angle), sin(angle)) * point_radius)
+			draw_colored_polygon(star, fill)
+			draw_polyline(PackedVector2Array([star[0], star[1], star[2], star[3], star[4], star[5], star[6], star[7], star[8], star[9], star[0]]), outline, 1.8, true)
 		_:
 			draw_circle(Vector2.ZERO, radius, fill)
 			draw_arc(Vector2.ZERO, radius, 0.0, TAU, 20, outline, 1.8, true)

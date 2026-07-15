@@ -155,6 +155,14 @@ func _draw() -> void:
 			])
 			draw_colored_polygon(points, fill_color)
 			draw_polyline(PackedVector2Array([points[0], points[1], points[2], points[3], points[0]]), outline_color, 1.5)
+		"star":
+			var points := PackedVector2Array()
+			for point_index in 10:
+				var angle := -PI * 0.5 + float(point_index) * TAU / 10.0
+				var point_radius := draw_radius if point_index % 2 == 0 else draw_radius * 0.46
+				points.append(Vector2(cos(angle), sin(angle)) * point_radius)
+			draw_colored_polygon(points, fill_color)
+			draw_polyline(PackedVector2Array([points[0], points[1], points[2], points[3], points[4], points[5], points[6], points[7], points[8], points[9], points[0]]), outline_color, 1.5)
 		_:
 			draw_circle(Vector2.ZERO, draw_radius, fill_color)
 			draw_arc(Vector2.ZERO, draw_radius, 0.0, TAU, 24, outline_color, 1.5, true)
